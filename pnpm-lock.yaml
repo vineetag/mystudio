@@ -33,7 +33,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@supabase/supabase-js':
-        specifier: ^2.45.0
+        specifier: ^2.106.2
         version: 2.106.2
       class-variance-authority:
         specifier: ^0.7.1
@@ -109,7 +109,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@supabase/supabase-js':
-        specifier: ^2.45.0
+        specifier: ^2.106.2
         version: 2.106.2
       class-variance-authority:
         specifier: ^0.7.1
@@ -185,7 +185,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@supabase/supabase-js':
-        specifier: ^2.45.0
+        specifier: ^2.106.2
         version: 2.106.2
       class-variance-authority:
         specifier: ^0.7.1
@@ -261,7 +261,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@supabase/supabase-js':
-        specifier: ^2.45.0
+        specifier: ^2.106.2
         version: 2.106.2
       class-variance-authority:
         specifier: ^0.7.1
