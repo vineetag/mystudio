@@ -1,0 +1,10 @@
+{
+  "name": "@studio/config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./eslint-next": "./eslint-next.js",
+    "./typescript/base": "./base.tsconfig.json",
+    "./typescript/nextjs": "./nextjs.tsconfig.json"
+  }
+}
