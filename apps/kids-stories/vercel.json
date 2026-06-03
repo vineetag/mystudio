@@ -1,0 +1,5 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "cd ../.. && pnpm turbo build --filter=@studio/kids-stories",
+  "installCommand": "pnpm install --frozen-lockfile"
+}
