@@ -3,7 +3,8 @@ import { NextResponse, type NextRequest } from "next/server"
 
 // Routes that require an authenticated user. Unauthed visitors are bounced to
 // /auth/login (with ?redirectTo so we can send them back after they sign in).
-const PROTECTED_PREFIXES = ["/library"]
+// /admin additionally requires an allowlisted email — enforced in the page.
+const PROTECTED_PREFIXES = ["/library", "/admin"]
 
 /**
  * Refreshes the Supabase auth session on every request and enforces route
