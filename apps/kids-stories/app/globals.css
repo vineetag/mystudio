@@ -63,7 +63,8 @@
   * {
     @apply border-border;
   }
+  /* ZippyTales default surface: parchment page, ink text, Nunito UI font. */
   body {
-    @apply bg-background text-foreground;
+    @apply bg-parchment text-ink font-sans;
   }
 }
