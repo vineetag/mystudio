@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss"
+import defaultTheme from "tailwindcss/defaultTheme"
 
 const config: Config = {
   darkMode: ["class"],
@@ -10,6 +11,13 @@ const config: Config = {
     "../../packages/ui/src/**/*.{ts,tsx}",
   ],
   prefix: "",
+  // Theme-accent utilities are composed dynamically (e.g. `bg-theme-${theme}-bg`),
+  // so the JIT scanner can't see them in source — keep them from being purged.
+  safelist: [
+    {
+      pattern: /(bg|text|border)-theme-(adventure|animals|space|fantasy)-(bg|text)/,
+    },
+  ],
   theme: {
     container: {
       center: true,
@@ -51,11 +59,39 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+
+        // ZippyTales brand tokens (from approved designs)
+        "brand-purple": {
+          DEFAULT: "#7F77DD",
+          light: "#EEEDFE",
+        },
+        "brand-teal": "#5DCAA5",
+        parchment: "#F7F4EE",
+        ink: {
+          DEFAULT: "#2C2C2A",
+          muted: "#888780",
+        },
+
+        // Theme accents (story categories) — { bg, text } per theme
+        theme: {
+          adventure: { bg: "#FAEEDA", text: "#854F0B" },
+          animals: { bg: "#EAF3DE", text: "#3B6D11" },
+          space: { bg: "#EEEDFE", text: "#534AB7" },
+          fantasy: { bg: "#FBEAF0", text: "#993556" },
+        },
+      },
+      fontFamily: {
+        sans: ["var(--font-nunito)", ...defaultTheme.fontFamily.sans],
+        serif: ["var(--font-lora)", ...defaultTheme.fontFamily.serif],
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        // ZippyTales radii
+        pill: "50px",
+        card: "16px",
+        input: "12px",
       },
       keyframes: {
         "accordion-down": {
