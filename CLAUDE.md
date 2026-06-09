@@ -29,7 +29,8 @@ studio/
 - All work goes on a feature branch: `git checkout -b feat/<name>`
 - Push the branch to get a Vercel preview URL, test there first
 - Merge to `main` only via a PR once the preview is confirmed good
-- A pre-push hook enforces this locally
+- A pre-push hook (`.githooks/pre-push`) enforces this locally
+- After a fresh clone, run: `git config core.hooksPath .githooks`
 
 ## Hard rules — never break these
 - Secrets and API keys go in .env files only, never in code
