@@ -3,6 +3,8 @@ import { Nunito, Lora } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "sonner"
 import { Navbar } from "@/components/navbar"
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 // UI typeface — wired to Tailwind's font-sans via the CSS variable.
 const nunito = Nunito({
@@ -34,6 +36,8 @@ export default function RootLayout({
         <Navbar />
         {children}
         <Toaster richColors position="top-center" />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )

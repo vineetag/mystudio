@@ -1,0 +1,21 @@
+#!/bin/sh
+# Block direct pushes to main. All changes must go through a feature branch + PR.
+
+protected_branch="main"
+current_branch=$(git symbolic-ref HEAD 2>/dev/null | sed 's|refs/heads/||')
+
+while read local_ref local_sha remote_ref remote_sha; do
+  if echo "$remote_ref" | grep -q "refs/heads/$protected_branch$"; then
+    echo ""
+    echo "  Direct push to 'main' is not allowed."
+    echo "  Create a feature branch and open a PR instead:"
+    echo ""
+    echo "    git checkout -b feat/<name>"
+    echo "    git push origin feat/<name>"
+    echo "    gh pr create"
+    echo ""
+    exit 1
+  fi
+done
+
+exit 0
