@@ -1,7 +1,7 @@
 import Link from "next/link"
 
 const apps = [
-  { name: "Tiny Tales", href: "#", description: "AI-powered stories for little readers" },
+  { name: "ZippyTales", href: "https://zippytales.app", description: "AI-powered stories for little readers" },
   { name: "Math Workbook", href: "#", description: "Personalized math practice" },
   { name: "Wealth Tracker", href: "#", description: "Track your financial journey" },
 ]
@@ -10,7 +10,7 @@ export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8">
       <div className="max-w-3xl w-full text-center">
-        <h1 className="text-5xl font-bold tracking-tight">Slate Studio</h1>
+        <h1 className="text-5xl font-bold tracking-tight">AppCrafter Studio</h1>
         <p className="mt-4 text-xl text-muted-foreground">
           A portfolio of tools built for real problems.
         </p>
