@@ -21,6 +21,7 @@ export function StoryGenerator() {
 
   // null = still checking; affects whether the CTA submits or routes to login.
   const [authed, setAuthed] = useState<boolean | null>(null)
+  const [limitReached, setLimitReached] = useState(false)
   const [childName, setChildName] = useState("")
   const [themes, setThemes] = useState<ThemeKey[]>([])
   const [ageRange, setAgeRange] = useState("")
@@ -28,7 +29,17 @@ export function StoryGenerator() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user))
+    supabase.auth.getUser().then(async ({ data }) => {
+      const isAuthed = !!data.user
+      setAuthed(isAuthed)
+      if (isAuthed) {
+        const res = await fetch("/api/generate").catch(() => null)
+        if (res?.ok) {
+          const d = (await res.json().catch(() => ({}))) as { limitReached?: boolean }
+          setLimitReached(d.limitReached === true)
+        }
+      }
+    })
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -55,6 +66,11 @@ export function StoryGenerator() {
       const data = (await res.json().catch(() => ({}))) as {
         id?: string
         error?: string
+      }
+
+      if (res.status === 429) {
+        setLimitReached(true)
+        return
       }
 
       if (!res.ok) {
@@ -125,13 +141,20 @@ export function StoryGenerator() {
             <Link href="/auth/login?redirectTo=/">Log in to create a story</Link>
           </Button>
         ) : (
-          <Button
-            type="submit"
-            disabled={loading || themes.length === 0}
-            className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 disabled:opacity-50"
-          >
-            {loading ? "Writing your story…" : "Create story"}
-          </Button>
+          <div className="space-y-2">
+            {limitReached && (
+              <p className="text-center text-sm font-medium text-amber-600">
+                Daily limit reached — one story per day. Check back tomorrow!
+              </p>
+            )}
+            <Button
+              type="submit"
+              disabled={loading || themes.length === 0 || limitReached}
+              className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? "Writing your story…" : "Create story"}
+            </Button>
+          </div>
         )}
       </div>
     </form>

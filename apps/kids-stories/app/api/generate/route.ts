@@ -7,11 +7,31 @@ import {
   DailyLimitError,
   SpendCapError,
   AIContentError,
+  DAILY_STORY_LIMIT,
 } from "@/lib/ai"
 
 export const runtime = "nodejs"
 
 const MAX_NAME_LENGTH = 50
+
+export async function GET() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: "Not authenticated." }, { status: 401 })
+  }
+
+  const { data: used, error } = await supabase.rpc("stories_generated_today", {
+    uid: user.id,
+  })
+  if (error) {
+    return NextResponse.json({ error: "Could not check limit." }, { status: 500 })
+  }
+
+  return NextResponse.json({ limitReached: Number(used ?? 0) >= DAILY_STORY_LIMIT })
+}
 
 export async function POST(request: Request) {
   // 1. Require an authenticated user (story + log inserts are RLS-gated to them).
