@@ -26,6 +26,9 @@ build/
 .next
 .turbo
 
+# claude code
+.claude/settings.local.json
+
 # misc
 .DS_Store
 *.pem

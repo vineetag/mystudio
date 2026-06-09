@@ -1,4 +1,6 @@
-# Slate Studio — Monorepo Conventions
+# AppCrafter Studio — Monorepo Conventions
+My studio name is now AppCrafter.
+Domain is - appcrafter.studio
 
 ## Stack
 - Framework: Next.js (App Router) + TypeScript
