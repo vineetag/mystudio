@@ -142,7 +142,7 @@ export default async function AdminPage() {
             />
           </div>
           {spend >= MONTHLY_BUDGET_USD && (
-            <p className="mt-2 text-sm font-medium text-theme-fantasy-text">
+            <p className="mt-2 text-sm font-medium text-red-600">
               Budget reached — generation is paused until next month.
             </p>
           )}

@@ -1,47 +1,62 @@
 "use client"
 
 import { cn } from "@studio/ui"
-import { THEME_OPTIONS, type ThemeKey } from "../themes"
+import { THEME_CATEGORIES, type ThemeKey } from "../themes"
 
-// The `bg-theme-*` / `text-theme-*` classes are composed dynamically from the
-// theme key, so they're kept alive by the safelist in tailwind.config.ts.
 export function ThemePicker({
   value,
   onChange,
 }: {
-  value: ThemeKey
-  onChange: (theme: ThemeKey) => void
+  value: ThemeKey[]
+  onChange: (themes: ThemeKey[]) => void
 }) {
+  function toggle(key: ThemeKey) {
+    if (value.includes(key)) {
+      onChange(value.filter((k) => k !== key))
+    } else if (value.length < 2) {
+      onChange([...value, key])
+    }
+  }
+
   return (
-    <div
-      role="radiogroup"
-      aria-label="Story theme"
-      className="grid grid-cols-2 gap-3 sm:grid-cols-4"
-    >
-      {THEME_OPTIONS.map((t) => {
-        const selected = t.key === value
-        return (
-          <button
-            key={t.key}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            onClick={() => onChange(t.key)}
-            className={cn(
-              "flex min-h-[88px] flex-col items-center justify-center gap-1.5 rounded-card p-3 text-sm font-semibold transition",
-              `bg-theme-${t.key}-bg text-theme-${t.key}-text`,
-              selected
-                ? "ring-2 ring-brand-purple ring-offset-2 ring-offset-parchment"
-                : "opacity-90 hover:opacity-100",
-            )}
-          >
-            <span className="text-3xl" aria-hidden="true">
-              {t.emoji}
-            </span>
-            {t.label}
-          </button>
-        )
-      })}
+    <div className="space-y-4">
+      {THEME_CATEGORIES.map((category) => (
+        <div key={category.label}>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">
+            {category.label}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {category.themes.map((t) => {
+              const selected = value.includes(t.key)
+              const maxed = !selected && value.length >= 2
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  aria-pressed={selected}
+                  disabled={maxed}
+                  onClick={() => toggle(t.key)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-pill px-3 py-2 text-sm font-semibold transition",
+                    `bg-theme-${t.key}-bg text-theme-${t.key}-text`,
+                    selected && "ring-2 ring-brand-purple ring-offset-2 ring-offset-parchment",
+                    maxed && "cursor-not-allowed opacity-40",
+                    !selected && !maxed && "hover:ring-1 hover:ring-brand-purple/50",
+                  )}
+                >
+                  <span aria-hidden="true">{t.emoji}</span>
+                  {t.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+      <p className="text-xs text-ink-muted">
+        {value.length === 0 && "Select up to 2 themes"}
+        {value.length === 1 && "1 theme selected — you can add one more"}
+        {value.length === 2 && "2 themes selected (max)"}
+      </p>
     </div>
   )
 }

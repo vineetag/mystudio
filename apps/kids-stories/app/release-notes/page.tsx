@@ -12,14 +12,16 @@ export default function ReleaseNotesPage() {
           <p className="mt-2 text-ink-muted">Initial launch of ZippyTales.</p>
           <ul className="mt-3 list-disc space-y-1 pl-5 text-ink-muted">
             <li>
-              Personalized stories from a child&apos;s name and a theme —
-              adventure, animals, space, or fantasy.
+              Personalized stories from a child&apos;s name and up to two themes
+              — choose from Kindness, Honesty, Courage, Family, Friendship,
+              Overcoming Challenges, Wonder, Nature, and Growth.
             </li>
+            <li>Child&apos;s name is optional — the story invents one if not provided.</li>
             <li>
               Email sign-up and a personal library to revisit saved stories.
             </li>
             <li>Shareable story pages.</li>
-            <li>A daily generation limit to keep things fair.</li>
+            <li>1 story per account per day.</li>
           </ul>
         </section>
       </div>

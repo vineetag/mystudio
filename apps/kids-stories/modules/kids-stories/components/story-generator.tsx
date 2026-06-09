@@ -22,7 +22,7 @@ export function StoryGenerator() {
   // null = still checking; affects whether the CTA submits or routes to login.
   const [authed, setAuthed] = useState<boolean | null>(null)
   const [childName, setChildName] = useState("")
-  const [theme, setTheme] = useState<ThemeKey>("adventure")
+  const [themes, setThemes] = useState<ThemeKey[]>([])
   const [ageRange, setAgeRange] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -40,8 +40,8 @@ export function StoryGenerator() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          childName,
-          theme,
+          childName: childName || undefined,
+          themes,
           ageRange: ageRange || undefined,
         }),
       })
@@ -79,23 +79,23 @@ export function StoryGenerator() {
       <div className="space-y-5">
         <div className="space-y-1.5">
           <label htmlFor="childName" className="text-sm font-semibold text-ink">
-            Who is the story for?
+            Who is the story for?{" "}
+            <span className="font-normal text-ink-muted">(optional)</span>
           </label>
           <input
             id="childName"
             type="text"
-            required
             maxLength={50}
             value={childName}
             onChange={(e) => setChildName(e.target.value)}
-            placeholder="Child's name"
+            placeholder="Child's name — or leave blank to let the story decide"
             className={inputClass}
           />
         </div>
 
         <div className="space-y-2">
           <span className="text-sm font-semibold text-ink">Pick a theme</span>
-          <ThemePicker value={theme} onChange={setTheme} />
+          <ThemePicker value={themes} onChange={setThemes} />
         </div>
 
         <div className="space-y-1.5">
@@ -127,8 +127,8 @@ export function StoryGenerator() {
         ) : (
           <Button
             type="submit"
-            disabled={loading}
-            className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90"
+            disabled={loading || themes.length === 0}
+            className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 disabled:opacity-50"
           >
             {loading ? "Writing your story…" : "Create story"}
           </Button>

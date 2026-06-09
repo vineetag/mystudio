@@ -15,7 +15,8 @@ const config: Config = {
   // so the JIT scanner can't see them in source — keep them from being purged.
   safelist: [
     {
-      pattern: /(bg|text|border)-theme-(adventure|animals|space|fantasy)-(bg|text)/,
+      pattern:
+        /(bg|text|border)-theme-(kindness|honesty|courage|family|friendship|challenges|wonder|nature|growth)-(bg|text)/,
     },
   ],
   theme: {
@@ -74,10 +75,18 @@ const config: Config = {
 
         // Theme accents (story categories) — { bg, text } per theme
         theme: {
-          adventure: { bg: "#FAEEDA", text: "#854F0B" },
-          animals: { bg: "#EAF3DE", text: "#3B6D11" },
-          space: { bg: "#EEEDFE", text: "#534AB7" },
-          fantasy: { bg: "#FBEAF0", text: "#993556" },
+          // Core Moral & Behavioral
+          kindness:   { bg: "#FFF9E6", text: "#A05F00" },
+          honesty:    { bg: "#E6F4FF", text: "#1A5FA0" },
+          courage:    { bg: "#FFF0E6", text: "#A04020" },
+          // Social & Emotional
+          family:     { bg: "#FFE8EF", text: "#A02050" },
+          friendship: { bg: "#E8F4FF", text: "#1A5890" },
+          challenges: { bg: "#E6F7ED", text: "#1B6B3A" },
+          // Imagination & Exploration
+          wonder:     { bg: "#F0E6FF", text: "#5A2A9E" },
+          nature:     { bg: "#E8F5E8", text: "#2A6B2A" },
+          growth:     { bg: "#FFF4E0", text: "#8B5E00" },
         },
       },
       fontFamily: {

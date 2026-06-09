@@ -8,7 +8,7 @@ import { THEME_OPTIONS } from "@/modules/kids-stories"
 interface StoryRow {
   id: string
   child_name: string
-  theme: string
+  theme: string[]
   age_range: string | null
   title: string
   content: string
@@ -50,27 +50,30 @@ export default async function StoryPage({
   const story = await getStory(id)
   if (!story) notFound()
 
-  const themeLabel =
-    THEME_OPTIONS.find((t) => t.key === story.theme)?.label ?? "Story"
-  // Split into paragraphs on blank lines; fall back to the whole string.
+  const primaryTheme = story.theme[0] ?? "wonder"
+  const themeLabels = story.theme
+    .map((k) => THEME_OPTIONS.find((t) => t.key === k)?.label ?? k)
+    .join(" · ")
   const paragraphs = story.content.split(/\n{2,}/).filter(Boolean)
 
   return (
     <main className="min-h-[calc(100dvh-4rem)] px-6 py-12">
       <article className="mx-auto w-full max-w-2xl">
         <div
-          className={`flex flex-col items-center gap-3 rounded-card p-8 text-center bg-theme-${story.theme}-bg text-theme-${story.theme}-text`}
+          className={`flex flex-col items-center gap-3 rounded-card p-8 text-center bg-theme-${primaryTheme}-bg text-theme-${primaryTheme}-text`}
         >
           <span className="text-6xl" aria-hidden="true">
             {story.illustration ?? "📖"}
           </span>
           <span className="text-sm font-semibold uppercase tracking-wide">
-            {themeLabel}
+            {themeLabels}
           </span>
           <h1 className="text-3xl font-extrabold sm:text-4xl">{story.title}</h1>
-          <p className="text-sm font-medium opacity-80">
-            A story for {story.child_name}
-          </p>
+          {story.child_name && (
+            <p className="text-sm font-medium opacity-80">
+              A story for {story.child_name}
+            </p>
+          )}
         </div>
 
         <div className="mt-8 space-y-5 font-serif text-lg leading-relaxed text-ink">

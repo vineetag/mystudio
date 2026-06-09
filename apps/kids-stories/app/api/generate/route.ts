@@ -31,22 +31,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 })
   }
 
-  const { childName, theme, ageRange } = (body ?? {}) as {
+  const { childName, themes, ageRange } = (body ?? {}) as {
     childName?: unknown
-    theme?: unknown
+    themes?: unknown
     ageRange?: unknown
   }
 
-  const name = typeof childName === "string" ? childName.trim() : ""
-  if (!name || name.length > MAX_NAME_LENGTH) {
+  const name = typeof childName === "string" ? childName.trim().slice(0, MAX_NAME_LENGTH) : ""
+
+  if (
+    !Array.isArray(themes) ||
+    themes.length === 0 ||
+    themes.length > 2 ||
+    !themes.every((t) => typeof t === "string" && THEMES.includes(t as Theme))
+  ) {
     return NextResponse.json(
-      { error: `Please provide a child's name (1–${MAX_NAME_LENGTH} characters).` },
-      { status: 400 },
-    )
-  }
-  if (typeof theme !== "string" || !THEMES.includes(theme as Theme)) {
-    return NextResponse.json(
-      { error: `Theme must be one of: ${THEMES.join(", ")}.` },
+      { error: "Please select 1–2 valid themes." },
       { status: 400 },
     )
   }
@@ -57,8 +57,8 @@ export async function POST(request: Request) {
   try {
     story = await generateStory({
       userId: user.id,
-      childName: name,
-      theme: theme as Theme,
+      childName: name || undefined,
+      themes: themes as Theme[],
       ageRange: age,
     })
   } catch (err) {
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     .insert({
       user_id: user.id,
       child_name: name,
-      theme,
+      theme: themes,
       age_range: age ?? null,
       title: story.title,
       content: story.content,

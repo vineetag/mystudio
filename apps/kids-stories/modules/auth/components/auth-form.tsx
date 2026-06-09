@@ -148,12 +148,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </div>
 
         {error && (
-          <p role="alert" className="text-sm text-theme-fantasy-text">
+          <p role="alert" className="text-sm text-red-600">
             {error}
           </p>
         )}
         {notice && (
-          <p role="status" className="text-sm text-theme-animals-text">
+          <p role="status" className="text-sm text-green-700">
             {notice}
           </p>
         )}

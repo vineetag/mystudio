@@ -28,9 +28,17 @@ export default async function LibraryPage() {
     <main className="min-h-[calc(100dvh-4rem)] px-6 py-12">
       <div className="mx-auto w-full max-w-4xl">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-3xl font-extrabold tracking-tight text-ink">
-            My library
-          </h1>
+          <div>
+            <Link
+              href="/"
+              className="mb-1 inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-brand-purple"
+            >
+              ← Home
+            </Link>
+            <h1 className="text-3xl font-extrabold tracking-tight text-ink">
+              My library
+            </h1>
+          </div>
           <Link
             href="/"
             className="inline-flex h-11 items-center justify-center rounded-pill bg-brand-purple px-6 text-base font-semibold text-white hover:bg-brand-purple/90"
