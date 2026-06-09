@@ -5,8 +5,8 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Slate Studio",
-  description: "Your portfolio of apps",
+  title: "AppCrafter Studio",
+  description: "A portfolio of tools built for real problems.",
 }
 
 export default function RootLayout({
