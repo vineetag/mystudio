@@ -24,6 +24,13 @@ studio/
 │   ├── config/         # shared eslint, typescript, tailwind config
 │   └── analytics/      # PostHog wrapper and standard event taxonomy
 
+## Git workflow
+- Never commit or push directly to `main` — it auto-deploys to production
+- All work goes on a feature branch: `git checkout -b feat/<name>`
+- Push the branch to get a Vercel preview URL, test there first
+- Merge to `main` only via a PR once the preview is confirmed good
+- A pre-push hook enforces this locally
+
 ## Hard rules — never break these
 - Secrets and API keys go in .env files only, never in code
 - All Supabase and AI API calls are server-side only (API routes or Server Actions)
