@@ -18,6 +18,13 @@ const config: Config = {
     },
     extend: {
       colors: {
+        brand: {
+          bg: "#080808",
+          surface: "#111111",
+          accent: "#FF6B2B",
+          secondary: "#A1A1AA",
+          muted: "#71717A",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
