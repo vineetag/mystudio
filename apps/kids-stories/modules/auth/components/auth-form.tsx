@@ -59,7 +59,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           options: {
             data: { display_name: displayName.trim() || null },
             // Confirmation email links back here; the route exchanges the code.
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin}/auth/callback`,
           },
         })
         if (error) throw error
