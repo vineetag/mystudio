@@ -51,30 +51,76 @@ function GitHubIcon() {
 }
 
 function ZippyTalesPreview() {
+  const stars = [
+    { x: "10%", y: "6%", s: 2.5, o: 0.9 },
+    { x: "30%", y: "4%", s: 1.5, o: 0.7 },
+    { x: "55%", y: "10%", s: 3,   o: 1   },
+    { x: "75%", y: "6%", s: 2,   o: 0.8 },
+    { x: "88%", y: "20%", s: 1.5, o: 0.6 },
+    { x: "20%", y: "25%", s: 2,   o: 0.7 },
+    { x: "65%", y: "28%", s: 1.5, o: 0.9 },
+    { x: "42%", y: "16%", s: 1.5, o: 0.5 },
+    { x: "4%",  y: "40%", s: 2,   o: 0.6 },
+    { x: "93%", y: "42%", s: 1.5, o: 0.7 },
+  ]
+
   return (
-    <div className="flex gap-2 items-end h-full">
-      {[
-        { height: 120, bg: "rgba(167,139,250,0.45)" },
-        { height: 145, bg: "rgba(236,72,153,0.45)" },
-        { height: 100, bg: "rgba(139,92,246,0.40)" },
-      ].map((card, i) => (
-        <div
+    <div className="relative w-full h-full overflow-hidden">
+      {stars.map(({ x, y, s, o }, i) => (
+        <span
           key={i}
-          className="flex-1 flex flex-col rounded-xl overflow-hidden"
-          style={{ height: card.height }}
+          className="absolute rounded-full animate-pulse"
+          style={{
+            left: x, top: y, width: s, height: s,
+            background: i % 4 === 0 ? "#FDE68A" : "#fff",
+            opacity: o,
+            animationDuration: `${1.8 + (i % 5) * 0.4}s`,
+            animationDelay: `${(i % 7) * 0.25}s`,
+          }}
+        />
+      ))}
+
+      {/* Crescent moon */}
+      <svg className="absolute" style={{ top: "4%", right: "12%" }} width="34" height="34" viewBox="0 0 34 34">
+        <defs>
+          <mask id="zt-moon">
+            <rect width="34" height="34" fill="white" />
+            <circle cx="22" cy="10" r="13" fill="black" />
+          </mask>
+        </defs>
+        <circle cx="17" cy="17" r="14" fill="#FDE68A" opacity="0.9" mask="url(#zt-moon)" />
+      </svg>
+
+      {/* Open book */}
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex justify-center">
+        <svg width="120" height="72" viewBox="0 0 120 72" fill="none">
+          <ellipse cx="60" cy="69" rx="40" ry="5" fill="rgba(255,255,255,0.07)" />
+          <path d="M60 14 C46 11 20 13 12 16 L12 62 C20 59 46 57 60 60 Z"
+            fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+          <path d="M60 14 C74 11 100 13 108 16 L108 62 C100 59 74 57 60 60 Z"
+            fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+          <line x1="60" y1="14" x2="60" y2="60" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" />
+          <line x1="24" y1="28" x2="52" y2="27" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+          <line x1="23" y1="36" x2="51" y2="35" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+          <line x1="24" y1="44" x2="50" y2="43" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+          <line x1="68" y1="28" x2="96" y2="27" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+          <line x1="69" y1="36" x2="97" y2="35" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+          <line x1="70" y1="44" x2="96" y2="43" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+        </svg>
+      </div>
+
+      {/* Floating sparkles */}
+      {[
+        { x: "12%", y: "55%", delay: "0s",   dur: "2s",   size: 12 },
+        { x: "80%", y: "50%", delay: "0.7s", dur: "2.5s", size: 10 },
+        { x: "58%", y: "62%", delay: "1.2s", dur: "3s",   size: 8  },
+      ].map(({ x, y, delay, dur, size }, i) => (
+        <svg key={i} className="absolute animate-pulse"
+          style={{ left: x, top: y, animationDelay: delay, animationDuration: dur }}
+          width={size} height={size} viewBox="0 0 12 12"
         >
-          <div className="flex-1 rounded-t-xl" style={{ background: card.bg }} />
-          <div className="p-2" style={{ background: "rgba(255,255,255,0.12)" }}>
-            <div
-              className="h-2 rounded-full mb-1"
-              style={{ background: "rgba(255,255,255,0.5)", width: "100%" }}
-            />
-            <div
-              className="h-2 rounded-full"
-              style={{ background: "rgba(255,255,255,0.25)", width: "70%" }}
-            />
-          </div>
-        </div>
+          <path d="M6 0 L7 5 L12 6 L7 7 L6 12 L5 7 L0 6 L5 5 Z" fill="#FDE68A" opacity="0.85" />
+        </svg>
       ))}
     </div>
   )
