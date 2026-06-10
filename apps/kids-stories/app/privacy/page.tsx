@@ -9,9 +9,11 @@ export default function PrivacyPage() {
       <p className="mt-2 text-sm text-ink-muted">Last updated: June 2026</p>
       <div className="mt-8 space-y-6 text-ink-muted">
         <p>
-          ZippyTales collects only the data needed to create and save stories:
-          your account email and the details you enter to personalize a story
-          (a child&apos;s first name, a theme, and an optional age range).
+          ZippyTales uses your email address only to authenticate your account.
+          We do not store, log, or share your email address — it is never
+          retained beyond what Supabase requires to manage your login session.
+          The only other data we collect is what you enter to personalize a
+          story: a child&apos;s first name, a theme, and an optional age range.
         </p>
         <p>
           Story details are sent to our AI provider (Anthropic) solely to
