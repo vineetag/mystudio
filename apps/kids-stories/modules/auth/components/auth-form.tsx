@@ -85,7 +85,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
         router.refresh()
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.")
+      const msg = err instanceof Error ? err.message : "Something went wrong."
+      if (msg.toLowerCase().includes("rate limit")) {
+        setError("Too many sign-up attempts. Please wait a few minutes and try again.")
+      } else {
+        setError(msg)
+      }
     } finally {
       setLoading(false)
     }
