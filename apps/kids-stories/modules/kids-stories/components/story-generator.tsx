@@ -90,7 +90,7 @@ export function StoryGenerator() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-xl rounded-card bg-white p-6 shadow-sm sm:p-8"
+      className="w-full max-w-xl rounded-card bg-white p-6 sm:p-8 shadow-[0_4px_24px_rgba(127,119,221,0.12),0_1px_4px_rgba(0,0,0,0.05)] border border-brand-purple/10"
     >
       <div className="space-y-5">
         <div className="space-y-1.5">
@@ -136,7 +136,7 @@ export function StoryGenerator() {
         {authed === false ? (
           <Button
             asChild
-            className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90"
+            className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 cursor-pointer"
           >
             <Link href="/auth/login?redirectTo=/">Log in to create a story</Link>
           </Button>
@@ -150,9 +150,16 @@ export function StoryGenerator() {
             <Button
               type="submit"
               disabled={loading || themes.length === 0 || limitReached}
-              className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "Writing your story…" : "Create story"}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Writing your story…
+                </span>
+              ) : (
+                "✨ Create story"
+              )}
             </Button>
           </div>
         )}

@@ -24,7 +24,7 @@ export function StoryCard({ story }: { story: StoryCardData }) {
   return (
     <Link
       href={`/story/${story.id}`}
-      className="flex flex-col rounded-card bg-white p-5 shadow-sm transition hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple"
+      className="flex flex-col rounded-card bg-white p-5 shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple"
     >
       <div
         className={`mb-4 flex h-24 items-center justify-center rounded-card text-5xl bg-theme-${primaryTheme}-bg`}

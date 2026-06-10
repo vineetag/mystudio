@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Menu, X } from "lucide-react"
+import { BookOpen, Menu, X } from "lucide-react"
 import { createClient } from "@/lib/supabase-browser"
 
 export function Navbar() {
@@ -78,7 +78,7 @@ export function Navbar() {
           className="flex items-center gap-1.5 text-xl font-extrabold text-brand-purple"
           onClick={() => setOpen(false)}
         >
-          <span aria-hidden="true">📖</span> ZippyTales
+          <BookOpen className="h-5 w-5" aria-hidden="true" /> ZippyTales
         </Link>
 
         {/* Desktop */}

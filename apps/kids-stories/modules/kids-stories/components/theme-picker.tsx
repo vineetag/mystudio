@@ -37,11 +37,17 @@ export function ThemePicker({
                   disabled={maxed}
                   onClick={() => toggle(t.key)}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-pill px-3 py-2 text-sm font-semibold transition",
-                    `bg-theme-${t.key}-bg text-theme-${t.key}-text`,
-                    selected && "ring-2 ring-brand-purple ring-offset-2 ring-offset-parchment",
+                    "flex items-center gap-1.5 rounded-pill px-4 py-2.5 text-sm font-semibold",
+                    "border-2 transition-all duration-150",
+                    "shadow-[2px_2px_0px_rgba(0,0,0,0.08)]",
+                    `bg-theme-${t.key}-bg text-theme-${t.key}-text border-theme-${t.key}-text/20`,
+                    selected
+                      ? "ring-2 ring-brand-purple ring-offset-2 ring-offset-parchment scale-105 shadow-[3px_3px_0px_rgba(0,0,0,0.12)]"
+                      : "",
+                    !selected && !maxed
+                      ? "cursor-pointer hover:-translate-y-px hover:shadow-[3px_3px_0px_rgba(0,0,0,0.12)] active:translate-y-0 active:shadow-none"
+                      : "",
                     maxed && "cursor-not-allowed opacity-40",
-                    !selected && !maxed && "hover:ring-1 hover:ring-brand-purple/50",
                   )}
                 >
                   <span aria-hidden="true">{t.emoji}</span>
