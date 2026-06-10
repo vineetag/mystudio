@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@studio/ui"
 import { createClient } from "@/lib/supabase-browser"
 
@@ -34,6 +34,7 @@ const inputClass =
 
 export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const copy = COPY[mode]
 
   const [displayName, setDisplayName] = useState("")
@@ -54,6 +55,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
     const supabase = createClient()
 
     try {
+      // Hard navigation (not router.push) so browser commits the session
+      // cookie before the next request fires. router.push fires the SPA
+      // navigation before @supabase/ssr's onAuthStateChange sets the cookie,
+      // causing middleware to see no session and redirect back to login.
+      const redirectTo = searchParams.get("redirectTo") ?? "/library"
+
       if (mode === "signup") {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -69,8 +76,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         // With email confirmation ON, no session is returned until the user
         // confirms via email. With it OFF, we get a session immediately.
         if (data.session) {
-          router.push("/library")
-          router.refresh()
+          window.location.href = redirectTo
         } else {
           setConfirmed(true)
           setNotice(
@@ -84,8 +90,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         })
         if (error) throw error
 
-        router.push("/library")
-        router.refresh()
+        window.location.href = redirectTo
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong."
