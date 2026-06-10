@@ -11,7 +11,7 @@ export default function PrivacyPage() {
         <p>
           ZippyTales uses your email address only to authenticate your account.
           We do not store, log, or share your email address — it is never
-          retained beyond what Supabase requires to manage your login session.
+          retained beyond what is required to manage your login session.
           The only other data we collect is what you enter to personalize a
           story: a child&apos;s first name, a theme, and an optional age range.
         </p>
