@@ -305,12 +305,6 @@ export function HomePage() {
                   {item}
                 </Link>
               ))}
-              <Link
-                href="mailto:vineet140@gmail.com"
-                className="rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 border border-white/30 text-white hover:bg-white hover:text-black min-h-[44px] flex items-center"
-              >
-                Get in touch
-              </Link>
             </nav>
 
             <button
@@ -399,7 +393,7 @@ export function HomePage() {
             className="max-w-xl mx-auto text-lg leading-relaxed mb-10"
             style={{ color: "#A1A1AA" }}
           >
-            One person. A portfolio of focused apps designed to solve real problems — for
+            A portfolio of focused apps designed to solve real problems — for
             families, learners, and builders.
           </p>
 
@@ -595,7 +589,7 @@ export function HomePage() {
                 Studio
               </p>
               <div className="flex flex-col gap-3">
-                {["Apps", "Skills", "About", "Blog"].map((item) => (
+                {["Apps", "Skills", "About"].map((item) => (
                   <Link
                     key={item}
                     href={`#${item.toLowerCase()}`}
