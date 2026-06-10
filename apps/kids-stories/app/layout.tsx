@@ -3,6 +3,7 @@ import { Nunito, Lora } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "sonner"
 import { Navbar } from "@/components/navbar"
+import { Footer } from "@/components/footer"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
@@ -32,9 +33,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${nunito.variable} ${lora.variable}`}>
-      <body>
+      <body className="flex min-h-screen flex-col">
         <Navbar />
-        {children}
+        <div className="flex-1">{children}</div>
+        <Footer />
         <Toaster richColors position="top-center" />
         <Analytics />
         <SpeedInsights />

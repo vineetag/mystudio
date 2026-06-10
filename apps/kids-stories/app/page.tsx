@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { StoryGenerator } from "@/modules/kids-stories"
 
 export default function HomePage() {
@@ -27,20 +26,6 @@ export default function HomePage() {
         <StoryGenerator />
       </div>
 
-      <nav className="mt-12 flex flex-wrap justify-center gap-6 text-sm text-ink-muted">
-        <Link href="/library" className="hover:text-ink transition-colors duration-150">
-          My library
-        </Link>
-        <Link href="/privacy" className="hover:text-ink transition-colors duration-150">
-          Privacy
-        </Link>
-        <Link href="/disclaimer" className="hover:text-ink transition-colors duration-150">
-          Disclaimer
-        </Link>
-        <Link href="/release-notes" className="hover:text-ink transition-colors duration-150">
-          Release notes
-        </Link>
-      </nav>
     </main>
   )
 }
