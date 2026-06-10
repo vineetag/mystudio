@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import { ShieldCheck } from "lucide-react"
 import { Button } from "@studio/ui"
 import { createClient } from "@/lib/supabase-browser"
 
@@ -149,6 +150,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
             placeholder="you@example.com"
             className={inputClass}
           />
+          {mode === "signup" && (
+            <p className="flex items-center gap-1 text-xs text-ink-muted">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              Used for sign-in only — we never store or share your email.
+            </p>
+          )}
         </div>
 
         <div className="space-y-1.5">
