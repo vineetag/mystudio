@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
+import { BookOpen } from "lucide-react"
 import { createClient } from "@/lib/db"
 import { StoryCard, type StoryCardData } from "@/modules/kids-stories"
 
@@ -25,7 +26,7 @@ export default async function LibraryPage() {
     .returns<StoryCardData[]>()
 
   return (
-    <main className="min-h-[calc(100dvh-4rem)] px-6 py-12">
+    <main className="min-h-[calc(100dvh-4rem)] px-6 py-12 animate-fade-in">
       <div className="mx-auto w-full max-w-4xl">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -49,9 +50,7 @@ export default async function LibraryPage() {
 
         {!stories || stories.length === 0 ? (
           <div className="mt-12 rounded-card bg-white p-12 text-center shadow-sm">
-            <p className="text-5xl" aria-hidden="true">
-              📚
-            </p>
+            <BookOpen className="mx-auto h-14 w-14 text-brand-purple/30" aria-hidden="true" />
             <h2 className="mt-4 text-xl font-bold text-ink">No stories yet</h2>
             <p className="mt-2 text-ink-muted">
               Create your first personalized story and it&apos;ll show up here.

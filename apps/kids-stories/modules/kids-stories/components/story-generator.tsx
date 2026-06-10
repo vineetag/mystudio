@@ -7,14 +7,13 @@ import { toast } from "sonner"
 import { Button } from "@studio/ui"
 import { createClient } from "@/lib/supabase-browser"
 import { ThemePicker } from "./theme-picker"
+import { AgePicker } from "./age-picker"
 import type { ThemeKey } from "../themes"
 
 const inputClass =
   "h-11 w-full rounded-input border border-ink/15 bg-white px-4 text-base text-ink " +
   "placeholder:text-ink-muted focus:border-brand-purple focus:outline-none " +
   "focus:ring-2 focus:ring-brand-purple/30"
-
-const AGE_OPTIONS = ["3–4", "5–6", "7–9"]
 
 export function StoryGenerator() {
   const router = useRouter()
@@ -90,7 +89,7 @@ export function StoryGenerator() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-xl rounded-card bg-white p-6 shadow-sm sm:p-8"
+      className="w-full max-w-xl rounded-card bg-white p-6 sm:p-8 shadow-[0_4px_24px_rgba(127,119,221,0.12),0_1px_4px_rgba(0,0,0,0.05)] border border-brand-purple/10"
     >
       <div className="space-y-5">
         <div className="space-y-1.5">
@@ -114,29 +113,17 @@ export function StoryGenerator() {
           <ThemePicker value={themes} onChange={setThemes} />
         </div>
 
-        <div className="space-y-1.5">
-          <label htmlFor="ageRange" className="text-sm font-semibold text-ink">
+        <div className="space-y-2">
+          <span className="text-sm font-semibold text-ink">
             Age range <span className="font-normal text-ink-muted">(optional)</span>
-          </label>
-          <select
-            id="ageRange"
-            value={ageRange}
-            onChange={(e) => setAgeRange(e.target.value)}
-            className={inputClass}
-          >
-            <option value="">Any age</option>
-            {AGE_OPTIONS.map((a) => (
-              <option key={a} value={a}>
-                {a} years
-              </option>
-            ))}
-          </select>
+          </span>
+          <AgePicker value={ageRange} onChange={setAgeRange} />
         </div>
 
         {authed === false ? (
           <Button
             asChild
-            className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90"
+            className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 cursor-pointer"
           >
             <Link href="/auth/login?redirectTo=/">Log in to create a story</Link>
           </Button>
@@ -150,9 +137,16 @@ export function StoryGenerator() {
             <Button
               type="submit"
               disabled={loading || themes.length === 0 || limitReached}
-              className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "Writing your story…" : "Create story"}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Writing your story…
+                </span>
+              ) : (
+                "✨ Create story"
+              )}
             </Button>
           </div>
         )}

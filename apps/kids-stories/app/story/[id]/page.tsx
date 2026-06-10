@@ -4,6 +4,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/db"
 import { THEME_OPTIONS } from "@/modules/kids-stories"
+import { PrintButton } from "./print-button"
 
 interface StoryRow {
   id: string
@@ -57,10 +58,10 @@ export default async function StoryPage({
   const paragraphs = story.content.split(/\n{2,}/).filter(Boolean)
 
   return (
-    <main className="min-h-[calc(100dvh-4rem)] px-6 py-12">
+    <main className="min-h-[calc(100dvh-4rem)] px-6 py-12 animate-fade-in">
       <article className="mx-auto w-full max-w-2xl">
         <div
-          className={`flex flex-col items-center gap-3 rounded-card p-8 text-center bg-theme-${primaryTheme}-bg text-theme-${primaryTheme}-text`}
+          className={`flex flex-col items-center gap-3 rounded-card p-8 text-center shadow-[0_4px_24px_rgba(0,0,0,0.06)] bg-theme-${primaryTheme}-bg text-theme-${primaryTheme}-text`}
         >
           <span className="text-6xl" aria-hidden="true">
             {story.illustration ?? "📖"}
@@ -85,16 +86,17 @@ export default async function StoryPage({
         <div className="mt-12 flex flex-wrap justify-center gap-4">
           <Link
             href="/"
-            className="inline-flex h-11 items-center justify-center rounded-pill bg-brand-purple px-6 text-base font-semibold text-white hover:bg-brand-purple/90"
+            className="inline-flex h-11 items-center justify-center rounded-pill bg-brand-purple px-6 text-base font-semibold text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150"
           >
-            Create another story
+            ✨ Create another story
           </Link>
           <Link
             href="/library"
-            className="inline-flex h-11 items-center justify-center rounded-pill border border-ink/15 px-6 text-base font-semibold text-ink hover:bg-white"
+            className="inline-flex h-11 items-center justify-center rounded-pill border border-ink/15 px-6 text-base font-semibold text-ink hover:bg-white transition-all duration-150"
           >
             My library
           </Link>
+          <PrintButton />
         </div>
       </article>
     </main>
