@@ -4,6 +4,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/db"
 import { THEME_OPTIONS } from "@/modules/kids-stories"
+import { PrintButton } from "./print-button"
 
 interface StoryRow {
   id: string
@@ -95,13 +96,7 @@ export default async function StoryPage({
           >
             My library
           </Link>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="inline-flex h-11 items-center justify-center rounded-pill border border-ink/15 px-6 text-base font-semibold text-ink hover:bg-white transition-all duration-150 cursor-pointer print:hidden"
-          >
-            Print story
-          </button>
+          <PrintButton />
         </div>
       </article>
     </main>
