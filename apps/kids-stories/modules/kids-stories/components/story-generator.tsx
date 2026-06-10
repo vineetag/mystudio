@@ -7,14 +7,13 @@ import { toast } from "sonner"
 import { Button } from "@studio/ui"
 import { createClient } from "@/lib/supabase-browser"
 import { ThemePicker } from "./theme-picker"
+import { AgePicker } from "./age-picker"
 import type { ThemeKey } from "../themes"
 
 const inputClass =
   "h-11 w-full rounded-input border border-ink/15 bg-white px-4 text-base text-ink " +
   "placeholder:text-ink-muted focus:border-brand-purple focus:outline-none " +
   "focus:ring-2 focus:ring-brand-purple/30"
-
-const AGE_OPTIONS = ["3–4", "5–6", "7–9"]
 
 export function StoryGenerator() {
   const router = useRouter()
@@ -114,23 +113,11 @@ export function StoryGenerator() {
           <ThemePicker value={themes} onChange={setThemes} />
         </div>
 
-        <div className="space-y-1.5">
-          <label htmlFor="ageRange" className="text-sm font-semibold text-ink">
+        <div className="space-y-2">
+          <span className="text-sm font-semibold text-ink">
             Age range <span className="font-normal text-ink-muted">(optional)</span>
-          </label>
-          <select
-            id="ageRange"
-            value={ageRange}
-            onChange={(e) => setAgeRange(e.target.value)}
-            className={inputClass}
-          >
-            <option value="">Any age</option>
-            {AGE_OPTIONS.map((a) => (
-              <option key={a} value={a}>
-                {a} years
-              </option>
-            ))}
-          </select>
+          </span>
+          <AgePicker value={ageRange} onChange={setAgeRange} />
         </div>
 
         {authed === false ? (
