@@ -40,8 +40,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -70,6 +72,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           router.push("/library")
           router.refresh()
         } else {
+          setConfirmed(true)
           setNotice(
             "Check your inbox to confirm your email, then come back and log in.",
           )
@@ -94,6 +97,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleResend() {
+    setResendLoading(true)
+    const supabase = createClient()
+    await supabase.auth.resend({ type: "signup", email })
+    setNotice("Confirmation email resent — check your inbox.")
+    setResendLoading(false)
   }
 
   return (
@@ -136,9 +147,19 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor="password" className="text-sm font-medium text-ink">
-            Password
-          </label>
+          <div className="flex items-center justify-between">
+            <label htmlFor="password" className="text-sm font-medium text-ink">
+              Password
+            </label>
+            {mode === "login" && (
+              <Link
+                href="/auth/forgot-password"
+                className="text-sm text-brand-purple hover:underline"
+              >
+                Forgot password?
+              </Link>
+            )}
+          </div>
           <input
             id="password"
             type="password"
@@ -158,9 +179,21 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </p>
         )}
         {notice && (
-          <p role="status" className="text-sm text-green-700">
-            {notice}
-          </p>
+          <div className="space-y-2">
+            <p role="status" className="text-sm text-green-700">
+              {notice}
+            </p>
+            {confirmed && (
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resendLoading}
+                className="text-sm text-brand-purple hover:underline disabled:opacity-50"
+              >
+                {resendLoading ? "Resending…" : "Didn't get it? Resend confirmation email"}
+              </button>
+            )}
+          </div>
         )}
 
         <Button
