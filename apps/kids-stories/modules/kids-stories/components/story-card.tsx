@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Clock } from "lucide-react"
 import { THEME_OPTIONS } from "../themes"
 
 export interface StoryCardData {
@@ -44,10 +45,17 @@ export function StoryCard({ story }: { story: StoryCardData }) {
       <h3 className="mt-1 line-clamp-2 text-lg font-bold text-ink">
         {story.title}
       </h3>
-      <p className="mt-auto pt-2 text-sm text-ink-muted">
-        {story.child_name ? `For ${story.child_name} · ` : ""}{date}
-        {readMins !== null ? ` · ${readMins} min read` : ""}
-      </p>
+      <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+        <p className="text-sm text-ink-muted">
+          {story.child_name ? `For ${story.child_name} · ` : ""}{date}
+        </p>
+        {readMins !== null && (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-purple/10 px-2.5 py-0.5 text-xs font-semibold text-brand-purple">
+            <Clock className="h-3 w-3" aria-hidden="true" />
+            {readMins} min
+          </span>
+        )}
+      </div>
     </Link>
   )
 }

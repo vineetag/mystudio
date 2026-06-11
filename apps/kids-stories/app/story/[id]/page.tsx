@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/db"
+import { Clock } from "lucide-react"
 import { THEME_OPTIONS } from "@/modules/kids-stories"
 import { PrintButton } from "./print-button"
 
@@ -76,8 +77,9 @@ export default async function StoryPage({
               A story for {story.child_name}
             </p>
           )}
-          <span className="inline-flex items-center gap-1 rounded-full bg-black/8 px-3 py-1 text-xs font-medium opacity-70">
-            ⏱ {readMins} min read
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-black/10 px-3 py-1 text-xs font-semibold">
+            <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+            {readMins} min read
           </span>
         </div>
 
