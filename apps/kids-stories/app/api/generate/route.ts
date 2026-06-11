@@ -51,10 +51,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 })
   }
 
-  const { childName, themes, ageRange } = (body ?? {}) as {
+  const { childName, themes, ageRange, gender, featuredObject, storyLength } = (body ?? {}) as {
     childName?: unknown
     themes?: unknown
     ageRange?: unknown
+    gender?: unknown
+    featuredObject?: unknown
+    storyLength?: unknown
   }
 
   const name = typeof childName === "string" ? childName.trim().slice(0, MAX_NAME_LENGTH) : ""
@@ -72,6 +75,19 @@ export async function POST(request: Request) {
   }
   const age = typeof ageRange === "string" ? ageRange.trim().slice(0, 20) : undefined
 
+  const parsedGender =
+    typeof gender === "string" && (gender === "boy" || gender === "girl")
+      ? (gender as "boy" | "girl")
+      : undefined
+
+  const parsedFeaturedObject =
+    typeof featuredObject === "string"
+      ? featuredObject.replace(/<[^>]*>/g, "").trim().slice(0, 40) || undefined
+      : undefined
+
+  const parsedStoryLength: "short" | "medium" | "long" =
+    storyLength === "short" || storyLength === "long" ? storyLength : "medium"
+
   // 3. Generate (enforces daily + monthly limits inside lib/ai.ts).
   let story
   try {
@@ -80,6 +96,9 @@ export async function POST(request: Request) {
       childName: name || undefined,
       themes: themes as Theme[],
       ageRange: age,
+      gender: parsedGender,
+      featuredObject: parsedFeaturedObject,
+      storyLength: parsedStoryLength,
     })
   } catch (err) {
     if (err instanceof DailyLimitError) {
