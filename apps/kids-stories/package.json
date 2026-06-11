@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
+    "@radix-ui/react-slider": "^1.4.0",
     "@radix-ui/react-slot": "^1.2.4",
     "@studio/analytics": "workspace:*",
     "@studio/ui": "workspace:*",
