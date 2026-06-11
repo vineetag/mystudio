@@ -21,7 +21,7 @@ export default function ReleaseNotesPage() {
               Email sign-up and a personal library to revisit saved stories.
             </li>
             <li>Shareable story pages.</li>
-            <li>1 story per account per day.</li>
+            <li>5 stories per account per day.</li>
           </ul>
         </section>
       </div>

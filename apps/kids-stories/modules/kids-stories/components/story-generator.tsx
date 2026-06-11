@@ -131,7 +131,7 @@ export function StoryGenerator() {
           <div className="space-y-2">
             {limitReached && (
               <p className="text-center text-sm font-medium text-amber-600">
-                Daily limit reached — one story per day. Check back tomorrow!
+                Daily limit reached — 5 stories per day. Check back tomorrow!
               </p>
             )}
             <Button

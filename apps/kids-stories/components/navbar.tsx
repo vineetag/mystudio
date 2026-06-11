@@ -71,7 +71,7 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-ink/10 bg-parchment/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-ink/10 bg-parchment/90 backdrop-blur print:hidden">
       <nav className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
         <Link
           href="/"

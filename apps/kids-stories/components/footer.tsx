@@ -9,7 +9,7 @@ const links = [
 
 export function Footer() {
   return (
-    <footer className="mt-auto border-t border-ink/10 bg-parchment/60 py-6">
+    <footer className="mt-auto border-t border-ink/10 bg-parchment/60 py-6 print:hidden">
       <nav className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-6 gap-y-2 px-6">
         {links.map(({ label, href }) => (
           <Link
