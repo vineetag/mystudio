@@ -8,6 +8,7 @@ export interface StoryCardData {
   theme: string[]
   illustration: string | null
   created_at: string
+  content?: string
 }
 
 export function StoryCard({ story }: { story: StoryCardData }) {
@@ -20,6 +21,9 @@ export function StoryCard({ story }: { story: StoryCardData }) {
     month: "short",
     day: "numeric",
   })
+  const readMins = story.content
+    ? Math.ceil(story.content.trim().split(/\s+/).length / 200)
+    : null
 
   return (
     <Link
@@ -42,6 +46,7 @@ export function StoryCard({ story }: { story: StoryCardData }) {
       </h3>
       <p className="mt-auto pt-2 text-sm text-ink-muted">
         {story.child_name ? `For ${story.child_name} · ` : ""}{date}
+        {readMins !== null ? ` · ${readMins} min read` : ""}
       </p>
     </Link>
   )

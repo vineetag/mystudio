@@ -20,7 +20,7 @@ export default async function LibraryPage() {
 
   const { data: stories } = await supabase
     .from("stories")
-    .select("id, title, child_name, theme, illustration, created_at")
+    .select("id, title, child_name, theme, illustration, created_at, content")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .returns<StoryCardData[]>()

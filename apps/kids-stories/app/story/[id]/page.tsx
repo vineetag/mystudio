@@ -56,6 +56,7 @@ export default async function StoryPage({
     .map((k) => THEME_OPTIONS.find((t) => t.key === k)?.label ?? k)
     .join(" · ")
   const paragraphs = story.content.split(/\n{2,}/).filter(Boolean)
+  const readMins = Math.ceil(story.content.trim().split(/\s+/).length / 200)
 
   return (
     <main className="min-h-[calc(100dvh-4rem)] px-6 py-12 animate-fade-in">
@@ -75,6 +76,9 @@ export default async function StoryPage({
               A story for {story.child_name}
             </p>
           )}
+          <span className="inline-flex items-center gap-1 rounded-full bg-black/8 px-3 py-1 text-xs font-medium opacity-70">
+            ⏱ {readMins} min read
+          </span>
         </div>
 
         <div className="mt-8 space-y-5 font-serif text-lg leading-relaxed text-ink">
@@ -83,7 +87,14 @@ export default async function StoryPage({
           ))}
         </div>
 
-        <div className="mt-12 flex flex-wrap justify-center gap-4">
+        <p className="mt-8 border-t border-ink/8 pt-4 text-center text-xs text-ink-muted/60">
+          AI-generated story · for entertainment only ·{" "}
+          <Link href="/disclaimer" className="underline underline-offset-2 hover:text-ink-muted transition-colors">
+            disclaimer
+          </Link>
+        </p>
+
+        <div className="mt-8 flex flex-wrap justify-center gap-4">
           <Link
             href="/"
             className="inline-flex h-11 items-center justify-center rounded-pill bg-brand-purple px-6 text-base font-semibold text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150"
