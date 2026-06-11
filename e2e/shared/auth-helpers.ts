@@ -9,20 +9,17 @@ export async function loginAs(page: Page, email = TEST_EMAIL, password = TEST_PA
   await page.fill("#password", password)
   await page.click('button[type="submit"]')
 
-  // Race: navigation away from login OR an error alert appearing
-  const result = await Promise.race([
-    page
-      .waitForURL((url) => !url.pathname.startsWith("/auth/login"), { timeout: 15_000 })
-      .then(() => "navigated" as const),
-    page
-      .locator('[role="alert"]')
-      .waitFor({ state: "visible", timeout: 15_000 })
-      .then(() => "error" as const),
-  ])
-
-  if (result === "error") {
-    const msg = await page.locator('[role="alert"]').textContent()
-    throw new Error(`Login failed — Supabase returned: "${msg?.trim()}". Check TEST_EMAIL/TEST_PASSWORD secrets and confirm the test user's email in Supabase Auth → Users.`)
+  try {
+    await page.waitForURL((url) => !url.pathname.startsWith("/auth/login"), { timeout: 15_000 })
+  } catch {
+    // Still on /auth/login — extract the specific form error (not Sonner toasts)
+    const formError = await page.locator("form p[role='alert']").textContent().catch(() => null)
+    const pageTitle = await page.title()
+    throw new Error(
+      `Login did not redirect after 15s. Page: "${pageTitle}". ` +
+      `Form error: "${formError?.trim() ?? "none"}". ` +
+      `Check TEST_EMAIL/TEST_PASSWORD secrets and confirm the test user's email in Supabase Auth → Users.`
+    )
   }
 }
 
