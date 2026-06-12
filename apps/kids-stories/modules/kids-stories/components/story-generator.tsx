@@ -28,7 +28,7 @@ export function StoryGenerator() {
   const [themes, setThemes] = useState<ThemeKey[]>([])
   const [ageRange, setAgeRange] = useState<[number, number] | null>(null)
   const [gender, setGender] = useState<"boy" | "girl" | "">("")
-  const [featuredObject, setFeaturedObject] = useState("")
+  const [featuredObject, setFeaturedObject] = useState<string[]>([])
   const [storyLength, setStoryLength] = useState<"short" | "medium" | "long">("medium")
   const [loading, setLoading] = useState(false)
 
@@ -58,9 +58,13 @@ export function StoryGenerator() {
         body: JSON.stringify({
           childName: childName || undefined,
           themes,
-          ageRange: ageRange ? `${ageRange[0]}-${ageRange[1]} years` : undefined,
+          ageRange: ageRange
+            ? ageRange[0] === ageRange[1]
+              ? `${ageRange[0]} years`
+              : `${ageRange[0]}-${ageRange[1]} years`
+            : undefined,
           gender: gender || undefined,
-          featuredObject: featuredObject || undefined,
+          featuredObject: featuredObject.length > 0 ? featuredObject.join(", ") : undefined,
           storyLength,
         }),
       })
