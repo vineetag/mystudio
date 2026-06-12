@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { toast } from "sonner"
 import { Button } from "@studio/ui"
 import { createClient } from "@/lib/supabase-browser"
@@ -13,6 +12,8 @@ import { FeaturedObjectPicker } from "./featured-object-picker"
 import { StoryLengthPicker } from "./story-length-picker"
 import LoadingScreen from "@/components/loading/LoadingScreens"
 import type { ThemeKey } from "../themes"
+
+const FORM_STATE_KEY = "story-generator-state"
 
 const inputClass =
   "h-11 w-full rounded-input border border-ink/15 bg-white px-4 text-base text-ink " +
@@ -34,6 +35,29 @@ export function StoryGenerator() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(FORM_STATE_KEY)
+      if (saved) {
+        const s = JSON.parse(saved) as {
+          childName?: string
+          themes?: ThemeKey[]
+          ageRange?: [number, number] | null
+          gender?: "boy" | "girl" | ""
+          featuredObject?: string[]
+          storyLength?: "short" | "medium" | "long"
+        }
+        if (s.childName !== undefined) setChildName(s.childName)
+        if (s.themes !== undefined) setThemes(s.themes)
+        if (s.ageRange !== undefined) setAgeRange(s.ageRange)
+        if (s.gender !== undefined) setGender(s.gender)
+        if (s.featuredObject !== undefined) setFeaturedObject(s.featuredObject)
+        if (s.storyLength !== undefined) setStoryLength(s.storyLength)
+        sessionStorage.removeItem(FORM_STATE_KEY)
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data }) => {
       const isAuthed = !!data.user
@@ -47,6 +71,15 @@ export function StoryGenerator() {
       }
     })
   }, [])
+
+  function saveFormState() {
+    try {
+      sessionStorage.setItem(
+        FORM_STATE_KEY,
+        JSON.stringify({ childName, themes, ageRange, gender, featuredObject, storyLength })
+      )
+    } catch {}
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -71,7 +104,7 @@ export function StoryGenerator() {
       })
 
       if (res.status === 401) {
-        // Session expired between mount and submit — send them to log in.
+        saveFormState()
         router.push("/auth/login?redirectTo=/")
         return
       }
@@ -144,16 +177,18 @@ export function StoryGenerator() {
           <AgeSlider value={ageRange} onChange={setAgeRange} />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <span className="text-sm font-semibold text-ink">Pick a theme</span>
+          <p className="text-xs text-ink-muted">Pick up to 2 themes to blend into your story ✨</p>
           <ThemePicker value={themes} onChange={setThemes} />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <span className="text-sm font-semibold text-ink">
             Favorite character or object{" "}
             <span className="font-normal text-ink-muted">(optional)</span>
           </span>
+          <p className="text-xs text-ink-muted">Pick up to 3 of your favourite characters or objects</p>
           <FeaturedObjectPicker value={featuredObject} onChange={setFeaturedObject} />
         </div>
 
@@ -164,10 +199,14 @@ export function StoryGenerator() {
 
         {authed === false ? (
           <Button
-            asChild
+            type="button"
+            onClick={() => {
+              saveFormState()
+              router.push("/auth/login?redirectTo=/")
+            }}
             className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 cursor-pointer"
           >
-            <Link href="/auth/login?redirectTo=/">Log in to create a story</Link>
+            Log in to create a story
           </Button>
         ) : (
           <div className="space-y-2">
