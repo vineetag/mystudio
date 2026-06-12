@@ -11,6 +11,7 @@ import { AgeSlider } from "./age-slider"
 import { GenderPicker } from "./gender-picker"
 import { FeaturedObjectPicker } from "./featured-object-picker"
 import { StoryLengthPicker } from "./story-length-picker"
+import LoadingScreen from "@/components/loading/LoadingScreens"
 import type { ThemeKey } from "../themes"
 
 const inputClass =
@@ -99,6 +100,14 @@ export function StoryGenerator() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="w-full max-w-xl">
+        <LoadingScreen />
+      </div>
+    )
+  }
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -169,17 +178,10 @@ export function StoryGenerator() {
             )}
             <Button
               type="submit"
-              disabled={loading || themes.length === 0 || limitReached}
+              disabled={themes.length === 0 || limitReached}
               className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Writing your story…
-                </span>
-              ) : (
-                "✨ Create story"
-              )}
+              ✨ Create story
             </Button>
           </div>
         )}
