@@ -90,11 +90,12 @@ export function ThemePicker({
         })}
       </div>
 
-      <p className="text-xs text-ink-muted transition-all duration-200">
-        {value.length === 0 && "Pick up to 2 themes for your story ✨"}
-        {value.length === 1 && "Great pick! You can mix in one more 🎨"}
-        {value.length === 2 && "Perfect mix — ready to create! 🚀"}
-      </p>
+      {value.length > 0 && (
+        <p className="text-xs text-ink-muted transition-all duration-200 animate-in fade-in slide-in-from-bottom-1">
+          {value.length === 1 && "Great pick! You can mix in one more 🎨"}
+          {value.length === 2 && "Perfect mix — ready to create! 🚀"}
+        </p>
+      )}
     </div>
   )
 }

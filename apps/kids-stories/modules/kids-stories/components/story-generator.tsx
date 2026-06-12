@@ -177,16 +177,18 @@ export function StoryGenerator() {
           <AgeSlider value={ageRange} onChange={setAgeRange} />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <span className="text-sm font-semibold text-ink">Pick a theme</span>
+          <p className="text-xs text-ink-muted">Pick up to 2 themes to blend into your story ✨</p>
           <ThemePicker value={themes} onChange={setThemes} />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <span className="text-sm font-semibold text-ink">
             Favorite character or object{" "}
             <span className="font-normal text-ink-muted">(optional)</span>
           </span>
+          <p className="text-xs text-ink-muted">Pick up to 3 of your favourite characters or objects</p>
           <FeaturedObjectPicker value={featuredObject} onChange={setFeaturedObject} />
         </div>
 
