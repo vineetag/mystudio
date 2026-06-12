@@ -27,8 +27,8 @@ export function AgeSlider({
   const selected = RANGES.find((r) => isActive(r.value))
 
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 border border-brand-purple/10 p-4 space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+    <div className="rounded-xl bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 border border-brand-purple/10 p-3 space-y-3">
+      <div className="grid grid-cols-2 gap-2">
         {RANGES.map((r) => {
           const active = isActive(r.value)
           return (
@@ -37,38 +37,38 @@ export function AgeSlider({
               type="button"
               onClick={() => pick(r.value)}
               className={cn(
-                "group relative flex flex-col items-center justify-center gap-1.5 py-5 px-3 rounded-2xl",
+                "group relative flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-xl",
                 "transition-all duration-200 cursor-pointer select-none",
                 "active:scale-95",
                 active
-                  ? "bg-brand-purple text-white shadow-[0_8px_24px_rgba(127,119,221,0.45)] scale-[1.03] ring-2 ring-brand-purple/30 ring-offset-1 ring-offset-transparent"
-                  : "bg-white/80 text-brand-purple hover:bg-white hover:-translate-y-1 hover:shadow-[0_8px_20px_rgba(127,119,221,0.18)]",
+                  ? "bg-brand-purple text-white shadow-[0_4px_14px_rgba(127,119,221,0.45)] scale-[1.03] ring-2 ring-brand-purple/30 ring-offset-1 ring-offset-transparent"
+                  : "bg-white/80 text-brand-purple hover:bg-white hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(127,119,221,0.18)]",
               )}
             >
               {active && (
-                <span className="absolute top-2.5 right-2.5 text-[10px] font-bold text-white/80">✓</span>
+                <span className="absolute top-1.5 right-1.5 text-[9px] font-bold text-white/80">✓</span>
               )}
               <span
                 className={cn(
-                  "text-4xl leading-none transition-transform duration-200",
-                  "group-hover:scale-125 group-hover:-rotate-6",
-                  active && "scale-110",
+                  "text-2xl leading-none transition-transform duration-200",
+                  "group-hover:scale-110 group-hover:-rotate-6",
+                  active && "scale-105",
                 )}
                 aria-hidden="true"
               >
                 {r.emoji}
               </span>
-              <span className="text-2xl font-extrabold leading-none tracking-tight">
+              <span className="text-base font-extrabold leading-none tracking-tight">
                 {r.label}
               </span>
               <span className={cn(
-                "text-[9px] font-bold uppercase tracking-widest",
+                "text-[8px] font-bold uppercase tracking-widest",
                 active ? "text-white/60" : "text-brand-purple/40",
               )}>
                 {r.years}
               </span>
               <span className={cn(
-                "text-[11px] font-semibold leading-tight",
+                "text-[10px] font-semibold leading-tight",
                 active ? "text-white/90" : "text-brand-purple/70",
               )}>
                 {r.name}
