@@ -46,6 +46,16 @@ for c in checks:
 print('NOT_FOUND')
 " 2>/dev/null)
 
+# Surface Vercel preview URL
+VERCEL_BIN=$(command -v vercel 2>/dev/null)
+if [ -n "$VERCEL_BIN" ]; then
+  VERCEL_URL=$("$VERCEL_BIN" ls --limit 1 2>/dev/null | grep -Eo '[a-zA-Z0-9][a-zA-Z0-9-]*\.vercel\.app' | head -1)
+  if [ -n "$VERCEL_URL" ]; then
+    echo ""
+    echo "  🔗 Vercel preview: https://$VERCEL_URL"
+  fi
+fi
+
 echo ""
 case "$E2E_STATUS" in
   SUCCESS|success)
