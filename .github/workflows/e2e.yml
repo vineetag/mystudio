@@ -22,7 +22,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           max_timeout: 300
-          # Matches kids-stories preview deployments
+          environment: 'Preview – mystudio-kids-stories'
           check_interval: 10
 
   playwright:
