@@ -26,7 +26,7 @@ const apps: AppData[] = [
     name: "Math Workbook",
     emoji: "🔢",
     description:
-      "Personalized math practice that adapts to your child's pace and covers K-8 curriculum.",
+      "Personalized math practice that adapts to your child's pace.",
     status: "Coming Soon",
     gradient: "linear-gradient(135deg, #1E3A5F 0%, #1D4ED8 40%, #06B6D4 100%)",
     href: "#",
@@ -127,93 +127,141 @@ function ZippyTalesPreview() {
 }
 
 function MathWorkbookPreview() {
+  const symbols = [
+    { x: "4%",  y: "6%",  text: "E=mc²", size: "0.68rem", opacity: 0.85 },
+    { x: "62%", y: "3%",  text: "∫ dx",  size: "0.72rem", opacity: 0.70 },
+    { x: "80%", y: "20%", text: "∑",     size: "1.05rem", opacity: 0.80 },
+    { x: "3%",  y: "46%", text: "π",     size: "1.15rem", opacity: 0.82 },
+    { x: "83%", y: "50%", text: "Δ",     size: "0.95rem", opacity: 0.62 },
+    { x: "10%", y: "70%", text: "∞",     size: "0.95rem", opacity: 0.68 },
+    { x: "73%", y: "73%", text: "√2",    size: "0.72rem", opacity: 0.78 },
+    { x: "44%", y: "82%", text: "λ",     size: "0.88rem", opacity: 0.58 },
+  ]
+
   return (
-    <div className="flex flex-col items-center justify-between h-full">
-      <p className="text-white font-bold" style={{ fontSize: "2.25rem", lineHeight: 1 }}>
-        4 × 7 = ?
-      </p>
-      <div className="flex gap-2 flex-wrap justify-center">
-        {["28", "35", "42", "49"].map((ans, i) => (
-          <div
-            key={ans}
-            className="rounded-full text-sm font-medium px-4 py-2"
-            style={{
-              background: i === 2 ? "rgba(255,255,255,0.30)" : "rgba(255,255,255,0.10)",
-              color: i === 2 ? "#fff" : "rgba(255,255,255,0.60)",
-            }}
-          >
-            {ans}
-          </div>
-        ))}
-      </div>
-      <div className="w-full">
-        <div
-          className="flex justify-between mb-1.5 text-xs"
-          style={{ color: "rgba(255,255,255,0.5)" }}
+    <div className="relative w-full h-full overflow-hidden">
+      {symbols.map(({ x, y, text, size, opacity }, i) => (
+        <span
+          key={i}
+          className="absolute font-mono font-semibold animate-pulse select-none"
+          style={{
+            left: x, top: y,
+            fontSize: size,
+            color: `rgba(255,255,255,${opacity})`,
+            animationDuration: `${2 + (i % 4) * 0.6}s`,
+            animationDelay: `${(i % 5) * 0.35}s`,
+          }}
         >
-          <span>Progress</span>
-          <span>60%</span>
-        </div>
-        <div
-          className="h-1.5 rounded-full w-full"
-          style={{ background: "rgba(255,255,255,0.12)" }}
-        >
-          <div className="h-full rounded-full" style={{ width: "60%", background: "#22D3EE" }} />
-        </div>
+          {text}
+        </span>
+      ))}
+
+      {/* Central atom */}
+      <svg
+        className="absolute"
+        style={{ top: "50%", left: "50%", transform: "translate(-50%, -54%)" }}
+        width="96" height="96" viewBox="0 0 96 96"
+        aria-hidden="true"
+      >
+        <circle cx="48" cy="48" r="6.5" fill="rgba(255,255,255,0.92)" />
+        <ellipse cx="48" cy="48" rx="40" ry="15" fill="none"
+          stroke="rgba(255,255,255,0.22)" strokeWidth="1.3" />
+        <ellipse cx="48" cy="48" rx="40" ry="15" fill="none"
+          stroke="rgba(255,255,255,0.22)" strokeWidth="1.3"
+          transform="rotate(60 48 48)" />
+        <ellipse cx="48" cy="48" rx="40" ry="15" fill="none"
+          stroke="rgba(255,255,255,0.22)" strokeWidth="1.3"
+          transform="rotate(120 48 48)" />
+        <circle cx="88" cy="48" r="3.8" fill="#22D3EE" opacity="0.9" />
+        <circle cx="28" cy="23" r="3.8" fill="#818CF8" opacity="0.9" />
+        <circle cx="28" cy="73" r="3.8" fill="#34D399" opacity="0.9" />
+      </svg>
+
+      {/* Periodic-table tile */}
+      <div
+        className="absolute bottom-2 right-3 rounded text-center select-none"
+        style={{
+          width: 34, height: 36,
+          background: "rgba(255,255,255,0.11)",
+          border: "1px solid rgba(255,255,255,0.20)",
+        }}
+        aria-hidden="true"
+      >
+        <p className="text-white font-bold" style={{ fontSize: "0.6rem", lineHeight: 1.3, marginTop: 3 }}>6</p>
+        <p className="text-white font-bold" style={{ fontSize: "0.9rem", lineHeight: 1 }}>C</p>
+        <p style={{ fontSize: "0.42rem", color: "rgba(255,255,255,0.55)", lineHeight: 1.3 }}>Carbon</p>
       </div>
     </div>
   )
 }
 
 function WealthTrackerPreview() {
-  const pts = [30, 45, 35, 55, 48, 65, 58, 72, 68, 80]
-  const max = Math.max(...pts)
-  const W = 240
-  const H = 70
-  const coords = pts.map((p, i) => ({
-    x: (i / (pts.length - 1)) * W,
-    y: H - (p / max) * H * 0.85,
-  }))
-  const line = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(" ")
-  const area = `${line} L ${W} ${H} L 0 ${H} Z`
+  const symbols = [
+    { x: "4%",  y: "6%",  text: "+12.4%", size: "0.65rem", opacity: 0.85 },
+    { x: "68%", y: "4%",  text: "$",      size: "1.15rem", opacity: 0.72 },
+    { x: "82%", y: "20%", text: "↗",      size: "1.1rem",  opacity: 0.80 },
+    { x: "3%",  y: "47%", text: "APY",    size: "0.65rem", opacity: 0.75 },
+    { x: "84%", y: "52%", text: "%",      size: "1.0rem",  opacity: 0.60 },
+    { x: "8%",  y: "70%", text: "yield",  size: "0.60rem", opacity: 0.65 },
+    { x: "74%", y: "74%", text: "∑",      size: "0.85rem", opacity: 0.72 },
+    { x: "42%", y: "84%", text: "×1.8",   size: "0.65rem", opacity: 0.55 },
+  ]
+
+  const r = 28, cx = 48, cy = 48
+  const circ = 2 * Math.PI * r
+  const segments = [
+    { pct: 0.55, color: "#34D399", label: "Stocks", deg: -90 },
+    { pct: 0.30, color: "#22D3EE", label: "Bonds",  deg: -90 + 0.55 * 360 },
+    { pct: 0.15, color: "#FBB724", label: "Cash",   deg: -90 + 0.85 * 360 },
+  ]
 
   return (
-    <div className="flex flex-col justify-between h-full">
-      <div className="rounded-lg overflow-hidden" style={{ height: 80 }}>
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="wgrd" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#34D399" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#34D399" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <path d={area} fill="url(#wgrd)" />
-          <path
-            d={line}
-            fill="none"
-            stroke="#34D399"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-      <div className="flex gap-3">
-        {[
-          { value: "$124,500", label: "Portfolio Value", color: "#ffffff" },
-          { value: "+4.2%", label: "Monthly Change", color: "#34D399" },
-        ].map(({ value, label, color }) => (
-          <div
-            key={label}
-            className="flex-1 rounded-xl p-3"
-            style={{ background: "rgba(255,255,255,0.10)" }}
-          >
-            <p className="font-bold text-base" style={{ color }}>
-              {value}
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.5)" }}>
-              {label}
-            </p>
+    <div className="relative w-full h-full overflow-hidden">
+      {symbols.map(({ x, y, text, size, opacity }, i) => (
+        <span
+          key={i}
+          className="absolute font-mono font-semibold animate-pulse select-none"
+          style={{
+            left: x, top: y,
+            fontSize: size,
+            color: `rgba(255,255,255,${opacity})`,
+            animationDuration: `${2 + (i % 4) * 0.6}s`,
+            animationDelay: `${(i % 5) * 0.35}s`,
+          }}
+        >
+          {text}
+        </span>
+      ))}
+
+      {/* Portfolio donut chart */}
+      <svg
+        className="absolute"
+        style={{ top: "50%", left: "50%", transform: "translate(-50%, -54%)" }}
+        width="96" height="96" viewBox="0 0 96 96"
+        aria-hidden="true"
+      >
+        <circle cx={cx} cy={cy} r={r} fill="none"
+          stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
+        {segments.map(({ pct, color, label, deg }) => (
+          <circle key={label} cx={cx} cy={cy} r={r} fill="none"
+            stroke={color} strokeWidth="8" strokeLinecap="butt"
+            strokeDasharray={`${(circ * pct).toFixed(2)} ${(circ * (1 - pct)).toFixed(2)}`}
+            transform={`rotate(${deg} ${cx} ${cy})`} />
+        ))}
+        <text x={cx} y={cy - 3} textAnchor="middle"
+          fill="white" fontSize="8" fontWeight="bold" fontFamily="monospace">NET</text>
+        <text x={cx} y={cy + 7} textAnchor="middle"
+          fill="rgba(255,255,255,0.65)" fontSize="6.5" fontFamily="monospace">WORTH</text>
+      </svg>
+
+      {/* Mini legend */}
+      <div className="absolute bottom-2 left-3 flex flex-col gap-0.5 select-none" aria-hidden="true">
+        {segments.map(({ label, color, pct }) => (
+          <div key={label} className="flex items-center gap-1">
+            <span className="rounded-full shrink-0" style={{ width: 5, height: 5, background: color }} />
+            <span style={{ fontSize: "0.42rem", color: "rgba(255,255,255,0.62)" }}>
+              {label} {Math.round(pct * 100)}%
+            </span>
           </div>
         ))}
       </div>
@@ -244,12 +292,17 @@ function AppCard({ app }: { app: AppData }) {
             <span className="text-white font-semibold text-lg">{app.name}</span>
             {app.status === "Coming Soon" && (
               <span
-                className="rounded-full px-2 py-0.5 text-xs font-medium shrink-0"
+                className="rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0 flex items-center gap-1.5"
                 style={{
-                  background: "rgba(255,255,255,0.12)",
-                  color: "rgba(255,255,255,0.7)",
+                  background: "rgba(251,191,36,0.18)",
+                  color: "#FBB724",
+                  border: "1px solid rgba(251,191,36,0.35)",
                 }}
               >
+                <span
+                  className="rounded-full animate-pulse shrink-0"
+                  style={{ width: 5, height: 5, background: "#FBB724" }}
+                />
                 Coming Soon
               </span>
             )}
@@ -267,7 +320,7 @@ function AppCard({ app }: { app: AppData }) {
       {/* Description */}
       <div className="px-5 pb-4">
         <p
-          className="text-sm leading-relaxed line-clamp-2"
+          className="text-sm leading-relaxed line-clamp-2 min-h-[2.875rem]"
           style={{ color: "rgba(255,255,255,0.8)" }}
         >
           {app.description}
@@ -469,7 +522,9 @@ export function HomePage() {
 
           <div className="flex justify-center mt-10">
             <a
-              href="#"
+              href="https://github.com/vineetag/mystudio"
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-full px-7 py-3 font-medium text-white transition-all duration-200 ease-out hover:bg-white/10 min-h-[44px] flex items-center justify-center gap-2 border border-white/30"
             >
               <GitHubIcon />
@@ -669,7 +724,9 @@ export function HomePage() {
                   Contact
                 </a>
                 <a
-                  href="#"
+                  href="https://github.com/vineetag/mystudio"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-sm transition-colors duration-200 hover:text-white"
                   style={{ color: "#71717A" }}
                 >
