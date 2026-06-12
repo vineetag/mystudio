@@ -165,6 +165,8 @@ A custom UI/UX skill that gives Claude design intelligence — 67 styles, 96 pal
 
 ## Using this repo
 
+> **Nothing in this repo is tied to my accounts.** Every service — Supabase, Vercel, Anthropic, PostHog, Stripe — is wired up through environment variables. When you fork this, you bring your own credentials and your own infrastructure. Your data stays in your accounts, your AI spend goes to your API key, and your deployments go to your Vercel. I have zero visibility into what you build or run.
+
 ### Option 1 — Fork it and build your own app
 
 This is the main thing the repo is set up for. Fork it, pick an existing app as a template, and replace the domain logic with your own idea. The scaffolding (auth, admin, release notes, privacy, database setup, AI rate limiting) is already there.
