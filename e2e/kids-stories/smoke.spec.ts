@@ -36,10 +36,8 @@ test.describe("Public pages", () => {
     await expect(page.getByRole("button", { name: /sign up/i })).toBeVisible()
   })
 
-  test("invalid story URL shows 404", async ({ page }) => {
-    const response = await page.goto("/story/does-not-exist-00000000")
-    // Either Next.js returns a 404 status or renders a not-found page
-    const is404 = response?.status() === 404 || (await page.title()).toLowerCase().includes("not found")
-    expect(is404).toBeTruthy()
+  test("invalid story URL shows not-found page", async ({ page }) => {
+    await page.goto("/story/does-not-exist-00000000")
+    await expect(page.getByRole("heading", { name: "This page wandered off" })).toBeVisible()
   })
 })
