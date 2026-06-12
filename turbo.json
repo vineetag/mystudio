@@ -42,6 +42,10 @@
     },
     "clean": {
       "cache": false
+    },
+    "test:e2e": {
+      "cache": false,
+      "env": ["BASE_URL", "TEST_EMAIL", "TEST_PASSWORD"]
     }
   }
 }

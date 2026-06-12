@@ -43,6 +43,9 @@ export interface GenerateStoryInput {
   childName?: string  // optional — AI invents a gender-neutral name if omitted
   themes: Theme[]     // 1–2 themes
   ageRange?: string
+  gender?: "boy" | "girl"
+  featuredObject?: string
+  storyLength?: "short" | "medium" | "long"
 }
 
 /** Daily per-user limit reached. Route maps this to HTTP 429. */
@@ -77,7 +80,7 @@ Hard requirements:
 - Wholesome and gentle. No violence, scary peril, romance, death, or anything unsuitable for a small child.
 - If a child's name is provided, make them the kind, brave hero. If no name is given, invent a gentle, gender-neutral name (e.g. Arlo, Sage, River, Quinn) and make that character the hero.
 - Weave all provided themes naturally into the story.
-- Keep the language simple, rhythmic, and read-aloud friendly. 250–450 words.
+- Keep the language simple, rhythmic, and read-aloud friendly. Match the story length exactly to the word count range the user specifies.
 - Give it a satisfying, comforting ending.
 - Choose ONE emoji that best represents the story for the "illustration" field.
 
@@ -89,7 +92,7 @@ const STORY_SCHEMA = {
     title: { type: "string", description: "A short, playful story title." },
     content: {
       type: "string",
-      description: "The full story text, 250–450 words, read-aloud friendly.",
+      description: "The full story text, read-aloud friendly. Word count is specified in the user message.",
     },
     illustration: {
       type: "string",
@@ -149,12 +152,27 @@ export async function generateStory(
   if (!claimed) throw new DailyLimitError(DAILY_STORY_LIMIT)
 
   try {
+    const LENGTH_MAP = {
+      short: "~150–200 words",
+      medium: "~350–450 words",
+      long: "~550–650 words",
+    }
+
     const userMessage = [
       input.childName
         ? `Child's name: ${input.childName}`
         : "Child's name: not provided — please invent a gentle, gender-neutral name",
       `Theme(s): ${input.themes.join(", ")}`,
       input.ageRange ? `Age range: ${input.ageRange}` : null,
+      input.gender === "boy"
+        ? "Gender/pronouns: boy — use he/him pronouns"
+        : input.gender === "girl"
+          ? "Gender/pronouns: girl — use she/her pronouns"
+          : null,
+      input.featuredObject
+        ? `Featured character/object: ${input.featuredObject} — weave this into the story as a key element`
+        : null,
+      `Story length: ${LENGTH_MAP[input.storyLength ?? "medium"]}`,
     ]
       .filter(Boolean)
       .join("\n")

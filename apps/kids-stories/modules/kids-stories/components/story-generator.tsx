@@ -7,7 +7,10 @@ import { toast } from "sonner"
 import { Button } from "@studio/ui"
 import { createClient } from "@/lib/supabase-browser"
 import { ThemePicker } from "./theme-picker"
-import { AgePicker } from "./age-picker"
+import { AgeSlider } from "./age-slider"
+import { GenderPicker } from "./gender-picker"
+import { FeaturedObjectPicker } from "./featured-object-picker"
+import { StoryLengthPicker } from "./story-length-picker"
 import type { ThemeKey } from "../themes"
 
 const inputClass =
@@ -23,7 +26,10 @@ export function StoryGenerator() {
   const [limitReached, setLimitReached] = useState(false)
   const [childName, setChildName] = useState("")
   const [themes, setThemes] = useState<ThemeKey[]>([])
-  const [ageRange, setAgeRange] = useState("")
+  const [ageRange, setAgeRange] = useState<[number, number] | null>(null)
+  const [gender, setGender] = useState<"boy" | "girl" | "">("")
+  const [featuredObject, setFeaturedObject] = useState<string[]>([])
+  const [storyLength, setStoryLength] = useState<"short" | "medium" | "long">("medium")
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -52,7 +58,14 @@ export function StoryGenerator() {
         body: JSON.stringify({
           childName: childName || undefined,
           themes,
-          ageRange: ageRange || undefined,
+          ageRange: ageRange
+            ? ageRange[0] === ageRange[1]
+              ? `${ageRange[0]} years`
+              : `${ageRange[0]}-${ageRange[1]} years`
+            : undefined,
+          gender: gender || undefined,
+          featuredObject: featuredObject.length > 0 ? featuredObject.join(", ") : undefined,
+          storyLength,
         }),
       })
 
@@ -109,15 +122,35 @@ export function StoryGenerator() {
         </div>
 
         <div className="space-y-2">
-          <span className="text-sm font-semibold text-ink">Pick a theme</span>
-          <ThemePicker value={themes} onChange={setThemes} />
+          <span className="text-sm font-semibold text-ink">
+            Gender <span className="font-normal text-ink-muted">(optional)</span>
+          </span>
+          <GenderPicker value={gender} onChange={setGender} />
         </div>
 
         <div className="space-y-2">
           <span className="text-sm font-semibold text-ink">
             Age range <span className="font-normal text-ink-muted">(optional)</span>
           </span>
-          <AgePicker value={ageRange} onChange={setAgeRange} />
+          <AgeSlider value={ageRange} onChange={setAgeRange} />
+        </div>
+
+        <div className="space-y-2">
+          <span className="text-sm font-semibold text-ink">Pick a theme</span>
+          <ThemePicker value={themes} onChange={setThemes} />
+        </div>
+
+        <div className="space-y-2">
+          <span className="text-sm font-semibold text-ink">
+            Favorite character or object{" "}
+            <span className="font-normal text-ink-muted">(optional)</span>
+          </span>
+          <FeaturedObjectPicker value={featuredObject} onChange={setFeaturedObject} />
+        </div>
+
+        <div className="space-y-2">
+          <span className="text-sm font-semibold text-ink">Story length</span>
+          <StoryLengthPicker value={storyLength} onChange={setStoryLength} />
         </div>
 
         {authed === false ? (
