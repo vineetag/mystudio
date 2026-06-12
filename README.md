@@ -172,7 +172,7 @@ This is the main thing the repo is set up for. Fork it, pick an existing app as 
 A few things you'll need to update after forking:
 - Replace `NEXT_PUBLIC_SITE_URL` in each app's `.env`
 - Create your own Supabase project and run the migration files
-- Set your own `ADMIN_EMAILS` env var (controls access to `/admin`)
+- Set `ADMIN_EMAILS` to your own email — this is the only thing that gates the `/admin` dashboard (non-admins get a 404, not a 403, so the route doesn't advertise its existence)
 - Update the app name and domain references in `app/layout.tsx` and `package.json`
 
 ### Option 2 — Bring your own Anthropic API key
@@ -229,12 +229,11 @@ cp apps/kids-stories/.env.example apps/kids-stories/.env.local
 # Fill in your Supabase URL, keys, and Anthropic API key
 
 # 2. Set up the database
-# In your Supabase project, run the SQL files in order:
-# apps/kids-stories/supabase/migrations/0001_init.sql
-# apps/kids-stories/supabase/migrations/0002_profile_trigger.sql
-# apps/kids-stories/supabase/migrations/0003_ai_usage.sql
-# apps/kids-stories/supabase/migrations/0004_generation_slot.sql
-# apps/kids-stories/supabase/migrations/0005_theme_array.sql
+# Add DATABASE_URL to your .env.local first:
+# Get it from Supabase Dashboard → Settings → Database → Connection string (URI)
+# Then run:
+./scripts/setup-db.sh kids-stories
+# The script is idempotent — safe to re-run, skips already-applied migrations.
 
 # 3. Start the dev server
 pnpm --filter kids-stories dev
