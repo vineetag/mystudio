@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { ShieldCheck } from "lucide-react"
 import { Button } from "@studio/ui"
 import { createClient } from "@/lib/supabase-browser"
@@ -33,8 +33,36 @@ const inputClass =
   "placeholder:text-ink-muted focus:border-brand-purple focus:outline-none " +
   "focus:ring-2 focus:ring-brand-purple/30"
 
+const oauthBtnBase =
+  "flex h-11 w-full cursor-pointer items-center justify-center gap-3 rounded-input " +
+  "border text-sm font-medium transition-colors duration-200 focus:outline-none " +
+  "focus:ring-2 focus:ring-brand-purple/30"
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
+      />
+      <path
+        fill="#34A853"
+        d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"
+      />
+      <path
+        fill="#EA4335"
+        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"
+      />
+    </svg>
+  )
+}
+
+
 export function AuthForm({ mode }: { mode: Mode }) {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const copy = COPY[mode]
 
@@ -42,10 +70,31 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [oauthLoading, setOauthLoading] = useState<"google" | null>(null)
   const [resendLoading, setResendLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [confirmed, setConfirmed] = useState(false)
+
+  const redirectTo = searchParams.get("redirectTo") ?? "/library"
+
+  async function handleOAuth(provider: "google") {
+    setOauthLoading(provider)
+    setError(null)
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        // Callback route exchanges the code then forwards to `next`
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+      },
+    })
+    if (error) {
+      setError(error.message)
+      setOauthLoading(null)
+    }
+    // On success, browser follows the OAuth redirect — no further action needed
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -56,26 +105,17 @@ export function AuthForm({ mode }: { mode: Mode }) {
     const supabase = createClient()
 
     try {
-      // Hard navigation (not router.push) so browser commits the session
-      // cookie before the next request fires. router.push fires the SPA
-      // navigation before @supabase/ssr's onAuthStateChange sets the cookie,
-      // causing middleware to see no session and redirect back to login.
-      const redirectTo = searchParams.get("redirectTo") ?? "/library"
-
       if (mode === "signup") {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { display_name: displayName.trim() || null },
-            // Confirmation email links back here; the route exchanges the code.
             emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin}/auth/callback`,
           },
         })
         if (error) throw error
 
-        // With email confirmation ON, no session is returned until the user
-        // confirms via email. With it OFF, we get a session immediately.
         if (data.session) {
           window.location.href = redirectTo
         } else {
@@ -113,12 +153,37 @@ export function AuthForm({ mode }: { mode: Mode }) {
     setResendLoading(false)
   }
 
+  const anyLoading = loading || oauthLoading !== null
+
   return (
     <div className="w-full max-w-md rounded-card bg-white p-8 shadow-sm">
       <h1 className="text-2xl font-bold text-ink">{copy.heading}</h1>
       <p className="mt-1 text-sm text-ink-muted">{copy.subheading}</p>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      {/* Social sign-in */}
+      <div className="mt-6 space-y-3">
+        <button
+          type="button"
+          onClick={() => handleOAuth("google")}
+          disabled={anyLoading}
+          aria-label="Continue with Google"
+          className={`${oauthBtnBase} border-ink/15 bg-white text-ink hover:bg-gray-50 disabled:opacity-60`}
+        >
+          <GoogleIcon />
+          {oauthLoading === "google" ? "Redirecting…" : "Continue with Google"}
+        </button>
+
+      </div>
+
+      {/* Divider */}
+      <div className="my-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-ink/10" />
+        <span className="text-xs text-ink-muted">or</span>
+        <div className="h-px flex-1 bg-ink/10" />
+      </div>
+
+      {/* Email / password form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
         {mode === "signup" && (
           <div className="space-y-1.5">
             <label htmlFor="displayName" className="text-sm font-medium text-ink">
@@ -210,7 +275,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
         <Button
           type="submit"
-          disabled={loading}
+          disabled={anyLoading}
           className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90"
         >
           {loading ? "Please wait…" : copy.submit}
