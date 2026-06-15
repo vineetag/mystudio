@@ -2,7 +2,7 @@
 
 **A product builder's monorepo. Real apps for real problems — mostly mine.**
 
-[![License: Non-Commercial](https://img.shields.io/badge/License-Non--Commercial-red.svg)](./LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js%2015-black)](https://nextjs.org)
 [![Powered by Claude](https://img.shields.io/badge/AI-Claude%20(Anthropic)-blueviolet)](https://anthropic.com)
 [![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black)](https://vercel.com)
@@ -278,13 +278,7 @@ GitHub: [@vineetag](https://github.com/vineetag)
 
 ## License
 
-This project is licensed for **personal, non-commercial use only**.
-
-You're free to fork it, learn from it, build on it for personal projects, and share what you make — as long as it's not for commercial gain. That means no selling access to it, no using it in a paid product, no folding it into a business without asking first.
-
-If you want to use this commercially, reach out — I'm open to it, just want to have a conversation first. Contact: [github.com/vineetag](https://github.com/vineetag)
-
-See [LICENSE](./LICENSE) for the full terms.
+MIT — do whatever you want with it. Build your own apps, fork the patterns, remix the architecture, use it commercially. Just don't hold me liable if something breaks in production. See [LICENSE](./LICENSE) for the full text.
 
 ---
 
