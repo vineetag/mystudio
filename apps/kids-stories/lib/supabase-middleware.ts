@@ -2,7 +2,6 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 // Routes requiring a permanent (non-anonymous) account.
-// Anonymous visitors have a session but no persistent identity.
 const PROTECTED_PREFIXES = ["/library", "/admin"]
 
 /**
@@ -10,11 +9,14 @@ const PROTECTED_PREFIXES = ["/library", "/admin"]
  * protection. Must run in middleware so the session cookie is kept fresh for
  * Server Components and the route-level RLS client (lib/db.ts).
  *
- * With anonymous sign-in enabled, every visitor eventually gets a session.
- * "Protected" therefore means: requires a permanent account (is_anonymous=false).
- * Anonymous users trying to reach /library are sent to /auth/signup so they
- * can upgrade their account — their stories transfer automatically because the
- * UUID is preserved on upgrade.
+ * For first-time visitors on page routes (not /auth/* or /api/*), we call
+ * signInAnonymously() here so the session cookie lands on the browser BEFORE
+ * the page is rendered. Client components can then call getUser() and always
+ * find a valid session — no race between cookie-set and the first API call.
+ *
+ * Anonymous users (is_anonymous=true) are blocked from /library and redirected
+ * to /auth/signup. On signup their UUID is preserved, so existing stories
+ * transfer automatically.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -40,20 +42,33 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
-  // IMPORTANT: getUser() (not getSession()) — it revalidates the token with the
-  // Supabase auth server, which is what actually refreshes an expiring session.
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
+
+  // Auto-create anonymous session for first-time visitors on page routes.
+  // Excluded: /auth/* (they manage their own session flow) and /api/* (cookie
+  // would land on the response too late to help the same request).
+  const isPageRoute =
+    !pathname.startsWith("/auth/") && !pathname.startsWith("/api/")
+
+  if (!user && isPageRoute) {
+    const { error } = await supabase.auth.signInAnonymously()
+    if (error) {
+      // Log but don't block the request — the page will degrade gracefully.
+      console.error("[middleware] signInAnonymously failed:", error.message)
+    }
+  }
+
   const isProtected = PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   )
 
   // Block anonymous and unauthenticated visitors from protected routes.
-  // Redirect to signup (not login) so they can create an account — their
-  // existing stories transfer because the UUID is preserved on upgrade.
+  // Redirect to signup so they can upgrade — UUID is preserved on upgrade
+  // and all existing stories transfer automatically.
   if ((!user || user.is_anonymous) && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = "/auth/signup"

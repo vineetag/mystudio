@@ -23,7 +23,7 @@ const inputClass =
 export function StoryGenerator() {
   const router = useRouter()
 
-  // null = session not yet resolved; true = ready (anon or permanent user)
+  // null = resolving; true = session ready; false = no session (anon auth disabled or blocked)
   const [ready, setReady] = useState<boolean | null>(null)
   const [limitReached, setLimitReached] = useState(false)
   const [childName, setChildName] = useState("")
@@ -61,15 +61,9 @@ export function StoryGenerator() {
     const supabase = createClient()
 
     async function init() {
-      let { data } = await supabase.auth.getUser()
-
-      // First-time visitor: create an anonymous session so they can generate
-      // a story immediately without signing up. If they later create an account
-      // their UUID is preserved and all generated stories transfer automatically.
-      if (!data.user) {
-        const { data: anon } = await supabase.auth.signInAnonymously()
-        data = { user: anon.user }
-      }
+      // Middleware already called signInAnonymously() before the page loaded,
+      // so getUser() should always return a valid session here.
+      const { data } = await supabase.auth.getUser()
 
       if (data.user) {
         const res = await fetch("/api/generate").catch(() => null)
@@ -77,9 +71,13 @@ export function StoryGenerator() {
           const d = (await res.json().catch(() => ({}))) as { limitReached?: boolean }
           setLimitReached(d.limitReached === true)
         }
+        setReady(true)
+      } else {
+        // Anonymous auth is likely disabled in Supabase — show a clear error
+        // rather than silently enabling a button that will 401.
+        console.error("[StoryGenerator] No session after page load. Is anonymous auth enabled in Supabase?")
+        setReady(false)
       }
-
-      setReady(true)
     }
 
     init()
@@ -217,9 +215,14 @@ export function StoryGenerator() {
               Daily limit reached — come back tomorrow for more stories!
             </p>
           )}
+          {ready === false && (
+            <p className="text-center text-sm text-red-600">
+              Story creation is temporarily unavailable. Please refresh the page.
+            </p>
+          )}
           <Button
             type="submit"
-            disabled={themes.length === 0 || limitReached || ready === null}
+            disabled={themes.length === 0 || limitReached || ready !== true}
             className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50"
           >
             ✨ Create story
