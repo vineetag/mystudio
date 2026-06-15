@@ -21,10 +21,12 @@ test.describe("Auth flows", () => {
     await expect(page.locator("#email")).toBeVisible()
   })
 
-  test("accessing /library unauthenticated redirects to login", async ({ page }) => {
+  test("accessing /library unauthenticated redirects to signup", async ({ page }) => {
     await page.goto("/library")
-    await expect(page).toHaveURL(/\/auth\/login/)
-    // redirectTo param must be preserved so user lands on /library after login
+    // Anonymous visitors go to signup so they can create an account and keep
+    // their stories — UUID is preserved on upgrade so stories transfer.
+    await expect(page).toHaveURL(/\/auth\/signup/)
+    // redirectTo param must be preserved so user lands on /library after signup
     await expect(page.url()).toContain("redirectTo")
   })
 

@@ -54,11 +54,12 @@ export async function updateSession(request: NextRequest) {
   )
 
   // Block anonymous and unauthenticated visitors from protected routes.
-  // Redirect to signup (not login) so they can upgrade — UUID is preserved
-  // on upgrade and all existing stories transfer automatically.
+  // /library → signup: anonymous users are likely here to save a story they
+  //   just created; creating an account preserves their UUID and transfers stories.
+  // /admin → login: admins always have existing accounts, not signing up.
   if ((!user || user.is_anonymous) && isProtected) {
     const url = request.nextUrl.clone()
-    url.pathname = "/auth/signup"
+    url.pathname = pathname.startsWith("/admin") ? "/auth/login" : "/auth/signup"
     url.searchParams.set("redirectTo", pathname)
     const redirectResponse = NextResponse.redirect(url)
     supabaseResponse.cookies.getAll().forEach((cookie) => {
