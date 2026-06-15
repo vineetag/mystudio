@@ -23,8 +23,6 @@ const inputClass =
 export function StoryGenerator() {
   const router = useRouter()
 
-  // null = still checking; affects whether the CTA submits or routes to login.
-  const [authed, setAuthed] = useState<boolean | null>(null)
   const [limitReached, setLimitReached] = useState(false)
   const [childName, setChildName] = useState("")
   const [themes, setThemes] = useState<ThemeKey[]>([])
@@ -57,21 +55,6 @@ export function StoryGenerator() {
     } catch {}
   }, [])
 
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data }) => {
-      const isAuthed = !!data.user
-      setAuthed(isAuthed)
-      if (isAuthed) {
-        const res = await fetch("/api/generate").catch(() => null)
-        if (res?.ok) {
-          const d = (await res.json().catch(() => ({}))) as { limitReached?: boolean }
-          setLimitReached(d.limitReached === true)
-        }
-      }
-    })
-  }, [])
-
   function saveFormState() {
     try {
       sessionStorage.setItem(
@@ -86,6 +69,24 @@ export function StoryGenerator() {
     setLoading(true)
 
     try {
+      const supabase = createClient()
+
+      // Ensure a session exists before hitting the API. Anonymous sign-in is
+      // done here (not in useEffect) so the cookie is guaranteed to be set in
+      // the same JS tick as the fetch — no race condition possible.
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        const { data: anon, error: anonError } = await supabase.auth.signInAnonymously()
+        if (anonError || !anon.user) {
+          toast.error(
+            anonError?.message?.includes("captcha")
+              ? "Session setup failed — please disable Captcha in Supabase Auth settings."
+              : "Unable to start a session. Please refresh and try again."
+          )
+          return
+        }
+      }
+
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -103,6 +104,7 @@ export function StoryGenerator() {
         }),
       })
 
+      // Defensive: session somehow still missing after sign-in attempt
       if (res.status === 401) {
         saveFormState()
         router.push("/auth/login?redirectTo=/")
@@ -197,33 +199,20 @@ export function StoryGenerator() {
           <StoryLengthPicker value={storyLength} onChange={setStoryLength} />
         </div>
 
-        {authed === false ? (
+        <div className="space-y-2">
+          {limitReached && (
+            <p className="text-center text-sm font-medium text-amber-600">
+              Daily limit reached — come back tomorrow for more stories!
+            </p>
+          )}
           <Button
-            type="button"
-            onClick={() => {
-              saveFormState()
-              router.push("/auth/login?redirectTo=/")
-            }}
-            className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 cursor-pointer"
+            type="submit"
+            disabled={themes.length === 0 || limitReached}
+            className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Log in to create a story
+            ✨ Create story
           </Button>
-        ) : (
-          <div className="space-y-2">
-            {limitReached && (
-              <p className="text-center text-sm font-medium text-amber-600">
-                Daily limit reached — 5 stories per day. Check back tomorrow!
-              </p>
-            )}
-            <Button
-              type="submit"
-              disabled={themes.length === 0 || limitReached}
-              className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              ✨ Create story
-            </Button>
-          </div>
-        )}
+        </div>
       </div>
     </form>
   )

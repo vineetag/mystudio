@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/db"
-import { Clock } from "lucide-react"
+import { Clock, BookmarkPlus } from "lucide-react"
 import { THEME_OPTIONS } from "@/modules/kids-stories"
 import { PrintButton } from "./print-button"
 
@@ -49,8 +49,13 @@ export default async function StoryPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const story = await getStory(id)
+  const [story, supabase] = await Promise.all([getStory(id), createClient()])
   if (!story) notFound()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const isAnonymous = !user || (user.is_anonymous ?? false)
 
   const primaryTheme = story.theme[0] ?? "wonder"
   const themeLabels = story.theme
@@ -62,6 +67,25 @@ export default async function StoryPage({
   return (
     <main className="min-h-[calc(100dvh-4rem)] px-6 py-12 animate-fade-in">
       <article className="mx-auto w-full max-w-2xl">
+        {/* Save-to-library nudge for anonymous visitors */}
+        {isAnonymous && (
+          <div className="mb-6 flex flex-col items-center gap-3 rounded-card border border-brand-purple/20 bg-brand-purple/5 px-6 py-5 text-center sm:flex-row sm:text-left">
+            <BookmarkPlus className="h-6 w-6 shrink-0 text-brand-purple" aria-hidden="true" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-ink">Want to keep this story?</p>
+              <p className="text-sm text-ink-muted">
+                Create a free account and it&apos;ll be saved to your library permanently.
+              </p>
+            </div>
+            <Link
+              href="/auth/signup?redirectTo=/library"
+              className="shrink-0 inline-flex h-10 items-center justify-center rounded-pill bg-brand-purple px-5 text-sm font-semibold text-white hover:bg-brand-purple/90 transition-colors duration-150"
+            >
+              Save to library
+            </Link>
+          </div>
+        )}
+
         <div
           className={`flex flex-col items-center gap-3 rounded-card p-8 text-center shadow-[0_4px_24px_rgba(0,0,0,0.06)] bg-theme-${primaryTheme}-bg text-theme-${primaryTheme}-text`}
         >
@@ -103,12 +127,21 @@ export default async function StoryPage({
           >
             ✨ Create another story
           </Link>
-          <Link
-            href="/library"
-            className="inline-flex h-11 items-center justify-center rounded-pill border border-ink/15 px-6 text-base font-semibold text-ink hover:bg-white transition-all duration-150"
-          >
-            My library
-          </Link>
+          {isAnonymous ? (
+            <Link
+              href="/auth/signup?redirectTo=/library"
+              className="inline-flex h-11 items-center justify-center rounded-pill border border-ink/15 px-6 text-base font-semibold text-ink hover:bg-white transition-all duration-150"
+            >
+              Save to library
+            </Link>
+          ) : (
+            <Link
+              href="/library"
+              className="inline-flex h-11 items-center justify-center rounded-pill border border-ink/15 px-6 text-base font-semibold text-ink hover:bg-white transition-all duration-150"
+            >
+              My library
+            </Link>
+          )}
           <PrintButton />
         </div>
       </article>

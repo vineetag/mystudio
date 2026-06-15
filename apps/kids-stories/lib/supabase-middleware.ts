@@ -1,9 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-// Routes that require an authenticated user. Unauthed visitors are bounced to
-// /auth/login (with ?redirectTo so we can send them back after they sign in).
-// /admin additionally requires an allowlisted email — enforced in the page.
+// Routes requiring a permanent (non-anonymous) account.
 const PROTECTED_PREFIXES = ["/library", "/admin"]
 
 /**
@@ -11,9 +9,14 @@ const PROTECTED_PREFIXES = ["/library", "/admin"]
  * protection. Must run in middleware so the session cookie is kept fresh for
  * Server Components and the route-level RLS client (lib/db.ts).
  *
- * Cookie handling follows the @supabase/ssr contract exactly: never construct a
- * standalone response without copying the refreshed auth cookies onto it, or
- * the session silently desyncs.
+ * Anonymous sign-in is handled lazily client-side (in the submit handler)
+ * rather than here — calling signInAnonymously() in Edge Middleware adds a
+ * Supabase network round-trip on every page load which can exceed the Edge
+ * CPU/latency budget and cause consistent failures.
+ *
+ * Anonymous users (is_anonymous=true) are blocked from /library and redirected
+ * to /auth/signup. On upgrade their UUID is preserved, so existing stories
+ * transfer automatically.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -50,12 +53,15 @@ export async function updateSession(request: NextRequest) {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   )
 
-  if (!user && isProtected) {
+  // Block anonymous and unauthenticated visitors from protected routes.
+  // /library → signup: anonymous users are likely here to save a story they
+  //   just created; creating an account preserves their UUID and transfers stories.
+  // /admin → login: admins always have existing accounts, not signing up.
+  if ((!user || user.is_anonymous) && isProtected) {
     const url = request.nextUrl.clone()
-    url.pathname = "/auth/login"
+    url.pathname = pathname.startsWith("/admin") ? "/auth/login" : "/auth/signup"
     url.searchParams.set("redirectTo", pathname)
     const redirectResponse = NextResponse.redirect(url)
-    // Carry the refreshed auth cookies onto the redirect response.
     supabaseResponse.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie)
     })
