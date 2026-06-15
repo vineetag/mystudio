@@ -1,21 +1,35 @@
-MIT License
-
 Copyright (c) 2026 vineetag (https://github.com/vineetag)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Personal Non-Commercial License
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to use,
+copy, modify, and share the Software for personal, educational, and
+non-commercial purposes only, subject to the following conditions:
+
+1. NON-COMMERCIAL USE ONLY. You may not use the Software, or any derivative
+   work based on it, for commercial purposes. "Commercial purposes" means any
+   use intended for or directed toward commercial advantage or monetary
+   compensation, including but not limited to: selling access to the Software
+   or a product built on it, using it in a paid product or service, or
+   incorporating it into a business operation.
+
+2. ATTRIBUTION. Any copy or derivative work must include a clear reference to
+   the original repository (https://github.com/vineetag/mystudio) and the
+   original author.
+
+3. SHARE ALIKE. If you distribute a modified version, it must be released
+   under these same license terms.
+
+4. NO SUBLICENSING. You may not grant others rights that exceed what this
+   license permits.
+
+COMMERCIAL LICENSING. If you want to use this Software for commercial
+purposes, please reach out to request a separate commercial license.
+Contact: https://github.com/vineetag
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE
+USE OF THE SOFTWARE.
