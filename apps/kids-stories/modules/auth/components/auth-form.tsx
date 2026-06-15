@@ -177,10 +177,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
             type="password"
             autoComplete={mode === "signup" ? "new-password" : "current-password"}
             required
-            minLength={6}
+            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="At least 6 characters"
+            placeholder="At least 8 characters"
             className={inputClass}
           />
         </div>
