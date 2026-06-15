@@ -23,8 +23,8 @@ const inputClass =
 export function StoryGenerator() {
   const router = useRouter()
 
-  // null = still checking; affects whether the CTA submits or routes to login.
-  const [authed, setAuthed] = useState<boolean | null>(null)
+  // null = session not yet resolved; true = ready (anon or permanent user)
+  const [ready, setReady] = useState<boolean | null>(null)
   const [limitReached, setLimitReached] = useState(false)
   const [childName, setChildName] = useState("")
   const [themes, setThemes] = useState<ThemeKey[]>([])
@@ -59,17 +59,30 @@ export function StoryGenerator() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data }) => {
-      const isAuthed = !!data.user
-      setAuthed(isAuthed)
-      if (isAuthed) {
+
+    async function init() {
+      let { data } = await supabase.auth.getUser()
+
+      // First-time visitor: create an anonymous session so they can generate
+      // a story immediately without signing up. If they later create an account
+      // their UUID is preserved and all generated stories transfer automatically.
+      if (!data.user) {
+        const { data: anon } = await supabase.auth.signInAnonymously()
+        data = { user: anon.user }
+      }
+
+      if (data.user) {
         const res = await fetch("/api/generate").catch(() => null)
         if (res?.ok) {
           const d = (await res.json().catch(() => ({}))) as { limitReached?: boolean }
           setLimitReached(d.limitReached === true)
         }
       }
-    })
+
+      setReady(true)
+    }
+
+    init()
   }, [])
 
   function saveFormState() {
@@ -103,6 +116,7 @@ export function StoryGenerator() {
         }),
       })
 
+      // Defensive: session somehow missing — save state and redirect to login
       if (res.status === 401) {
         saveFormState()
         router.push("/auth/login?redirectTo=/")
@@ -197,33 +211,20 @@ export function StoryGenerator() {
           <StoryLengthPicker value={storyLength} onChange={setStoryLength} />
         </div>
 
-        {authed === false ? (
+        <div className="space-y-2">
+          {limitReached && (
+            <p className="text-center text-sm font-medium text-amber-600">
+              Daily limit reached — come back tomorrow for more stories!
+            </p>
+          )}
           <Button
-            type="button"
-            onClick={() => {
-              saveFormState()
-              router.push("/auth/login?redirectTo=/")
-            }}
-            className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 cursor-pointer"
+            type="submit"
+            disabled={themes.length === 0 || limitReached || ready === null}
+            className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Log in to create a story
+            ✨ Create story
           </Button>
-        ) : (
-          <div className="space-y-2">
-            {limitReached && (
-              <p className="text-center text-sm font-medium text-amber-600">
-                Daily limit reached — 5 stories per day. Check back tomorrow!
-              </p>
-            )}
-            <Button
-              type="submit"
-              disabled={themes.length === 0 || limitReached}
-              className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              ✨ Create story
-            </Button>
-          </div>
-        )}
+        </div>
       </div>
     </form>
   )

@@ -1,9 +1,8 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-// Routes that require an authenticated user. Unauthed visitors are bounced to
-// /auth/login (with ?redirectTo so we can send them back after they sign in).
-// /admin additionally requires an allowlisted email — enforced in the page.
+// Routes requiring a permanent (non-anonymous) account.
+// Anonymous visitors have a session but no persistent identity.
 const PROTECTED_PREFIXES = ["/library", "/admin"]
 
 /**
@@ -11,9 +10,11 @@ const PROTECTED_PREFIXES = ["/library", "/admin"]
  * protection. Must run in middleware so the session cookie is kept fresh for
  * Server Components and the route-level RLS client (lib/db.ts).
  *
- * Cookie handling follows the @supabase/ssr contract exactly: never construct a
- * standalone response without copying the refreshed auth cookies onto it, or
- * the session silently desyncs.
+ * With anonymous sign-in enabled, every visitor eventually gets a session.
+ * "Protected" therefore means: requires a permanent account (is_anonymous=false).
+ * Anonymous users trying to reach /library are sent to /auth/signup so they
+ * can upgrade their account — their stories transfer automatically because the
+ * UUID is preserved on upgrade.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -50,12 +51,14 @@ export async function updateSession(request: NextRequest) {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   )
 
-  if (!user && isProtected) {
+  // Block anonymous and unauthenticated visitors from protected routes.
+  // Redirect to signup (not login) so they can create an account — their
+  // existing stories transfer because the UUID is preserved on upgrade.
+  if ((!user || user.is_anonymous) && isProtected) {
     const url = request.nextUrl.clone()
-    url.pathname = "/auth/login"
+    url.pathname = "/auth/signup"
     url.searchParams.set("redirectTo", pathname)
     const redirectResponse = NextResponse.redirect(url)
-    // Carry the refreshed auth cookies onto the redirect response.
     supabaseResponse.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie)
     })

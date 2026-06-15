@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { ShieldCheck } from "lucide-react"
@@ -61,10 +61,8 @@ function GoogleIcon() {
   )
 }
 
-
 export function AuthForm({ mode }: { mode: Mode }) {
   const searchParams = useSearchParams()
-  const copy = COPY[mode]
 
   const [displayName, setDisplayName] = useState("")
   const [email, setEmail] = useState("")
@@ -75,25 +73,50 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [confirmed, setConfirmed] = useState(false)
+  // Whether the current visitor has an anonymous (not yet permanent) session.
+  // Used in signup mode to upgrade (linkIdentity / updateUser) rather than
+  // creating a new account — this preserves the UUID so generated stories transfer.
+  const [isAnonymous, setIsAnonymous] = useState(false)
 
   const redirectTo = searchParams.get("redirectTo") ?? "/library"
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      setIsAnonymous(data.user?.is_anonymous ?? false)
+    })
+  }, [])
 
   async function handleOAuth(provider: "google") {
     setOauthLoading(provider)
     setError(null)
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        // Callback route exchanges the code then forwards to `next`
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
-      },
-    })
-    if (error) {
-      setError(error.message)
+
+    const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`
+
+    let authError: Error | null = null
+
+    if (mode === "signup" && isAnonymous) {
+      // Upgrade the anonymous user by linking a Google identity.
+      // Supabase preserves the UUID — all stories transfer automatically.
+      const { error } = await supabase.auth.linkIdentity({
+        provider,
+        options: { redirectTo: callbackUrl },
+      })
+      authError = error
+    } else {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: callbackUrl },
+      })
+      authError = error
+    }
+
+    if (authError) {
+      setError(authError.message)
       setOauthLoading(null)
     }
-    // On success, browser follows the OAuth redirect — no further action needed
+    // On success the browser follows the OAuth redirect — no further action needed
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -106,23 +129,44 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
     try {
       if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { display_name: displayName.trim() || null },
-            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin}/auth/callback`,
-          },
-        })
-        if (error) throw error
-
-        if (data.session) {
-          window.location.href = redirectTo
-        } else {
+        if (isAnonymous) {
+          // Upgrade anonymous user to a permanent email/password account.
+          // UUID is preserved — stories already generated stay in their library.
+          const { error } = await supabase.auth.updateUser(
+            {
+              email,
+              password,
+              data: { display_name: displayName.trim() || null },
+            },
+            {
+              emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+            },
+          )
+          if (error) throw error
           setConfirmed(true)
           setNotice(
-            "Check your inbox to confirm your email, then come back and log in.",
+            "Check your inbox to confirm your email. Your stories will be waiting in your library.",
           )
+        } else {
+          // New visitor with no prior session — standard signup.
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: { display_name: displayName.trim() || null },
+              emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin}/auth/callback`,
+            },
+          })
+          if (error) throw error
+
+          if (data.session) {
+            window.location.href = redirectTo
+          } else {
+            setConfirmed(true)
+            setNotice(
+              "Check your inbox to confirm your email, then come back and log in.",
+            )
+          }
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -155,6 +199,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   const anyLoading = loading || oauthLoading !== null
 
+  // Tailor signup copy when the visitor has stories they want to save
+  const savingStories = mode === "signup" && isAnonymous && redirectTo === "/library"
+  const copy = {
+    ...COPY[mode],
+    ...(savingStories
+      ? {
+          heading: "Save your story",
+          subheading: "Create a free account — your story will be waiting in your library.",
+        }
+      : {}),
+  }
+
   return (
     <div className="w-full max-w-md rounded-card bg-white p-8 shadow-sm">
       <h1 className="text-2xl font-bold text-ink">{copy.heading}</h1>
@@ -172,7 +228,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
           <GoogleIcon />
           {oauthLoading === "google" ? "Redirecting…" : "Continue with Google"}
         </button>
-
       </div>
 
       {/* Divider */}
@@ -260,7 +315,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
             <p role="status" className="text-sm text-green-700">
               {notice}
             </p>
-            {confirmed && (
+            {/* Resend only for standard signups — anon upgrades use updateUser which has its own resend flow */}
+            {confirmed && !isAnonymous && (
               <button
                 type="button"
                 onClick={handleResend}

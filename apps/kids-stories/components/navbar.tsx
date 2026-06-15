@@ -8,17 +8,20 @@ import { createClient } from "@/lib/supabase-browser"
 
 export function Navbar() {
   const router = useRouter()
-  // null while we resolve the session — avoids flashing the wrong auth links.
-  const [authed, setAuthed] = useState<boolean | null>(null)
+  // null while resolving session — avoids flashing the wrong auth links.
+  // true = real (permanent) account; false = anonymous or no session.
+  const [isPermanent, setIsPermanent] = useState<boolean | null>(null)
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user))
+    supabase.auth.getUser().then(({ data }) => {
+      setIsPermanent(!!data.user && !data.user.is_anonymous)
+    })
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthed(!!session?.user)
+      setIsPermanent(!!session?.user && !(session.user.is_anonymous ?? false))
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -34,11 +37,9 @@ export function Navbar() {
   const linkClass =
     "flex h-11 items-center px-2 text-base font-semibold text-ink hover:text-brand-purple"
 
-  // Auth-dependent links, shared by desktop and mobile. Rendered only once the
-  // session is known.
   function AuthLinks({ onNavigate }: { onNavigate?: () => void }) {
-    if (authed === null) return null
-    if (authed) {
+    if (isPermanent === null) return null
+    if (isPermanent) {
       return (
         <>
           <Link href="/library" className={linkClass} onClick={onNavigate}>
@@ -54,6 +55,7 @@ export function Navbar() {
         </>
       )
     }
+    // Anonymous or no session — show sign-in options
     return (
       <>
         <Link href="/auth/login" className={linkClass} onClick={onNavigate}>
