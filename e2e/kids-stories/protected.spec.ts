@@ -24,8 +24,9 @@ test.describe("Protected routes (requires auth)", () => {
   test("logout clears session", async ({ page }) => {
     await page.goto("/")
     await logout(page)
-    // After logout, /library must redirect to login again
+    // After logout, /library redirects to signup (not login) — unauthenticated
+    // users are prompted to create an account so their anon stories transfer.
     await page.goto("/library")
-    await expect(page).toHaveURL(/\/auth\/login/)
+    await expect(page).toHaveURL(/\/auth\/signup/)
   })
 })
