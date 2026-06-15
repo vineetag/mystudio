@@ -79,7 +79,6 @@ Here's everything that goes into building and running these apps:
 | **Database + Auth** | [Supabase](https://supabase.com) | PostgreSQL + Auth + Storage as a service. Row-level security baked in. |
 | **AI** | [Anthropic Claude](https://anthropic.com) (via API) | Currently using Claude Haiku 4.5 — it's fast, cheap, and more than good enough for these use cases |
 | **Analytics** | [PostHog](https://posthog.com) | Product analytics, session replay, feature flags |
-| **Payments** | [Stripe](https://stripe.com) | Wired up in Wealth (coming soon) |
 | **Testing** | [Playwright](https://playwright.dev) | E2E tests that run on every PR against the Vercel preview |
 | **Monorepo** | [Turborepo](https://turbo.build) | Manages the multiple apps and shared packages together |
 | **Package manager** | [pnpm](https://pnpm.io) | Faster and more disk-efficient than npm/yarn |
@@ -165,7 +164,7 @@ A custom UI/UX skill that gives Claude design intelligence — 67 styles, 96 pal
 
 ## Using this repo
 
-> **Nothing in this repo is tied to my accounts.** Every service — Supabase, Vercel, Anthropic, PostHog, Stripe — is wired up through environment variables. When you fork this, you bring your own credentials and your own infrastructure. Your data stays in your accounts, your AI spend goes to your API key, and your deployments go to your Vercel. I have zero visibility into what you build or run.
+> **Nothing in this repo is tied to my accounts.** Every service — Supabase, Vercel, Anthropic, PostHog — is wired up through environment variables. When you fork this, you bring your own credentials and your own infrastructure. Your data stays in your accounts, your AI spend goes to your API key, and your deployments go to your Vercel. I have zero visibility into what you build or run.
 
 ### Option 1 — Fork it and build your own app
 
@@ -252,7 +251,7 @@ All of it is welcome. Here's what I'm most interested in:
 
 **Bug reports and feedback** — If something's broken or confusing, open an issue. Be specific about what you were trying to do and what happened.
 
-**New apps** — The most interesting contribution would be building a new app on this scaffold and showing what you made. Open an issue first to describe the idea — I'd love to hear what problems people are trying to solve.
+**New apps** — The most interesting contribution would be building a new app on this scaffold and showing what you made. Open an issue first to describe the idea — I'd love to hear what problems people are trying to solve. And honestly, if you've got an idea you want to build together, I'm genuinely open to that too — reach out and let's talk.
 
 **Core infrastructure** — PRs to improve the shared packages, CI pipeline, or architecture are welcome. Keep changes focused — a PR that touches 10 files in 4 apps is a hard review.
 
