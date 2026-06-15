@@ -23,8 +23,6 @@ const inputClass =
 export function StoryGenerator() {
   const router = useRouter()
 
-  // null = resolving; true = session ready; false = no session (anon auth disabled or blocked)
-  const [ready, setReady] = useState<boolean | null>(null)
   const [limitReached, setLimitReached] = useState(false)
   const [childName, setChildName] = useState("")
   const [themes, setThemes] = useState<ThemeKey[]>([])
@@ -57,32 +55,6 @@ export function StoryGenerator() {
     } catch {}
   }, [])
 
-  useEffect(() => {
-    const supabase = createClient()
-
-    async function init() {
-      // Middleware already called signInAnonymously() before the page loaded,
-      // so getUser() should always return a valid session here.
-      const { data } = await supabase.auth.getUser()
-
-      if (data.user) {
-        const res = await fetch("/api/generate").catch(() => null)
-        if (res?.ok) {
-          const d = (await res.json().catch(() => ({}))) as { limitReached?: boolean }
-          setLimitReached(d.limitReached === true)
-        }
-        setReady(true)
-      } else {
-        // Anonymous auth is likely disabled in Supabase — show a clear error
-        // rather than silently enabling a button that will 401.
-        console.error("[StoryGenerator] No session after page load. Is anonymous auth enabled in Supabase?")
-        setReady(false)
-      }
-    }
-
-    init()
-  }, [])
-
   function saveFormState() {
     try {
       sessionStorage.setItem(
@@ -97,6 +69,24 @@ export function StoryGenerator() {
     setLoading(true)
 
     try {
+      const supabase = createClient()
+
+      // Ensure a session exists before hitting the API. Anonymous sign-in is
+      // done here (not in useEffect) so the cookie is guaranteed to be set in
+      // the same JS tick as the fetch — no race condition possible.
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        const { data: anon, error: anonError } = await supabase.auth.signInAnonymously()
+        if (anonError || !anon.user) {
+          toast.error(
+            anonError?.message?.includes("captcha")
+              ? "Session setup failed — please disable Captcha in Supabase Auth settings."
+              : "Unable to start a session. Please refresh and try again."
+          )
+          return
+        }
+      }
+
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -114,7 +104,7 @@ export function StoryGenerator() {
         }),
       })
 
-      // Defensive: session somehow missing — save state and redirect to login
+      // Defensive: session somehow still missing after sign-in attempt
       if (res.status === 401) {
         saveFormState()
         router.push("/auth/login?redirectTo=/")
@@ -215,14 +205,9 @@ export function StoryGenerator() {
               Daily limit reached — come back tomorrow for more stories!
             </p>
           )}
-          {ready === false && (
-            <p className="text-center text-sm text-red-600">
-              Story creation is temporarily unavailable. Please refresh the page.
-            </p>
-          )}
           <Button
             type="submit"
-            disabled={themes.length === 0 || limitReached || ready !== true}
+            disabled={themes.length === 0 || limitReached}
             className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50"
           >
             ✨ Create story
