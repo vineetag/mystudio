@@ -249,7 +249,7 @@ Other apps follow the same pattern (`pnpm --filter math-workbook dev` → port 3
 
 All of it is welcome. Here's what I'm most interested in:
 
-**Bug reports and feedback** — If something's broken or confusing, open an issue. Be specific about what you were trying to do and what happened.
+**Bug reports, feedback, and feature requests** — Found a bug in the app or the code? Got an idea for a feature? [Open a GitHub issue](https://github.com/vineetag/mystudio/issues/new) and describe what you were trying to do and what happened (or what you wish existed). That's the best place to track it.
 
 **New apps** — The most interesting contribution would be building a new app on this scaffold and showing what you made. Open an issue first to describe the idea — I'd love to hear what problems people are trying to solve. And honestly, if you've got an idea you want to build together, I'm genuinely open to that too — reach out and let's talk.
 
