@@ -3,6 +3,10 @@ import type { Page } from "@playwright/test"
 const TEST_EMAIL = process.env.TEST_EMAIL ?? ""
 const TEST_PASSWORD = process.env.TEST_PASSWORD ?? ""
 
+// Path where the authenticated browser state (cookies + localStorage) is saved
+// by the "setup" project and reused by authed specs via test.use({ storageState }).
+export const STORAGE_STATE = "playwright/.auth/user.json"
+
 export async function loginAs(page: Page, email = TEST_EMAIL, password = TEST_PASSWORD) {
   await page.goto("/auth/login")
   await page.fill("#email", email)
