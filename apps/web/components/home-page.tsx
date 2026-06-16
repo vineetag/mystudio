@@ -624,19 +624,29 @@ export function HomePage() {
                 The Builder
               </p>
               <p
+                className="text-lg leading-relaxed mb-3"
+                style={{ color: "rgba(255,255,255,0.8)" }}
+              >
+                Built by Vineet — product builder and dad of two, with 15+ years
+                shipping software across B2B and B2C.
+              </p>
+              <p
                 className="text-lg leading-relaxed mb-6"
                 style={{ color: "rgba(255,255,255,0.8)" }}
               >
-                Built by Vineet, a product and technical program manager with 15+ years
-                shipping software at scale. AppCrafter Studio is where I build the apps I
-                wish existed.
+                I kept running into small, specific problems that existing apps didn&apos;t
+                quite solve. With AI, I can now go from &ldquo;I wish this existed&rdquo; to
+                something live on the internet in days, not months. This studio is where
+                those ideas become real.
               </p>
               <a
-                href="#"
+                href="https://github.com/vineetag/mystudio"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="font-medium transition-opacity duration-200 hover:opacity-75"
                 style={{ color: "#FF6B2B" }}
               >
-                Read my story →
+                View the source →
               </a>
             </div>
             <div className="flex gap-12">
