@@ -1,5 +1,8 @@
 {
   "framework": "nextjs",
   "buildCommand": "cd ../.. && pnpm turbo build --filter=@studio/kids-stories",
-  "installCommand": "pnpm install --frozen-lockfile"
+  "installCommand": "pnpm install --frozen-lockfile",
+  "crons": [
+    { "path": "/api/cron/cleanup-anon", "schedule": "0 3 * * 1" }
+  ]
 }
