@@ -1,12 +1,8 @@
-import { Suspense } from "react"
 import { StoryGenerator } from "@/modules/kids-stories"
-import { OAuthErrorHandler } from "@/components/oauth-error-handler"
 
 export default function HomePage() {
   return (
     <main className="flex min-h-[calc(100dvh-4rem)] flex-col items-center px-6 py-10 animate-fade-in">
-      {/* Handles Supabase OAuth errors redirected to the site root (e.g. identity_already_exists) */}
-      <Suspense><OAuthErrorHandler /></Suspense>
       {/* Floating night-scene hero */}
       <div className="mb-2 flex items-end justify-center gap-4 select-none" aria-hidden="true">
         <span className="text-5xl animate-float-slow" style={{ animationDelay: "0s" }}>🌙</span>

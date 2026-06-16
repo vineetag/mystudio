@@ -75,8 +75,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [notice, setNotice] = useState<string | null>(null)
   const [confirmed, setConfirmed] = useState(false)
   // Whether the current visitor has an anonymous (not yet permanent) session.
-  // Used in signup mode to upgrade (linkIdentity / updateUser) rather than
-  // creating a new account — this preserves the UUID so generated stories transfer.
+  // In email signup this upgrades the anon user via updateUser (preserving the
+  // UUID); for Google we signInWithOAuth and let StoryClaimer move the stories.
   const [isAnonymous, setIsAnonymous] = useState(false)
 
   const redirectTo = searchParams.get("redirectTo") ?? "/library"
@@ -116,23 +116,16 @@ export function AuthForm({ mode }: { mode: Mode }) {
       } catch {}
     }
 
-    let authError: Error | null = null
-
-    if (mode === "signup" && currentIsAnonymous) {
-      // Upgrade the anonymous user by linking a Google identity.
-      // Supabase preserves the UUID — all stories transfer automatically.
-      const { error } = await supabase.auth.linkIdentity({
-        provider,
-        options: { redirectTo: callbackUrl },
-      })
-      authError = error
-    } else {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: { redirectTo: callbackUrl },
-      })
-      authError = error
-    }
+    // Always signInWithOAuth — never linkIdentity. Linking an anonymous user to
+    // a Google account that already belongs to someone throws
+    // identity_already_exists, whose error lands in the URL hash and is awkward
+    // to recover from. signInWithOAuth instead signs into whichever account the
+    // Google login resolves to (new or existing); StoryClaimer then moves the
+    // anonymous stories onto it. One path, no linking conflicts.
+    const { error: authError } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: callbackUrl },
+    })
 
     if (authError) {
       setError(authError.message)
