@@ -26,7 +26,14 @@ export async function sendContactEmail({ name, email, message }: ContactMessage)
   const from = process.env.CONTACT_FROM
 
   if (!apiKey || !to || !from) {
-    if (process.env.NODE_ENV !== "production") {
+    // Treat only the real production deployment as "must be configured".
+    // On Vercel, NODE_ENV is "production" even for preview builds, so key off
+    // VERCEL_ENV when it's present; fall back to NODE_ENV for local dev.
+    const isProduction = process.env.VERCEL_ENV
+      ? process.env.VERCEL_ENV === "production"
+      : process.env.NODE_ENV === "production"
+
+    if (!isProduction) {
       console.warn("[contact] Email not configured — logging submission instead:", {
         name,
         email,
