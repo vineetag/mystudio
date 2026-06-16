@@ -13,9 +13,10 @@ const CUTOFF_HOURS = 24
 const PAGE = 1000
 
 /**
- * Weekly cron (see vercel.json): deletes orphaned anonymous users.
- * Protected by CRON_SECRET — Vercel sends `Authorization: Bearer <CRON_SECRET>`
- * on scheduled invocations. Requests without it are rejected.
+ * Deletes orphaned anonymous users. Triggered weekly by the GitHub Actions
+ * workflow .github/workflows/cleanup-anon.yml (Vercel Hobby can't run weekly
+ * crons). Protected by CRON_SECRET, sent as `Authorization: Bearer <CRON_SECRET>`;
+ * requests without it are rejected. Safe to call manually with the same header.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET
