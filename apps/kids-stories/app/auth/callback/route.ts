@@ -1,15 +1,15 @@
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { createClient, createServiceClient } from "@/lib/db"
+import { createClient } from "@/lib/db"
 
 /**
  * Handles the redirect from Supabase email links (confirmation, magic link,
  * password recovery). Exchanges the PKCE `code` for a session — which sets the
  * auth cookies via lib/db's cookie adapter — then forwards the user on.
  *
- * Also handles story transfer: when an anonymous user signs up but ends up
- * logged in as an existing account (different UUID), we move their stories
- * to the newly authenticated user before redirecting.
+ * Note: Google OAuth does NOT pass through here in production — Supabase returns
+ * it to the Site URL and the session is established client-side. Anonymous-story
+ * transfer is therefore handled by StoryClaimer (components/story-claimer), not
+ * this route.
  */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -17,19 +17,10 @@ export async function GET(request: Request) {
   const next = searchParams.get("next") ?? "/library"
 
   if (code) {
-    const cookieStore = await cookies()
     const supabase = await createClient()
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      const anonId = cookieStore.get("zippy_anon_uid")?.value
-      const newUserId = data.user?.id
-      if (anonId && newUserId && anonId !== newUserId) {
-        const svc = createServiceClient()
-        await svc.from("stories").update({ user_id: newUserId }).eq("user_id", anonId)
-      }
-      const response = NextResponse.redirect(`${origin}${next}`)
-      if (anonId) response.cookies.delete("zippy_anon_uid")
-      return response
+      return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
