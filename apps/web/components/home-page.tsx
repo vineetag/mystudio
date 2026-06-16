@@ -1,7 +1,7 @@
-"use client"
-
-import { useState } from "react"
 import Link from "next/link"
+
+import { SiteNav } from "@/components/site-nav"
+import { SiteFooter } from "@/components/site-footer"
 
 type AppData = {
   name: string
@@ -369,96 +369,10 @@ function AppCard({ app }: { app: AppData }) {
 }
 
 export function HomePage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-
   return (
     <div style={{ background: "#080808", color: "#ffffff", minHeight: "100vh" }}>
 
-      {/* ── NAVIGATION ── */}
-      <header
-        className="sticky top-0 z-50"
-        style={{
-          background: "rgba(8,8,8,0.85)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2">
-              <span
-                className="w-3 h-3 rounded-[3px] shrink-0"
-                style={{ background: "#FF6B2B" }}
-              />
-              <span className="font-semibold text-white text-sm">AppCrafter Studio</span>
-            </Link>
-
-            <nav className="hidden md:flex items-center gap-8">
-              {(["Apps", "Skills", "About"] as const).map((item) => (
-                <Link
-                  key={item}
-                  href={`#${item.toLowerCase()}`}
-                  className="text-sm transition-colors duration-200 text-[#A1A1AA] hover:text-white"
-                >
-                  {item}
-                </Link>
-              ))}
-            </nav>
-
-            <button
-              className="md:hidden flex flex-col gap-1.5 items-center justify-center w-11 h-11"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle menu"
-            >
-              <span
-                className={`w-5 h-0.5 bg-white origin-center transition-all duration-200 ${
-                  mobileMenuOpen ? "rotate-45 translate-y-2" : ""
-                }`}
-              />
-              <span
-                className={`w-5 h-0.5 bg-white transition-all duration-200 ${
-                  mobileMenuOpen ? "opacity-0" : ""
-                }`}
-              />
-              <span
-                className={`w-5 h-0.5 bg-white origin-center transition-all duration-200 ${
-                  mobileMenuOpen ? "-rotate-45 -translate-y-2" : ""
-                }`}
-              />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile menu overlay */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 z-40 flex flex-col px-8 pt-24"
-          style={{ background: "#080808" }}
-        >
-          <nav className="flex flex-col gap-8">
-            {(["Apps", "Skills", "About"] as const).map((item) => (
-              <Link
-                key={item}
-                href={`#${item.toLowerCase()}`}
-                className="text-3xl font-bold text-white"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {item}
-              </Link>
-            ))}
-            <a
-              href="mailto:vineet140@gmail.com"
-              className="text-3xl font-bold"
-              style={{ color: "#FF6B2B" }}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Get in touch
-            </a>
-          </nav>
-        </div>
-      )}
+      <SiteNav />
 
       {/* ── HERO ── */}
       <section
@@ -615,7 +529,7 @@ export function HomePage() {
         }}
       >
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          <div className="max-w-2xl mx-auto text-center">
             <div>
               <p
                 className="text-xs tracking-widest font-semibold uppercase mb-5"
@@ -624,138 +538,37 @@ export function HomePage() {
                 The Builder
               </p>
               <p
-                className="text-lg leading-relaxed mb-3"
+                className="text-lg leading-relaxed mb-4"
                 style={{ color: "rgba(255,255,255,0.8)" }}
               >
-                Built by Vineet — product builder and dad of two, with 15+ years
-                shipping software across B2B and B2C.
+                I&apos;m Vineet — a product person who gets ideas stuck in my head and
+                builds them to get them out. AppCrafter Studio is my little lab for that.
+                I prototype fast, ship early, and figure out what&apos;s actually useful
+                from there.
               </p>
               <p
                 className="text-lg leading-relaxed mb-6"
                 style={{ color: "rgba(255,255,255,0.8)" }}
               >
-                I kept running into small, specific problems that existing apps didn&apos;t
-                quite solve. With AI, I can now go from &ldquo;I wish this existed&rdquo; to
-                something live on the internet in days, not months. This studio is where
-                those ideas become real.
+                The whole codebase is open source because I think ideas go further when
+                more people can run with them. If something here gives you a starting
+                point for your own thing, that&apos;s great. And if you want to take any
+                of these ideas further together, I&apos;m open to it — just reach out.
               </p>
-              <a
-                href="https://github.com/vineetag/mystudio"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium transition-opacity duration-200 hover:opacity-75"
+              <Link
+                href="/about"
+                className="font-medium transition-opacity duration-200 hover:opacity-75 hover:underline"
                 style={{ color: "#FF6B2B" }}
               >
-                View the source →
-              </a>
-            </div>
-            <div className="flex gap-12">
-              {[
-                { value: "3", label: "apps in portfolio" },
-                { value: "1", label: "person building" },
-              ].map(({ value, label }) => (
-                <div key={label}>
-                  <p
-                    className="font-bold"
-                    style={{ fontSize: "3.5rem", color: "#FF6B2B", lineHeight: 1 }}
-                  >
-                    {value}
-                  </p>
-                  <p className="mt-2 text-sm" style={{ color: "#A1A1AA" }}>
-                    {label}
-                  </p>
-                </div>
-              ))}
+                Read the full story →
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
       {/* ── FOOTER ── */}
-      <footer
-        className="py-14 px-4"
-        style={{
-          background: "#050505",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-        }}
-      >
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span
-                  className="w-3 h-3 rounded-[3px] shrink-0"
-                  style={{ background: "#FF6B2B" }}
-                />
-                <span className="font-semibold text-white text-sm">AppCrafter Studio</span>
-              </div>
-              <p className="text-sm" style={{ color: "#71717A" }}>
-                Apps built with craft and intention.
-              </p>
-            </div>
-            <div>
-              <p
-                className="text-xs font-semibold text-white mb-4 uppercase tracking-wider"
-              >
-                Studio
-              </p>
-              <div className="flex flex-col gap-3">
-                {["Apps", "Skills", "About"].map((item) => (
-                  <Link
-                    key={item}
-                    href={`#${item.toLowerCase()}`}
-                    className="text-sm transition-colors duration-200 hover:text-white"
-                    style={{ color: "#71717A" }}
-                  >
-                    {item}
-                  </Link>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p
-                className="text-xs font-semibold text-white mb-4 uppercase tracking-wider"
-              >
-                Legal
-              </p>
-              <div className="flex flex-col gap-3">
-                <Link
-                  href="/privacy"
-                  className="text-sm transition-colors duration-200 hover:text-white"
-                  style={{ color: "#71717A" }}
-                >
-                  Privacy Policy
-                </Link>
-                <a
-                  href="mailto:vineet140@gmail.com"
-                  className="text-sm transition-colors duration-200 hover:text-white"
-                  style={{ color: "#71717A" }}
-                >
-                  Contact
-                </a>
-                <a
-                  href="https://github.com/vineetag/mystudio"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm transition-colors duration-200 hover:text-white"
-                  style={{ color: "#71717A" }}
-                >
-                  GitHub
-                </a>
-              </div>
-            </div>
-          </div>
-          <div
-            className="pt-6 text-xs"
-            style={{
-              borderTop: "1px solid rgba(255,255,255,0.06)",
-              color: "#71717A",
-            }}
-          >
-            © 2026 AppCrafter Studio — Built with Next.js and Claude Code.
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }
