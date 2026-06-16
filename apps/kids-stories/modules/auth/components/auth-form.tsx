@@ -77,13 +77,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
   // Used in signup mode to upgrade (linkIdentity / updateUser) rather than
   // creating a new account — this preserves the UUID so generated stories transfer.
   const [isAnonymous, setIsAnonymous] = useState(false)
+  // The anonymous user ID — stored before OAuth/password redirect so the callback
+  // can transfer stories if the user ends up logged in as a different (existing) account.
+  const [anonUserId, setAnonUserId] = useState<string | null>(null)
 
   const redirectTo = searchParams.get("redirectTo") ?? "/library"
 
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => {
-      setIsAnonymous(data.user?.is_anonymous ?? false)
+      const isAnon = data.user?.is_anonymous ?? false
+      setIsAnonymous(isAnon)
+      if (isAnon && data.user) setAnonUserId(data.user.id)
     })
   }, [])
 
@@ -93,6 +98,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
     const supabase = createClient()
 
     const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`
+
+    // Persist the anonymous user ID in a cookie so the callback route can
+    // transfer stories if the user logs into a different (existing) account.
+    if (anonUserId) {
+      document.cookie = `zippy_anon_uid=${anonUserId}; path=/; max-age=3600; SameSite=Lax`
+    }
 
     let authError: Error | null = null
 
@@ -174,6 +185,15 @@ export function AuthForm({ mode }: { mode: Mode }) {
           password,
         })
         if (error) throw error
+
+        // Transfer any anonymous stories to this account (best-effort).
+        if (anonUserId) {
+          await fetch("/api/claim-stories", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ anonId: anonUserId }),
+          }).catch(() => {})
+        }
 
         window.location.href = redirectTo
       }
