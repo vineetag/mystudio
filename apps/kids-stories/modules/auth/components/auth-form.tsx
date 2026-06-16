@@ -106,7 +106,15 @@ export function AuthForm({ mode }: { mode: Mode }) {
     const { data: { user: currentUser } } = await supabase.auth.getUser()
     const currentIsAnonymous = currentUser?.is_anonymous ?? false
 
-    const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`
+    // In production, pin the callback to the canonical domain so OAuth always
+    // returns to zippytales.app — even if the user opened a raw *.vercel.app
+    // deployment URL. In preview/dev, use the live origin so OAuth returns to
+    // the same deployment being tested.
+    const baseUrl =
+      process.env.NEXT_PUBLIC_VERCEL_ENV === "production"
+        ? (process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin)
+        : window.location.origin
+    const callbackUrl = `${baseUrl}/auth/callback?next=${encodeURIComponent(redirectTo)}`
 
     // Stash the anon id so StoryClaimer transfers stories once the permanent
     // session exists — works regardless of where OAuth redirects back to.
