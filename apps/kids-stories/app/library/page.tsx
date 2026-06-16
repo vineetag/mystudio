@@ -15,8 +15,11 @@ export default async function LibraryPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Middleware already guards /library; this is a defensive backstop.
-  if (!user) redirect("/auth/login?redirectTo=/library")
+  // Middleware already guards /library; this is a defensive backstop. Mirror
+  // the middleware's target (/auth/signup) so anonymous/unauthenticated
+  // visitors are consistently sent to signup — where their stories transfer —
+  // no matter which layer catches the request.
+  if (!user || user.is_anonymous) redirect("/auth/signup?redirectTo=/library")
 
   const { data: stories } = await supabase
     .from("stories")
