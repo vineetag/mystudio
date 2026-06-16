@@ -1,6 +1,14 @@
 # AppCrafter Studio — Monorepo Conventions
-My studio name is now AppCrafter.
+My studio name is AppCrafter.
 Domain is - appcrafter.studio
+
+## How to work in this codebase
+- Always think step by step before writing code
+- Prefer simple, readable code over clever code
+- When something can be done multiple ways, recommend the best approach and explain why briefly
+- If a prompt is ambiguous, ask one clarifying question before proceeding
+- Proactively flag any security, cost, or compliance risks
+- When providing multiple options, mark the recommended one with a rationale
 
 ## Stack
 - Framework: Next.js (App Router) + TypeScript
@@ -15,7 +23,7 @@ Domain is - appcrafter.studio
 ## Folder structure
 studio/
 ├── apps/
-│   ├── web/            # portfolio hub site (slatestudio.co)
+│   ├── web/            # portfolio hub site (appcrafter.studio)
 │   ├── kids-stories/   # kids story generator
 │   ├── math-workbook/  # math practice app
 │   └── wealth/         # wealth tracker
@@ -29,7 +37,8 @@ studio/
 - All work goes on a feature branch: `git checkout -b feat/<name>`
 - Push the branch to get a Vercel preview URL, test there first
 - Merge to `main` only via a PR once the preview is confirmed good
-- A pre-push hook (`.githooks/pre-push`) enforces this locally
+- Commits must use conventional format: `feat:`, `fix:`, `chore:`, `docs:`
+- A pre-push hook (`.githooks/pre-push`) enforces branch rules locally
 - After a fresh clone, run: `git config core.hooksPath .githooks`
 
 ## Hard rules — never break these
@@ -60,3 +69,10 @@ Modular monolith per app. Each app is internally split into modules:
   from components or pages
 - lib/ai.ts must enforce per-user rate limits and a hard monthly spend cap
 - Always include a system prompt — never send raw user input to a model
+
+## Design & UX principles
+- **Responsive first**: every UI must work across all screen sizes — mobile, tablet, desktop. No layout breaks at any breakpoint.
+- **Clear error messages**: validation errors and backend failures must tell the user exactly what went wrong and how to fix it. Never show generic "Something went wrong" — surface the real reason.
+- **Mobile touch targets**: interactive elements (buttons, links, inputs) must have a minimum 48×48px tap area with proper safe-area margins on mobile.
+- **No request waterfalls**: fetch parallel data concurrently. Show CSS skeleton loaders immediately during async states — no blank screens or spinners that block layout.
+- **Minimal motion**: use hardware-accelerated CSS keyframe animations only (transform, opacity). No heavy animation libraries. Stagger entrance animations via CSS, not JS orchestration.
