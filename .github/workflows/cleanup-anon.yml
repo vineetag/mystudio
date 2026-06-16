@@ -1,0 +1,25 @@
+name: cleanup-anon
+
+# Weekly cleanup of orphaned anonymous Supabase users. Vercel Hobby only fires
+# crons once per day, so the schedule lives here instead. Hits the secret-guarded
+# route /api/cron/cleanup-anon in production.
+
+on:
+  schedule:
+    - cron: "0 3 * * 1" # Mondays 03:00 UTC
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger anon-user cleanup
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          code=$(curl -sS -o /tmp/out.json -w '%{http_code}' \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://www.zippytales.app/api/cron/cleanup-anon)
+          echo "HTTP $code"
+          cat /tmp/out.json; echo
+          test "$code" = "200"
