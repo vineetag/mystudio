@@ -17,9 +17,18 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
+    // Runs first: logs in once and writes the authed storageState to disk.
+    {
+      name: "setup",
+      testMatch: /.*\.setup\.ts/,
+    },
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      // Skip the setup file here; it runs in the "setup" project above.
+      testIgnore: /.*\.setup\.ts/,
+      // Ensure the storageState exists before any authed spec runs.
+      dependencies: ["setup"],
     },
   ],
 })

@@ -1,10 +1,10 @@
 import { test, expect } from "@playwright/test"
-import { loginAs, logout } from "../shared/auth-helpers"
+import { logout, STORAGE_STATE } from "../shared/auth-helpers"
 
 test.describe("Protected routes (requires auth)", () => {
-  test.beforeEach(async ({ page }) => {
-    await loginAs(page)
-  })
+  // Reuse the session captured once by the "setup" project instead of
+  // logging in before every test.
+  test.use({ storageState: STORAGE_STATE })
 
   test("library page loads after login", async ({ page }) => {
     await page.goto("/library")
