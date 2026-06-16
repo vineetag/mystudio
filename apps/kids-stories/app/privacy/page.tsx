@@ -10,8 +10,9 @@ export default function PrivacyPage() {
       <div className="mt-8 space-y-6 text-ink-muted">
         <p>
           ZippyTales uses your email address only to authenticate your account.
-          We do not store, log, or share your email address — it is never
-          retained beyond what is required to manage your login session.
+          We store your email address as part of your account record so we can
+          sign you in and link your saved stories to you. We never sell or share
+          it, and you can request its deletion at any time (see below).
           The only other data we collect is what you optionally enter to
           personalize a story: a theme, an optional age range, and an optional
           child&apos;s first name. The name is never required — if you leave it
@@ -22,13 +23,13 @@ export default function PrivacyPage() {
           generate the story text. We do not sell your personal data.
         </p>
         <p>
-          Accounts are intended for adults. We ask that you use only a
-          child&apos;s first name, and never share sensitive personal
-          information in story details.
+          Accounts are intended for adults. The child&apos;s name is optional,
+          but if you choose to provide one we ask that you use only a first
+          name, and never share sensitive personal information in story details.
         </p>
         <p>
           For questions or to request deletion of your data, contact us at
-          privacy@zippytales.app.
+          hello@appcrafter.studio.
         </p>
       </div>
     </main>

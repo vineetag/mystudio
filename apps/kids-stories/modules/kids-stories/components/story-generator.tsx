@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { Sparkles } from "lucide-react"
 import { Button } from "@studio/ui"
 import { createClient } from "@/lib/supabase-browser"
 import { ThemePicker } from "./theme-picker"
@@ -210,7 +211,8 @@ export function StoryGenerator() {
             disabled={themes.length === 0 || limitReached}
             className="h-12 w-full rounded-pill bg-brand-purple text-base text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            ✨ Create story
+            <Sparkles aria-hidden="true" />
+            Create story
           </Button>
         </div>
       </div>

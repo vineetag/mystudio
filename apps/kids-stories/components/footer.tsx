@@ -4,7 +4,6 @@ const links = [
   { label: "My Library", href: "/library" },
   { label: "Privacy", href: "/privacy" },
   { label: "Disclaimer", href: "/disclaimer" },
-  { label: "Release Notes", href: "/release-notes" },
 ]
 
 export function Footer() {
