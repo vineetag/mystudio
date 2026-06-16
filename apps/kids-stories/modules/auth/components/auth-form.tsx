@@ -65,7 +65,6 @@ function GoogleIcon() {
 export function AuthForm({ mode }: { mode: Mode }) {
   const searchParams = useSearchParams()
 
-  const [displayName, setDisplayName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -159,7 +158,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
             {
               email,
               password,
-              data: { display_name: displayName.trim() || null },
             },
             {
               emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
@@ -176,7 +174,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
             email,
             password,
             options: {
-              data: { display_name: displayName.trim() || null },
               emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin}/auth/callback`,
             },
           })
@@ -263,23 +260,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
       {/* Email / password form */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        {mode === "signup" && (
-          <div className="space-y-1.5">
-            <label htmlFor="displayName" className="text-sm font-medium text-ink">
-              Your name
-            </label>
-            <input
-              id="displayName"
-              type="text"
-              autoComplete="name"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Optional"
-              className={inputClass}
-            />
-          </div>
-        )}
-
         <div className="space-y-1.5">
           <label htmlFor="email" className="text-sm font-medium text-ink">
             Email
@@ -297,7 +277,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           {mode === "signup" && (
             <p className="flex items-center gap-1 text-xs text-ink-muted">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              Used for sign-in only — we never store or share your email.
+              Used to sign you in only — we never sell or share it.
             </p>
           )}
         </div>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { BookOpen } from "lucide-react"
+import { BookOpen, Sparkles } from "lucide-react"
 import { createClient } from "@/lib/db"
 import { StoryCard, type StoryCardData } from "@/modules/kids-stories"
 
@@ -42,8 +42,9 @@ export default async function LibraryPage() {
           </div>
           <Link
             href="/"
-            className="inline-flex h-11 items-center justify-center rounded-pill bg-brand-purple px-6 text-base font-semibold text-white hover:bg-brand-purple/90"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-pill bg-brand-purple px-6 text-base font-semibold text-white hover:bg-brand-purple/90"
           >
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
             Create a story
           </Link>
         </div>
@@ -57,8 +58,9 @@ export default async function LibraryPage() {
             </p>
             <Link
               href="/"
-              className="mt-6 inline-flex h-11 items-center justify-center rounded-pill bg-brand-purple px-6 text-base font-semibold text-white hover:bg-brand-purple/90"
+              className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-pill bg-brand-purple px-6 text-base font-semibold text-white hover:bg-brand-purple/90"
             >
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
               Create a story
             </Link>
           </div>

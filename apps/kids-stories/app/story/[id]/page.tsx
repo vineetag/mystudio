@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/db"
-import { Clock, BookmarkPlus } from "lucide-react"
+import { Clock, BookmarkPlus, Sparkles } from "lucide-react"
 import { THEME_OPTIONS } from "@/modules/kids-stories"
 import { PrintButton } from "./print-button"
 
@@ -43,6 +43,29 @@ export async function generateMetadata({
   }
 }
 
+// Prominent save CTA for anonymous visitors. Shown both above the story
+// (arrival awareness) and again below it (the natural moment to save once
+// they've finished reading).
+function SaveNudge() {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-card border border-brand-purple/20 bg-brand-purple/5 px-6 py-5 text-center sm:flex-row sm:text-left">
+      <BookmarkPlus className="h-6 w-6 shrink-0 text-brand-purple" aria-hidden="true" />
+      <div className="flex-1">
+        <p className="text-sm font-semibold text-ink">Want to keep this story?</p>
+        <p className="text-sm text-ink-muted">
+          Create a free account and it&apos;ll be saved to your library permanently.
+        </p>
+      </div>
+      <Link
+        href="/auth/signup?redirectTo=/library"
+        className="shrink-0 inline-flex h-10 items-center justify-center rounded-pill bg-brand-purple px-5 text-sm font-semibold text-white hover:bg-brand-purple/90 transition-colors duration-150"
+      >
+        Save to library
+      </Link>
+    </div>
+  )
+}
+
 export default async function StoryPage({
   params,
 }: {
@@ -67,22 +90,10 @@ export default async function StoryPage({
   return (
     <main className="min-h-[calc(100dvh-4rem)] px-6 py-12 animate-fade-in">
       <article className="mx-auto w-full max-w-2xl">
-        {/* Save-to-library nudge for anonymous visitors */}
+        {/* Save-to-library nudge for anonymous visitors (arrival) */}
         {isAnonymous && (
-          <div className="mb-6 flex flex-col items-center gap-3 rounded-card border border-brand-purple/20 bg-brand-purple/5 px-6 py-5 text-center sm:flex-row sm:text-left">
-            <BookmarkPlus className="h-6 w-6 shrink-0 text-brand-purple" aria-hidden="true" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-ink">Want to keep this story?</p>
-              <p className="text-sm text-ink-muted">
-                Create a free account and it&apos;ll be saved to your library permanently.
-              </p>
-            </div>
-            <Link
-              href="/auth/signup?redirectTo=/library"
-              className="shrink-0 inline-flex h-10 items-center justify-center rounded-pill bg-brand-purple px-5 text-sm font-semibold text-white hover:bg-brand-purple/90 transition-colors duration-150"
-            >
-              Save to library
-            </Link>
+          <div className="mb-6">
+            <SaveNudge />
           </div>
         )}
 
@@ -120,21 +131,22 @@ export default async function StoryPage({
           </Link>
         </p>
 
+        {/* Save-to-library nudge for anonymous visitors (after reading) */}
+        {isAnonymous && (
+          <div className="mt-8">
+            <SaveNudge />
+          </div>
+        )}
+
         <div className="mt-8 flex flex-wrap justify-center gap-4">
           <Link
             href="/"
-            className="inline-flex h-11 items-center justify-center rounded-pill bg-brand-purple px-6 text-base font-semibold text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-pill bg-brand-purple px-6 text-base font-semibold text-white hover:bg-brand-purple/90 active:scale-[0.98] transition-all duration-150"
           >
-            ✨ Create another story
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            Create another story
           </Link>
-          {isAnonymous ? (
-            <Link
-              href="/auth/signup?redirectTo=/library"
-              className="inline-flex h-11 items-center justify-center rounded-pill border border-ink/15 px-6 text-base font-semibold text-ink hover:bg-white transition-all duration-150"
-            >
-              Save to library
-            </Link>
-          ) : (
+          {!isAnonymous && (
             <Link
               href="/library"
               className="inline-flex h-11 items-center justify-center rounded-pill border border-ink/15 px-6 text-base font-semibold text-ink hover:bg-white transition-all duration-150"
