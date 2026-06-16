@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { ShieldCheck } from "lucide-react"
 import { Button } from "@studio/ui"
 import { createClient } from "@/lib/supabase-browser"
+import { ANON_CLAIM_KEY } from "@/components/story-claimer"
 
 type Mode = "login" | "signup"
 
@@ -74,12 +75,9 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [notice, setNotice] = useState<string | null>(null)
   const [confirmed, setConfirmed] = useState(false)
   // Whether the current visitor has an anonymous (not yet permanent) session.
-  // Used in signup mode to upgrade (linkIdentity / updateUser) rather than
-  // creating a new account — this preserves the UUID so generated stories transfer.
+  // In email signup this upgrades the anon user via updateUser (preserving the
+  // UUID); for Google we signInWithOAuth and let StoryClaimer move the stories.
   const [isAnonymous, setIsAnonymous] = useState(false)
-  // The anonymous user ID — stored before OAuth/password redirect so the callback
-  // can transfer stories if the user ends up logged in as a different (existing) account.
-  const [anonUserId, setAnonUserId] = useState<string | null>(null)
 
   const redirectTo = searchParams.get("redirectTo") ?? "/library"
 
@@ -88,7 +86,13 @@ export function AuthForm({ mode }: { mode: Mode }) {
     supabase.auth.getUser().then(({ data }) => {
       const isAnon = data.user?.is_anonymous ?? false
       setIsAnonymous(isAnon)
-      if (isAnon && data.user) setAnonUserId(data.user.id)
+      // Stash the anon id so StoryClaimer can transfer stories after auth, no
+      // matter which page the OAuth flow lands on. See components/story-claimer.
+      if (isAnon && data.user) {
+        try {
+          localStorage.setItem(ANON_CLAIM_KEY, data.user.id)
+        } catch {}
+      }
     })
   }, [])
 
@@ -101,33 +105,27 @@ export function AuthForm({ mode }: { mode: Mode }) {
     // may not have resolved if the button is clicked immediately after mount.
     const { data: { user: currentUser } } = await supabase.auth.getUser()
     const currentIsAnonymous = currentUser?.is_anonymous ?? false
-    const currentAnonId = currentIsAnonymous ? (currentUser?.id ?? null) : null
 
     const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`
 
-    // Persist the anonymous user ID in a cookie so the callback route can
-    // transfer stories if the user logs into a different (existing) account.
-    if (currentAnonId) {
-      document.cookie = `zippy_anon_uid=${currentAnonId}; path=/; max-age=3600; SameSite=Lax`
+    // Stash the anon id so StoryClaimer transfers stories once the permanent
+    // session exists — works regardless of where OAuth redirects back to.
+    if (currentIsAnonymous && currentUser) {
+      try {
+        localStorage.setItem(ANON_CLAIM_KEY, currentUser.id)
+      } catch {}
     }
 
-    let authError: Error | null = null
-
-    if (mode === "signup" && currentIsAnonymous) {
-      // Upgrade the anonymous user by linking a Google identity.
-      // Supabase preserves the UUID — all stories transfer automatically.
-      const { error } = await supabase.auth.linkIdentity({
-        provider,
-        options: { redirectTo: callbackUrl },
-      })
-      authError = error
-    } else {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: { redirectTo: callbackUrl },
-      })
-      authError = error
-    }
+    // Always signInWithOAuth — never linkIdentity. Linking an anonymous user to
+    // a Google account that already belongs to someone throws
+    // identity_already_exists, whose error lands in the URL hash and is awkward
+    // to recover from. signInWithOAuth instead signs into whichever account the
+    // Google login resolves to (new or existing); StoryClaimer then moves the
+    // anonymous stories onto it. One path, no linking conflicts.
+    const { error: authError } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: callbackUrl },
+    })
 
     if (authError) {
       setError(authError.message)
@@ -192,15 +190,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         })
         if (error) throw error
 
-        // Transfer any anonymous stories to this account (best-effort).
-        if (anonUserId) {
-          await fetch("/api/claim-stories", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ anonId: anonUserId }),
-          }).catch(() => {})
-        }
-
+        // Story transfer is handled by StoryClaimer once /library loads.
         window.location.href = redirectTo
       }
     } catch (err) {
