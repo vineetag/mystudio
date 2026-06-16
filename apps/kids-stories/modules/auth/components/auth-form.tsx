@@ -97,17 +97,23 @@ export function AuthForm({ mode }: { mode: Mode }) {
     setError(null)
     const supabase = createClient()
 
+    // Fetch the current user now — don't rely on state from useEffect, which
+    // may not have resolved if the button is clicked immediately after mount.
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    const currentIsAnonymous = currentUser?.is_anonymous ?? false
+    const currentAnonId = currentIsAnonymous ? (currentUser?.id ?? null) : null
+
     const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`
 
     // Persist the anonymous user ID in a cookie so the callback route can
     // transfer stories if the user logs into a different (existing) account.
-    if (anonUserId) {
-      document.cookie = `zippy_anon_uid=${anonUserId}; path=/; max-age=3600; SameSite=Lax`
+    if (currentAnonId) {
+      document.cookie = `zippy_anon_uid=${currentAnonId}; path=/; max-age=3600; SameSite=Lax`
     }
 
     let authError: Error | null = null
 
-    if (mode === "signup" && isAnonymous) {
+    if (mode === "signup" && currentIsAnonymous) {
       // Upgrade the anonymous user by linking a Google identity.
       // Supabase preserves the UUID — all stories transfer automatically.
       const { error } = await supabase.auth.linkIdentity({
