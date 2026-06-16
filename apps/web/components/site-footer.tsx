@@ -58,13 +58,13 @@ export function SiteFooter() {
               >
                 Privacy Policy
               </Link>
-              <a
-                href="mailto:vineet140@gmail.com"
+              <Link
+                href="/contact"
                 className="text-sm transition-colors duration-200 hover:text-white"
                 style={{ color: "#71717A" }}
               >
                 Contact
-              </a>
+              </Link>
               <a
                 href="https://github.com/vineetag/mystudio"
                 target="_blank"

@@ -88,14 +88,14 @@ export function SiteNav() {
                 {item.label}
               </Link>
             ))}
-            <a
-              href="mailto:vineet140@gmail.com"
+            <Link
+              href="/contact"
               className="text-3xl font-bold"
               style={{ color: "#FF6B2B" }}
               onClick={() => setMobileMenuOpen(false)}
             >
               Get in touch
-            </a>
+            </Link>
           </nav>
         </div>
       )}
