@@ -1,0 +1,18 @@
+{
+  "appsDir": "apps",
+  "scanDirs": ["apps", "packages"],
+  "requiredRoutes": [
+    "overview",
+    "release-notes",
+    "privacy",
+    "disclaimer",
+    "admin"
+  ],
+  "routeAliases": {
+    "overview": [""]
+  },
+  "aiModuleSuffix": "lib/ai",
+  "migrationsDir": "supabase/migrations",
+  "disabledRules": [],
+  "ignoreDirs": []
+}

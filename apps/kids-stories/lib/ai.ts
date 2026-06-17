@@ -120,6 +120,90 @@ function estimateCostUsd(
   )
 }
 
+export interface StructuredModelInput {
+  /** User the spend is attributed to (recorded in the ai_usage ledger). */
+  userId: string
+  /** System prompt — required. Never call a model without one. */
+  system: string
+  /** JSON schema the model must return. */
+  schema: Record<string, unknown>
+  /** The (already model-generated or trusted) content to act on. */
+  userContent: string
+  /** Output cap; keep small for cheap auxiliary calls like moderation. */
+  maxTokens?: number
+}
+
+/**
+ * Generic, cost-guarded structured model call. This is the single transport for
+ * *auxiliary* AI features (e.g. the story-safety agent) so they inherit the hard
+ * monthly spend cap and usage logging without re-implementing them. It does NOT
+ * apply the per-user daily story slot — that's specific to story generation.
+ *
+ * Returns the parsed JSON object. Throws SpendCapError / AIContentError, which
+ * callers can map to HTTP responses just like generateStory does.
+ */
+export async function runStructuredModel(
+  input: StructuredModelInput,
+): Promise<unknown> {
+  const supabase = createServiceClient()
+
+  // Hard monthly spend cap — checked before spending anything.
+  const { data: spend, error: spendError } = await supabase.rpc(
+    "ai_spend_this_month",
+  )
+  if (spendError) throw spendError
+  if (Number(spend ?? 0) >= MONTHLY_BUDGET_USD) {
+    throw new SpendCapError()
+  }
+
+  const response = await client.messages.create({
+    model: MODEL,
+    max_tokens: input.maxTokens ?? 1024,
+    output_config: {
+      format: { type: "json_schema", schema: input.schema },
+    },
+    system: [
+      {
+        type: "text",
+        text: input.system,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
+    messages: [{ role: "user", content: input.userContent }],
+  })
+
+  // Record spend regardless of how the body parses below.
+  const usage = response.usage
+  await supabase.from("ai_usage").insert({
+    user_id: input.userId,
+    model: MODEL,
+    input_tokens: usage.input_tokens,
+    output_tokens: usage.output_tokens,
+    cost_usd: estimateCostUsd(
+      MODEL,
+      usage.input_tokens,
+      usage.output_tokens,
+      usage.cache_creation_input_tokens ?? 0,
+      usage.cache_read_input_tokens ?? 0,
+    ),
+  })
+
+  if (response.stop_reason === "refusal") {
+    throw new AIContentError("The model declined this request for safety reasons.")
+  }
+
+  const textBlock = response.content.find((b) => b.type === "text")
+  if (!textBlock || textBlock.type !== "text") {
+    throw new AIContentError("The model returned no usable output.")
+  }
+
+  try {
+    return JSON.parse(textBlock.text)
+  } catch {
+    throw new AIContentError("Model output was not valid JSON.")
+  }
+}
+
 /**
  * Generates one story for a user, enforcing BOTH limits before spending money:
  *   1. Hard monthly spend cap (via the ai_usage ledger) — checked first.

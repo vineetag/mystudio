@@ -1,0 +1,32 @@
+{
+  "name": "@appcrafter/ai-cost-guard",
+  "version": "0.1.0",
+  "description": "Static guard that every AI call routes through a single audited module enforcing rate limits, a monthly spend cap, and a system prompt — so AI spend can't leak or run away.",
+  "license": "MIT",
+  "type": "module",
+  "keywords": ["ai", "llm", "cost", "guardrail", "anthropic", "openai", "ci"],
+  "bin": {
+    "ai-cost-guard": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "node src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

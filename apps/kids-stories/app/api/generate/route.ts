@@ -9,6 +9,7 @@ import {
   AIContentError,
   DAILY_STORY_LIMIT,
 } from "@/lib/ai"
+import { screenStory, UNSAFE_STORY_MESSAGE } from "@/modules/safety"
 
 export const runtime = "nodejs"
 
@@ -120,6 +121,38 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Something went wrong generating the story." },
       { status: 500 },
+    )
+  }
+
+  // 3b. Screen for age-appropriateness BEFORE persisting or returning. The
+  // daily slot was already consumed by generateStory, so refund it whenever we
+  // don't deliver a story (blocked content or a paused spend cap) — the user
+  // shouldn't lose their allowance through no fault of their own.
+  try {
+    const safety = await screenStory({
+      userId: user.id,
+      title: story.title,
+      content: story.content,
+    })
+    if (safety.action === "block") {
+      await supabase.rpc("release_generation_slot", { uid: user.id })
+      return NextResponse.json(
+        { error: UNSAFE_STORY_MESSAGE, code: "unsafe_content" },
+        { status: 422 },
+      )
+    }
+  } catch (err) {
+    await supabase.rpc("release_generation_slot", { uid: user.id })
+    if (err instanceof SpendCapError) {
+      return NextResponse.json(
+        { error: "Story generation is paused for now. Please try again later.", code: "spend_cap" },
+        { status: 503 },
+      )
+    }
+    console.error("story screening failed:", err)
+    return NextResponse.json(
+      { error: "We couldn't safety-check the story. Please try again." },
+      { status: 502 },
     )
   }
 

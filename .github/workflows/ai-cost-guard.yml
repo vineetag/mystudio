@@ -1,0 +1,27 @@
+name: AI Cost Guard
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Guard AI spend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Zero runtime deps — Node 24 runs the TypeScript source directly.
+      - name: Run ai-cost-guard
+        run: node agents/ai-cost-guard/src/cli.ts --root .
