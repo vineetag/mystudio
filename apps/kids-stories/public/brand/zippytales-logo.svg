@@ -1,0 +1,37 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7F77DD"/>
+      <stop offset="1" stop-color="#5DCAA5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- rounded-square background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- open book -->
+  <g>
+    <!-- left page -->
+    <path d="M256 168 C214 142 170 138 132 146 C124 148 118 155 118 164 L118 350 C118 360 127 368 137 366 C172 359 216 363 256 386 Z"
+          fill="#F7F4EE"/>
+    <!-- right page -->
+    <path d="M256 168 C298 142 342 138 380 146 C388 148 394 155 394 164 L394 350 C394 360 385 368 375 366 C340 359 296 363 256 386 Z"
+          fill="#FFFFFF"/>
+    <!-- spine -->
+    <rect x="250" y="168" width="12" height="218" rx="6" fill="#2C2C2A" opacity="0.18"/>
+    <!-- text lines left -->
+    <path d="M150 196 H232" stroke="#7F77DD" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+    <path d="M150 224 H224" stroke="#7F77DD" stroke-width="10" stroke-linecap="round" opacity="0.4"/>
+    <path d="M150 252 H232" stroke="#7F77DD" stroke-width="10" stroke-linecap="round" opacity="0.4"/>
+    <!-- text lines right -->
+    <path d="M280 196 H362" stroke="#5DCAA5" stroke-width="10" stroke-linecap="round" opacity="0.6"/>
+    <path d="M288 224 H362" stroke="#5DCAA5" stroke-width="10" stroke-linecap="round" opacity="0.45"/>
+    <path d="M280 252 H362" stroke="#5DCAA5" stroke-width="10" stroke-linecap="round" opacity="0.45"/>
+  </g>
+
+  <!-- sparkle / star above book -->
+  <path d="M256 96 L268 132 L304 144 L268 156 L256 192 L244 156 L208 144 L244 132 Z"
+        fill="#FFD45E"/>
+  <circle cx="350" cy="120" r="9" fill="#FFD45E" opacity="0.9"/>
+  <circle cx="168" cy="132" r="6" fill="#FFFFFF" opacity="0.85"/>
+</svg>
