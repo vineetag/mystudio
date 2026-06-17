@@ -38,19 +38,36 @@ export interface SafetyVerdict {
 export type SafetyAction = "allow" | "block"
 
 /**
- * Any single category at or above this level blocks the story. Level 2
- * ("concerning") is the line — we'd rather over-block kids' content than ship
- * something a parent would object to.
+ * Any single category at or above this level blocks the story. Level 3
+ * ("severe") is the hard line. We deliberately do NOT block on level 2 alone:
+ * a small Haiku screener over-scores ordinary, resolved bedtime tension (a lost
+ * teddy, a dark forest) as "concerning", which false-positived wholesome
+ * stories. Level 2 still matters — but only as corroboration below.
  */
-export const BLOCK_AT_LEVEL: SeverityLevel = 2
+export const BLOCK_AT_LEVEL: SeverityLevel = 3
 
 /**
- * Decide allow/block from a verdict. Blocks if the model flagged it OR any
- * category crosses the threshold — defense in depth against an over-generous
- * `ageAppropriate: true`.
+ * Level at which a category corroborates the model's holistic `ageAppropriate:
+ * false` call. A bare flag with everything scored 0–1 is treated as the
+ * screener being over-cautious, not a real problem.
+ */
+export const CORROBORATE_AT_LEVEL: SeverityLevel = 2
+
+/**
+ * Decide allow/block from a verdict. Blocks if:
+ *  - any category is severe (>= BLOCK_AT_LEVEL), OR
+ *  - the model flagged it AND at least one category corroborates (>= level 2).
+ * This keeps real protection while ignoring a lone, uncorroborated
+ * `ageAppropriate: false` that a cautious small model tends to emit on gentle
+ * content.
  */
 export function decideAction(verdict: SafetyVerdict): SafetyAction {
-  if (!verdict.ageAppropriate) return "block"
-  const crosses = verdict.scores.some((s) => s.level >= BLOCK_AT_LEVEL)
-  return crosses ? "block" : "allow"
+  if (verdict.scores.some((s) => s.level >= BLOCK_AT_LEVEL)) return "block"
+  if (
+    !verdict.ageAppropriate &&
+    verdict.scores.some((s) => s.level >= CORROBORATE_AT_LEVEL)
+  ) {
+    return "block"
+  }
+  return "allow"
 }

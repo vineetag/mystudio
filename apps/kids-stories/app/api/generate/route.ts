@@ -135,6 +135,12 @@ export async function POST(request: Request) {
       content: story.content,
     })
     if (safety.action === "block") {
+      console.warn("story blocked by safety screen:", {
+        reason: safety.reason,
+        ageAppropriate: safety.verdict?.ageAppropriate,
+        scores: safety.verdict?.scores,
+        concerns: safety.verdict?.concerns,
+      })
       await supabase.rpc("release_generation_slot", { uid: user.id })
       return NextResponse.json(
         { error: UNSAFE_STORY_MESSAGE, code: "unsafe_content" },
