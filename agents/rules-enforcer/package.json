@@ -1,0 +1,43 @@
+{
+  "name": "@appcrafter/rules-enforcer",
+  "version": "0.1.0",
+  "description": "Enforce a monorepo's architectural hard rules — no client-side AI/Supabase, no hardcoded secrets, no cross-module imports, required pages per app, SQL-migration discipline.",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "monorepo",
+    "lint",
+    "architecture",
+    "conventions",
+    "nextjs",
+    "supabase",
+    "ci"
+  ],
+  "bin": {
+    "rules-enforcer": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "node src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

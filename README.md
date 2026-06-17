@@ -100,6 +100,7 @@ mystudio/
 │   ├── ui/               # Shared design system — shadcn components + brand tokens
 │   ├── config/           # Shared ESLint, TypeScript, and Tailwind configs
 │   └── analytics/        # PostHog wrapper and standard event taxonomy
+├── agents/               # Open-source dev-workflow agents (rules-enforcer, ai-cost-guard)
 ├── e2e/                  # Playwright E2E tests
 ├── .claude/              # Claude Code hooks and custom skills (see below)
 ├── .github/workflows/    # CI/CD pipelines
@@ -133,13 +134,71 @@ apps/<app-name>/
 Here's what happens when you push code:
 
 1. **Push a branch** → Vercel automatically builds and deploys a preview URL for that branch
-2. **Open a PR** → GitHub Actions kicks off two things:
+2. **Push or open a PR** → GitHub Actions runs the quality gates:
+   - **Rules enforcer** — enforces the architectural hard rules (see [Agents](#agents--automated-quality-gates) below)
+   - **AI cost guard** — verifies AI spend stays centralized and capped
    - **Secret scanner** ([Gitleaks](https://gitleaks.io)) — checks for accidentally committed API keys or credentials
    - **E2E test suite** — waits for the Vercel preview to be ready, then runs Playwright tests against it
-3. **Tests pass** → PR can be merged to `main`
+3. **Gates pass** → PR can be merged to `main`
 4. **Merge to `main`** → Vercel auto-deploys to production
 
 No manual deploys. No "works on my machine." If the preview passes E2E, it ships.
+
+---
+
+## Agents — automated quality gates
+
+A monorepo has architectural rules that are easy to break silently in a PR and
+painful to fix later. So I built a small suite of **agents** that enforce them
+automatically. They come in two tiers.
+
+### Dev-workflow agents (`/agents`)
+
+Generic, cross-app agents that keep the whole repo healthy. Each is a
+self-contained, **zero-dependency** TypeScript CLI (open-source, scoped
+`@appcrafter/*`, publishable to npm on its own).
+
+| Agent | What it enforces |
+|---|---|
+| **[`rules-enforcer`](./agents/rules-enforcer)** | The architectural hard rules: no client-side AI/Supabase calls, no hardcoded secrets, no cross-module imports (must go through `index.ts`), every app has its required pages (overview, release-notes, privacy, disclaimer, admin), and DB changes use versioned SQL migrations. |
+| **[`ai-cost-guard`](./agents/ai-cost-guard)** | AI spend safety: every AI call routes through the single audited `lib/ai.ts`, which must enforce a per-user rate limit, a hard monthly spend cap, and a system prompt on every model call. |
+
+These are **deterministic** on purpose — the rules are machine-checkable, so a
+plain static check is free, instant, reproducible, and needs no API key. (Fuzzy
+judgment is reserved for LLM agents — see the next tier.)
+
+**Run them locally:**
+
+```bash
+pnpm agents:rules     # rules-enforcer
+pnpm agents:cost      # ai-cost-guard
+```
+
+They run from TypeScript source directly (Node ≥ 20), exit non-zero on
+violations, and support `--json`, `--strict`, `--app <name>`, and `--rule <name>`.
+Configure via `rules-enforcer.config.json` / `ai-cost-guard.config.json` at the
+repo root.
+
+### App-level agents (`apps/<app>/modules/...`)
+
+Runtime AI features specific to one app. They encode product logic, so they ship
+with the app rather than the open-source `/agents` folder.
+
+| Agent | App | What it does |
+|---|---|---|
+| **[`story-safety`](./apps/kids-stories/modules/safety)** | ZippyTales | An LLM screener that checks every generated story for age-appropriateness *before* it reaches a child — defense in depth on top of the strict generation prompt. Routes through `lib/ai`, so it inherits the same spend cap. |
+
+### How they're triggered
+
+| Layer | How |
+|---|---|
+| **CI** | `.github/workflows/rules-enforcer.yml` and `ai-cost-guard.yml` run on every push and PR; a violation blocks merge. |
+| **CLI / pnpm** | `pnpm agents:rules`, `pnpm agents:cost`. |
+| **Claude Code** | Each dev agent ships a wrapper in `.claude/agents/` — invoke `@rules-enforcer` / `@ai-cost-guard` in a session and it runs the CLI and explains the findings. |
+| **Runtime** | App-level agents (like `story-safety`) run inside the request flow automatically. |
+
+See [`agents/README.md`](./agents/README.md) for the full catalog and conventions
+for adding new agents.
 
 ---
 

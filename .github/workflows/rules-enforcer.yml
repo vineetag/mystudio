@@ -1,0 +1,28 @@
+name: Rules Enforcer
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+jobs:
+  enforce:
+    name: Enforce architectural rules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Zero runtime deps — Node 24 runs the TypeScript source directly, so no
+      # install/build step is needed for the checker itself.
+      - name: Run rules-enforcer
+        run: node agents/rules-enforcer/src/cli.ts --root .

@@ -8,6 +8,8 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean",
+    "agents:rules": "node agents/rules-enforcer/src/cli.ts --root .",
+    "agents:cost": "node agents/ai-cost-guard/src/cli.ts --root .",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report"
