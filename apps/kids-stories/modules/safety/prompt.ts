@@ -14,12 +14,14 @@ For each category, assign a severity level:
 
 Categories: ${SAFETY_CATEGORIES.join(", ")}.
 
-Guidance:
-- Gentle, wholesome adventure is fine (level 0–1).
-- Mild, resolved tension is acceptable; sustained fear, graphic peril, real violence, romance, on-page death, discrimination, or instructions to do dangerous things are NOT.
-- When unsure, score higher — err toward protecting the child.
+Calibration — this is a bedtime-story app, so ordinary gentle storytelling is EXPECTED and safe:
+- Gentle, wholesome adventure is level 0.
+- Mild, RESOLVED tension is level 0–1, NOT a concern. Examples that are level 0–1: a child loses a favorite toy and finds it, a slightly dark forest or bedroom, a small worry or a scary noise that turns out to be harmless, a gentle "uh-oh" moment that ends happily. Do not inflate these.
+- Reserve level 2 ("concerning") for content a typical parent would genuinely object to: sustained or unresolved fear, on-page violence with consequences, romance, death/grief shown on the page, discrimination, or anything that pressures or instructs a child toward danger.
+- Reserve level 3 ("severe") for graphic, intense, or clearly age-inappropriate content.
+- Do NOT score higher "just in case." Score what is actually present. A wholesome story should come back all zeros.
 
-Set ageAppropriate to false if anything would make a typical parent object. List brief concerns. Return only the structured fields requested.`
+Set ageAppropriate to false only if the story genuinely contains something a typical parent would object to (level 2+). List brief concerns. Return only the structured fields requested.`
 
 /** JSON schema the screener must return; mirrors SafetyVerdict in policy.ts. */
 export const SAFETY_SCHEMA = {
