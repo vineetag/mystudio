@@ -17,7 +17,7 @@ const apps: AppData[] = [
     name: "ZippyTales",
     emoji: "📚",
     description:
-      "AI-powered bedtime stories personalized for your child's name, age, and favorite themes.",
+      "AI-powered bedtime stories sparked by your child's favorite themes and imagination.",
     status: "Live",
     gradient: "linear-gradient(135deg, #4C1D95 0%, #7C3AED 40%, #EC4899 100%)",
     href: "https://zippytales.app",
@@ -271,11 +271,20 @@ function WealthTrackerPreview() {
 
 function AppCard({ app }: { app: AppData }) {
   const isClickable = app.href !== "#"
-  const cardClassName = `flex flex-col rounded-2xl overflow-hidden transition-all duration-200 ease-out border border-white/[0.08] aspect-[3/4] min-h-[420px] max-h-[520px] ${
+  const isLive = app.status === "Live"
+  const cardClassName = `flex flex-col rounded-2xl overflow-hidden transition-all duration-200 ease-out aspect-[3/4] min-h-[420px] max-h-[520px] ${
+    isLive ? "border-2 border-white/[0.22]" : "border border-white/[0.08]"
+  } ${
     isClickable
-      ? "cursor-pointer hover:scale-[1.02] hover:border-white/[0.16]"
+      ? "cursor-pointer hover:scale-[1.02] hover:border-white/[0.3]"
       : "cursor-default"
   }`
+  const cardStyle = {
+    background: app.gradient,
+    ...(isLive
+      ? { boxShadow: "0 0 0 1px rgba(255,255,255,0.06), 0 20px 50px -12px rgba(236,72,153,0.45)" }
+      : {}),
+  }
 
   const content = (
     <>
@@ -290,6 +299,28 @@ function AppCard({ app }: { app: AppData }) {
           </div>
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
             <span className="text-white font-semibold text-lg">{app.name}</span>
+            {app.status === "Live" && (
+              <span
+                className="rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0 flex items-center gap-1.5 uppercase tracking-wide"
+                style={{
+                  background: "rgba(52,211,153,0.18)",
+                  color: "#34D399",
+                  border: "1px solid rgba(52,211,153,0.4)",
+                }}
+              >
+                <span className="relative flex shrink-0" style={{ width: 7, height: 7 }}>
+                  <span
+                    className="absolute inline-flex h-full w-full rounded-full animate-ping"
+                    style={{ background: "#34D399", opacity: 0.75 }}
+                  />
+                  <span
+                    className="relative inline-flex rounded-full"
+                    style={{ width: 7, height: 7, background: "#34D399" }}
+                  />
+                </span>
+                Live
+              </span>
+            )}
             {app.status === "Coming Soon" && (
               <span
                 className="rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0 flex items-center gap-1.5"
@@ -309,8 +340,12 @@ function AppCard({ app }: { app: AppData }) {
           </div>
         </div>
         <span
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm shrink-0"
-          style={{ background: "rgba(255,255,255,0.15)" }}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0"
+          style={
+            isLive
+              ? { background: "#ffffff", color: "#7C3AED", fontWeight: 700 }
+              : { background: "rgba(255,255,255,0.15)", color: "#ffffff" }
+          }
           aria-hidden="true"
         >
           →
@@ -341,7 +376,7 @@ function AppCard({ app }: { app: AppData }) {
 
   if (!isClickable) {
     return (
-      <div className={cardClassName} style={{ background: app.gradient }}>
+      <div className={cardClassName} style={cardStyle}>
         {content}
       </div>
     )
@@ -354,7 +389,7 @@ function AppCard({ app }: { app: AppData }) {
         target="_blank"
         rel="noopener noreferrer"
         className={cardClassName}
-        style={{ background: app.gradient }}
+        style={cardStyle}
       >
         {content}
       </a>
@@ -362,7 +397,7 @@ function AppCard({ app }: { app: AppData }) {
   }
 
   return (
-    <Link href={app.href} className={cardClassName} style={{ background: app.gradient }}>
+    <Link href={app.href} className={cardClassName} style={cardStyle}>
       {content}
     </Link>
   )
