@@ -26,11 +26,18 @@ export function SiteNav() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2">
-              <span
-                className="w-3 h-3 rounded-[3px] shrink-0"
-                style={{ background: "#FF6B2B" }}
-              />
+            <Link href="/" className="flex items-center gap-2.5" aria-label="AppCrafter Studio — home">
+              <svg viewBox="0 0 32 32" className="w-7 h-7 shrink-0" aria-hidden="true">
+                <defs>
+                  <linearGradient id="nav-ac" x1="4" y1="15" x2="17" y2="28" gradientUnits="userSpaceOnUse">
+                    <stop offset="0" stopColor="#FF8F5A" />
+                    <stop offset="1" stopColor="#FF6B2B" />
+                  </linearGradient>
+                </defs>
+                <rect x="15" y="4" width="13" height="13" rx="4" fill="#FF6B2B" opacity="0.4" />
+                <rect x="9.5" y="9.5" width="13" height="13" rx="4" fill="#FF6B2B" opacity="0.7" />
+                <rect x="4" y="15" width="13" height="13" rx="4" fill="url(#nav-ac)" />
+              </svg>
               <span className="font-semibold text-white text-sm">AppCrafter Studio</span>
             </Link>
 
