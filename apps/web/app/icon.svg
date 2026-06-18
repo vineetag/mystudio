@@ -1,4 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <rect width="32" height="32" rx="8" fill="#0a0a0a"/>
-  <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="13" fill="#ffffff" letter-spacing="-0.5">AC</text>
+  <defs>
+    <linearGradient id="ac-front" x1="4" y1="15" x2="17" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF8F5A"/>
+      <stop offset="1" stop-color="#FF6B2B"/>
+    </linearGradient>
+  </defs>
+  <rect x="15" y="4" width="13" height="13" rx="4" fill="#FF6B2B" opacity="0.4"/>
+  <rect x="9.5" y="9.5" width="13" height="13" rx="4" fill="#FF6B2B" opacity="0.7"/>
+  <rect x="4" y="15" width="13" height="13" rx="4" fill="url(#ac-front)"/>
 </svg>
