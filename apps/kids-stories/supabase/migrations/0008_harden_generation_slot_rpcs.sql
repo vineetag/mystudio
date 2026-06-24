@@ -1,6 +1,7 @@
--- 0007_harden_generation_slot_rpcs.sql
--- Keep generation slot mutation RPCs server-only. They accept caller-supplied
--- uid/daily_limit values, so browser sessions must not be able to execute them.
+-- 0008_harden_generation_slot_rpcs.sql
+-- Supersedes 0007_rpc_auth_checks: keep generation slot mutation RPCs server-only
+-- (they accept caller-supplied uid/daily_limit values). Bind daily-count reads
+-- to the current user. Restrict aggregate spend to service role.
 
 create or replace function public.stories_generated_today(uid uuid)
 returns int
@@ -156,3 +157,26 @@ revoke execute on function public.stories_generated_today(uuid, text) from publi
 
 grant execute on function public.stories_generated_today(uuid) to authenticated, service_role;
 grant execute on function public.stories_generated_today(uuid, text) to authenticated, service_role;
+
+-- Supersedes the weaker 0007_rpc_auth_checks version with service-role-only access.
+create or replace function public.ai_spend_this_month()
+returns numeric
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'Not authorized to read AI spend' using errcode = '42501';
+  end if;
+
+  return (
+    select coalesce(sum(cost_usd), 0)::numeric
+    from public.ai_usage
+    where created_at >= date_trunc('month', now() at time zone 'UTC')
+  );
+end;
+$$;
+
+revoke execute on function public.ai_spend_this_month() from public, anon, authenticated;
+grant execute on function public.ai_spend_this_month() to service_role;
