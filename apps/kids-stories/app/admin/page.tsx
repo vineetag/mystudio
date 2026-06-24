@@ -102,7 +102,7 @@ export default async function AdminPage() {
       .select("cost_usd, input_tokens, output_tokens")
       .gte("created_at", monthStart),
     ...THEME_OPTIONS.map((t) =>
-      db.from("stories").select("*", countHead).eq("theme", t.key),
+      db.from("stories").select("*", countHead).contains("theme", [t.key]),
     ),
   ])
 
@@ -122,7 +122,7 @@ export default async function AdminPage() {
           id: string
           title: string
           child_name: string
-          theme: string
+          theme: string[]
           illustration: string | null
           created_at: string
         }[]
