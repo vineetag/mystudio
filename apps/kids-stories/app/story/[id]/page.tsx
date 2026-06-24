@@ -6,6 +6,7 @@ import { createClient } from "@/lib/db"
 import { Clock, BookmarkPlus, Sparkles } from "lucide-react"
 import { THEME_OPTIONS } from "@/modules/kids-stories"
 import { PrintButton } from "./print-button"
+import { StoryViewTracker } from "@/components/story-view-tracker"
 
 interface StoryRow {
   id: string
@@ -89,6 +90,7 @@ export default async function StoryPage({
 
   return (
     <main className="min-h-[calc(100dvh-4rem)] px-6 py-12 animate-fade-in">
+      <StoryViewTracker storyId={story.id} themes={story.theme} />
       <article className="mx-auto w-full max-w-2xl">
         {/* Save-to-library nudge for anonymous visitors (arrival) */}
         {isAnonymous && (

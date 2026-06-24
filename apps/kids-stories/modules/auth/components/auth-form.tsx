@@ -7,6 +7,7 @@ import { ShieldCheck } from "lucide-react"
 import { Button } from "@studio/ui"
 import { createClient } from "@/lib/supabase-browser"
 import { ANON_CLAIM_KEY } from "@/components/story-claimer"
+import { Events, useAnalytics } from "@/lib/analytics"
 
 type Mode = "login" | "signup"
 
@@ -64,6 +65,7 @@ function GoogleIcon() {
 
 export function AuthForm({ mode }: { mode: Mode }) {
   const searchParams = useSearchParams()
+  const { track } = useAnalytics()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -164,6 +166,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
             },
           )
           if (error) throw error
+          track(Events.AUTH_SIGN_UP, { method: "email_upgrade" })
           setConfirmed(true)
           setNotice(
             "Check your inbox to confirm your email. Your stories will be waiting in your library.",
@@ -178,6 +181,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
             },
           })
           if (error) throw error
+          track(Events.AUTH_SIGN_UP, { method: "email" })
 
           if (data.session) {
             window.location.href = redirectTo
