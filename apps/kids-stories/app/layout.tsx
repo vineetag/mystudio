@@ -5,6 +5,7 @@ import { Toaster } from "sonner"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { StoryClaimer } from "@/components/story-claimer"
+import { TimezoneSync } from "@/components/timezone-sync"
 import { AppAnalytics } from "@/components/app-analytics"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
@@ -41,6 +42,7 @@ export default function RootLayout({
           posthogHost={process.env.NEXT_PUBLIC_POSTHOG_HOST}
         >
           <StoryClaimer />
+          <TimezoneSync />
           <Navbar />
           <div className="flex-1">{children}</div>
           <Footer />

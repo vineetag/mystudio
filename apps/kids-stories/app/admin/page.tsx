@@ -1,7 +1,15 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { cookies } from "next/headers"
 import { notFound, redirect } from "next/navigation"
+import { LocalDate } from "@/components/local-date"
+import {
+  collectUserEmails,
+  getAdminAllowlist,
+  isAdminUser,
+} from "@/lib/admin"
 import { createClient, createServiceClient } from "@/lib/db"
+import { resolveTimezone, USER_TIMEZONE_COOKIE } from "@/lib/timezone"
 import { THEME_OPTIONS } from "@/modules/kids-stories"
 
 export const metadata: Metadata = { title: "Admin · ZippyTales" }
@@ -9,15 +17,7 @@ export const metadata: Metadata = { title: "Admin · ZippyTales" }
 export const dynamic = "force-dynamic"
 
 const MONTHLY_BUDGET_USD = Number(process.env.ANTHROPIC_MONTHLY_BUDGET_USD ?? "20")
-
-function isAdmin(email: string | undefined): boolean {
-  if (!email) return false
-  const allow = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean)
-  return allow.includes(email.toLowerCase())
-}
+const isDev = process.env.NODE_ENV === "development"
 
 export default async function AdminPage() {
   // 1. Auth + admin gate. Middleware already requires login; non-admins get 404
@@ -27,18 +27,55 @@ export default async function AdminPage() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect("/auth/login?redirectTo=/admin")
-  if (!isAdmin(user.email)) notFound()
+  if (!isAdminUser(user)) {
+    if (isDev) {
+      const allowlist = getAdminAllowlist()
+      const sessionEmails = collectUserEmails(user)
+      return (
+        <main className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center px-6 text-center">
+          <h1 className="text-2xl font-extrabold text-ink">
+            Admin access denied (dev only)
+          </h1>
+          <p className="mt-3 max-w-lg text-sm text-ink-muted">
+            /admin returns 404 in production for non-admins. In development we
+            show why access failed so you can fix env or auth mismatches.
+          </p>
+          <dl className="mt-6 w-full max-w-md rounded-card bg-white p-5 text-left text-sm shadow-sm">
+            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2">
+              <dt className="font-medium text-ink">Session emails</dt>
+              <dd className="text-ink-muted">
+                {sessionEmails.length > 0 ? sessionEmails.join(", ") : "(none)"}
+              </dd>
+              <dt className="font-medium text-ink">ADMIN_EMAILS</dt>
+              <dd className="text-ink-muted">
+                {allowlist.length > 0
+                  ? allowlist.join(", ")
+                  : "(not set — add ADMIN_EMAILS to .env.local and restart dev)"}
+              </dd>
+            </div>
+          </dl>
+          <Link
+            href="/"
+            className="mt-6 inline-flex h-11 items-center justify-center rounded-pill bg-brand-purple px-6 text-base font-semibold text-white hover:bg-brand-purple/90"
+          >
+            Back to home
+          </Link>
+        </main>
+      )
+    }
+    notFound()
+  }
 
   // 2. Global stats via the service client (bypasses RLS — admin needs an
   // all-users view). Safe: we only get here after the admin check above.
   const db = createServiceClient()
-  const now = new Date()
-  const monthStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
-  ).toISOString()
-  const dayStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  ).toISOString()
+  const cookieStore = await cookies()
+  const tz = resolveTimezone(cookieStore.get(USER_TIMEZONE_COOKIE)?.value)
+
+  const [{ data: monthStart }, { data: dayStart }] = await Promise.all([
+    db.rpc("local_month_start", { tz }),
+    db.rpc("local_day_start", { tz }),
+  ])
 
   const countHead = { count: "exact" as const, head: true }
 
@@ -196,12 +233,7 @@ export default async function AdminPage() {
                     <span className="hidden text-sm text-ink-muted sm:inline">
                       for {s.child_name}
                     </span>
-                    <span className="shrink-0 text-sm text-ink-muted">
-                      {new Date(s.created_at).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </span>
+                    <LocalDate iso={s.created_at} compact className="shrink-0 text-sm text-ink-muted" />
                   </Link>
                 </li>
               ))}

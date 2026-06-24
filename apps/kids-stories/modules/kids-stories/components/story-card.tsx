@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Clock } from "lucide-react"
+import { LocalDate } from "@/components/local-date"
 import { THEME_OPTIONS } from "../themes"
 
 export interface StoryCardData {
@@ -17,11 +18,6 @@ export function StoryCard({ story }: { story: StoryCardData }) {
   const themeLabels = story.theme
     .map((k) => THEME_OPTIONS.find((t) => t.key === k)?.label ?? k)
     .join(" · ")
-  const date = new Date(story.created_at).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  })
   const readMins = story.content
     ? Math.ceil(story.content.trim().split(/\s+/).length / 200)
     : null
@@ -47,7 +43,8 @@ export function StoryCard({ story }: { story: StoryCardData }) {
       </h3>
       <div className="mt-auto flex items-center justify-between gap-2 pt-2">
         <p className="text-sm text-ink-muted">
-          {story.child_name ? `For ${story.child_name} · ` : ""}{date}
+          {story.child_name ? `For ${story.child_name} · ` : ""}
+          <LocalDate iso={story.created_at} />
         </p>
         {readMins !== null && (
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-purple/10 px-2.5 py-0.5 text-xs font-semibold text-brand-purple">
