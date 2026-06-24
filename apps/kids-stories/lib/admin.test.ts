@@ -35,7 +35,7 @@ describe("isAdminUser", () => {
     const user = {
       email: "vine.et140@gmail.com",
       identities: [],
-    } as User
+    } as unknown as User
 
     expect(isAdminUser(user)).toBe(true)
   })
@@ -50,7 +50,7 @@ describe("isAdminUser", () => {
           identity_data: { email: "vineet140@gmail.com" },
         },
       ],
-    } as User
+    } as unknown as User
 
     expect(collectUserEmails(user)).toEqual(["vineet140@gmail.com"])
     expect(isAdminUser(user)).toBe(true)

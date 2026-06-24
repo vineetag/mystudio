@@ -8,6 +8,7 @@ import { Button } from "@studio/ui"
 import { createClient } from "@/lib/supabase-browser"
 import { ANON_CLAIM_KEY } from "@/lib/anon-claim"
 import { Events, useAnalytics } from "@/lib/analytics"
+import { safeAuthRedirectPath } from "@/lib/redirects"
 
 type Mode = "login" | "signup"
 
@@ -80,7 +81,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   // UUID); for Google we signInWithOAuth and let StoryClaimer move the stories.
   const [isAnonymous, setIsAnonymous] = useState(false)
 
-  const redirectTo = searchParams.get("redirectTo") ?? "/library"
+  const redirectTo = safeAuthRedirectPath(searchParams.get("redirectTo"))
 
   useEffect(() => {
     const supabase = createClient()
