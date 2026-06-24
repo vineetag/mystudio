@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import { ANON_CLAIM_COOKIE } from "@/lib/anon-claim"
 
 // Routes requiring a permanent (non-anonymous) account.
 const PROTECTED_PREFIXES = ["/library", "/admin"]
@@ -66,6 +67,18 @@ export async function updateSession(request: NextRequest) {
       redirectResponse.cookies.set(cookie)
     })
     return redirectResponse
+  }
+
+  // Bind anonymous story ownership to this browser via an httpOnly cookie so
+  // /api/claim-stories can verify the caller actually held the anon session.
+  if (user?.is_anonymous) {
+    supabaseResponse.cookies.set(ANON_CLAIM_COOKIE, user.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    })
   }
 
   return supabaseResponse

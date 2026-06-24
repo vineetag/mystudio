@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { ShieldCheck } from "lucide-react"
 import { Button } from "@studio/ui"
 import { createClient } from "@/lib/supabase-browser"
-import { ANON_CLAIM_KEY } from "@/components/story-claimer"
+import { ANON_CLAIM_KEY } from "@/lib/anon-claim"
 import { Events, useAnalytics } from "@/lib/analytics"
 
 type Mode = "login" | "signup"
