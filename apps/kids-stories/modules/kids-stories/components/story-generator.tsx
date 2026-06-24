@@ -13,6 +13,7 @@ import { FeaturedObjectPicker } from "./featured-object-picker"
 import { StoryLengthPicker } from "./story-length-picker"
 import LoadingScreen from "@/components/loading/LoadingScreens"
 import { Events, useAnalytics } from "@/lib/analytics"
+import { getBrowserTimezone } from "@/lib/timezone"
 import type { ThemeKey } from "../themes"
 
 const FORM_STATE_KEY = "story-generator-state"
@@ -104,6 +105,7 @@ export function StoryGenerator() {
           gender: gender || undefined,
           featuredObject: featuredObject.length > 0 ? featuredObject.join(", ") : undefined,
           storyLength,
+          timezone: getBrowserTimezone(),
         }),
       })
 

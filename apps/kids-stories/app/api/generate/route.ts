@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/db"
+import { timezoneFromRequest } from "@/lib/timezone"
 import {
   generateStory,
   THEMES,
@@ -15,7 +16,7 @@ export const runtime = "nodejs"
 
 const MAX_NAME_LENGTH = 50
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -24,8 +25,11 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 })
   }
 
+  const tz = timezoneFromRequest(request)
+
   const { data: used, error } = await supabase.rpc("stories_generated_today", {
     uid: user.id,
+    tz,
   })
   if (error) {
     return NextResponse.json({ error: "Could not check limit." }, { status: 500 })
@@ -89,11 +93,14 @@ export async function POST(request: Request) {
   const parsedStoryLength: "short" | "medium" | "long" =
     storyLength === "short" || storyLength === "long" ? storyLength : "medium"
 
+  const tz = timezoneFromRequest(request, body as { timezone?: unknown })
+
   // 3. Generate (enforces daily + monthly limits inside lib/ai.ts).
   let story
   try {
     story = await generateStory({
       userId: user.id,
+      timezone: tz,
       childName: name || undefined,
       themes: themes as Theme[],
       ageRange: age,
@@ -141,14 +148,14 @@ export async function POST(request: Request) {
         scores: safety.verdict?.scores,
         concerns: safety.verdict?.concerns,
       })
-      await supabase.rpc("release_generation_slot", { uid: user.id })
+      await supabase.rpc("release_generation_slot", { uid: user.id, tz })
       return NextResponse.json(
         { error: UNSAFE_STORY_MESSAGE, code: "unsafe_content" },
         { status: 422 },
       )
     }
   } catch (err) {
-    await supabase.rpc("release_generation_slot", { uid: user.id })
+    await supabase.rpc("release_generation_slot", { uid: user.id, tz })
     if (err instanceof SpendCapError) {
       return NextResponse.json(
         { error: "Story generation is paused for now. Please try again later.", code: "spend_cap" },

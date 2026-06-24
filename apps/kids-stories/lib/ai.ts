@@ -2,6 +2,7 @@ import "server-only"
 
 import Anthropic from "@anthropic-ai/sdk"
 import { createServiceClient } from "@/lib/db"
+import { resolveTimezone } from "@/lib/timezone"
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -40,6 +41,8 @@ export interface GeneratedStory {
 
 export interface GenerateStoryInput {
   userId: string
+  /** IANA timezone for daily limit boundaries (defaults to UTC). */
+  timezone?: string
   childName?: string  // optional — AI invents a gender-neutral name if omitted
   themes: Theme[]     // 1–2 themes
   ageRange?: string
@@ -217,6 +220,7 @@ export async function generateStory(
   input: GenerateStoryInput,
 ): Promise<GeneratedStory> {
   const supabase = createServiceClient()
+  const tz = resolveTimezone(input.timezone)
 
   // 1. Hard monthly spend cap (no side effects, so check before claiming).
   const { data: spend, error: spendError } = await supabase.rpc(
@@ -230,7 +234,7 @@ export async function generateStory(
   // 2. Atomically claim a daily slot (race-safe insert-if-under-limit).
   const { data: claimed, error: claimError } = await supabase.rpc(
     "claim_generation_slot",
-    { uid: input.userId, daily_limit: DAILY_STORY_LIMIT },
+    { uid: input.userId, daily_limit: DAILY_STORY_LIMIT, tz },
   )
   if (claimError) throw claimError
   if (!claimed) throw new DailyLimitError(DAILY_STORY_LIMIT)
@@ -319,7 +323,7 @@ export async function generateStory(
     return parsed
   } catch (err) {
     // Refund the claimed daily slot — no usable story was produced.
-    await supabase.rpc("release_generation_slot", { uid: input.userId })
+    await supabase.rpc("release_generation_slot", { uid: input.userId, tz })
     throw err
   }
 }
