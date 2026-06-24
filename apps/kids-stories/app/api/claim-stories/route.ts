@@ -1,4 +1,6 @@
+import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
+import { ANON_CLAIM_COOKIE } from "@/lib/anon-claim"
 import { createClient, createServiceClient } from "@/lib/db"
 
 export const runtime = "nodejs"
@@ -7,8 +9,12 @@ export const runtime = "nodejs"
  * Transfers stories from an anonymous user to the currently authenticated user.
  * Called by StoryClaimer after a visitor who generated stories anonymously signs
  * into a permanent account. Uses the service client to bypass RLS on the move.
+ *
+ * The anonymous source id is read from an httpOnly cookie (set by middleware),
+ * not from the request body — so a signed-in user cannot claim another visitor's
+ * stories by guessing their UUID.
  */
-export async function POST(request: Request) {
+export async function POST() {
   const supabase = await createClient()
   const {
     data: { user },
@@ -18,19 +24,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 })
   }
 
-  let body: unknown
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ ok: true })
-  }
-
-  const anonId = typeof (body as { anonId?: unknown }).anonId === "string"
-    ? (body as { anonId: string }).anonId
-    : null
+  const anonId = (await cookies()).get(ANON_CLAIM_COOKIE)?.value ?? null
 
   if (!anonId || anonId === user.id) {
-    return NextResponse.json({ ok: true })
+    return clearClaimCookie(NextResponse.json({ ok: true }))
   }
 
   const svc = createServiceClient()
@@ -40,10 +37,21 @@ export async function POST(request: Request) {
   // seize their stories (IDOR).
   const { data: source } = await svc.auth.admin.getUserById(anonId)
   if (!source.user?.is_anonymous) {
-    return NextResponse.json({ ok: true })
+    return clearClaimCookie(NextResponse.json({ ok: true }))
   }
 
   await svc.from("stories").update({ user_id: user.id }).eq("user_id", anonId)
 
-  return NextResponse.json({ ok: true })
+  return clearClaimCookie(NextResponse.json({ ok: true }))
+}
+
+function clearClaimCookie(response: NextResponse) {
+  response.cookies.set(ANON_CLAIM_COOKIE, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  })
+  return response
 }

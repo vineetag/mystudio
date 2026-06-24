@@ -2,9 +2,8 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { ANON_CLAIM_KEY } from "@/lib/anon-claim"
 import { createClient } from "@/lib/supabase-browser"
-
-export const ANON_CLAIM_KEY = "zippy_anon_uid"
 
 /**
  * Transfers stories created during an anonymous session to a user's permanent
@@ -49,11 +48,7 @@ export function StoryClaimer() {
       }
 
       try {
-        const res = await fetch("/api/claim-stories", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ anonId }),
-        })
+        const res = await fetch("/api/claim-stories", { method: "POST" })
         if (res.ok) {
           safeClear()
           // Re-render server components (e.g. /library) with the moved stories.
