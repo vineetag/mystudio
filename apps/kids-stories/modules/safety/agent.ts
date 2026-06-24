@@ -15,7 +15,18 @@ import {
 } from "./prompt"
 
 /** Toggle screening off entirely (e.g. to save cost in a low-risk env). */
-const ENABLED = process.env.STORY_SAFETY_ENABLED !== "false"
+function isSafetyEnabled(): boolean {
+  if (process.env.STORY_SAFETY_ENABLED === "false") return false
+  if (process.env.STORY_SAFETY_ENABLED === "true") return true
+
+  const isLocal = process.env.NODE_ENV === "development"
+  const isPreview = process.env.VERCEL_ENV === "preview"
+  if (isLocal || isPreview) return false
+
+  return true
+}
+
+const ENABLED = isSafetyEnabled()
 /**
  * If the screener itself fails (model/parse/transport error), do we allow or
  * block? Default "closed" (block) — for child safety we don't ship unscreened

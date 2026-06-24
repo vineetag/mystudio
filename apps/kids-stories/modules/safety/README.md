@@ -45,7 +45,7 @@ No dependency cycle: `lib/ai` never imports this module; this module calls into
 
 | Var | Default | Effect |
 |-----|---------|--------|
-| `STORY_SAFETY_ENABLED` | `true` | Set `false` to skip screening (saves one model call per story). |
+| `STORY_SAFETY_ENABLED` | auto | `false` disables everywhere; `true` forces on (even locally); unset = **on in production only**, off in local dev and Vercel preview. |
 | `STORY_SAFETY_FAIL_MODE` | `closed` | If the screener errors, `closed` blocks (safe default for kids); `open` allows. |
 
 ## Cost note

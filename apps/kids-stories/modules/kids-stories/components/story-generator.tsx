@@ -12,6 +12,7 @@ import { GenderPicker } from "./gender-picker"
 import { FeaturedObjectPicker } from "./featured-object-picker"
 import { StoryLengthPicker } from "./story-length-picker"
 import LoadingScreen from "@/components/loading/LoadingScreens"
+import { Events, useAnalytics } from "@/lib/analytics"
 import type { ThemeKey } from "../themes"
 
 const FORM_STATE_KEY = "story-generator-state"
@@ -23,6 +24,7 @@ const inputClass =
 
 export function StoryGenerator() {
   const router = useRouter()
+  const { track } = useAnalytics()
 
   const [limitReached, setLimitReached] = useState(false)
   const [childName, setChildName] = useState("")
@@ -119,17 +121,30 @@ export function StoryGenerator() {
 
       if (res.status === 429) {
         setLimitReached(true)
+        track(Events.FEATURE_USED, { feature: "story_limit_reached" })
         return
       }
 
       if (!res.ok) {
+        track(Events.ERROR_OCCURRED, {
+          context: "story_generation",
+          status: res.status,
+        })
         toast.error(data.error ?? "Something went wrong. Please try again.")
         return
       }
 
+      track(Events.FEATURE_USED, {
+        feature: "story_generated",
+        themes,
+        story_length: storyLength,
+        has_child_name: Boolean(childName.trim()),
+        theme_count: themes.length,
+      })
       toast.success("Your story is ready!")
       router.push(`/story/${data.id}`)
     } catch {
+      track(Events.ERROR_OCCURRED, { context: "story_generation", status: 0 })
       toast.error("Network error. Please try again.")
     } finally {
       setLoading(false)

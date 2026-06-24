@@ -5,6 +5,7 @@ import { Toaster } from "sonner"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { StoryClaimer } from "@/components/story-claimer"
+import { AppAnalytics } from "@/components/app-analytics"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
@@ -35,11 +36,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${nunito.variable} ${lora.variable}`}>
       <body className="flex min-h-screen flex-col">
-        <StoryClaimer />
-        <Navbar />
-        <div className="flex-1">{children}</div>
-        <Footer />
-        <Toaster richColors position="top-center" />
+        <AppAnalytics
+          posthogKey={process.env.NEXT_PUBLIC_POSTHOG_KEY ?? ""}
+          posthogHost={process.env.NEXT_PUBLIC_POSTHOG_HOST}
+        >
+          <StoryClaimer />
+          <Navbar />
+          <div className="flex-1">{children}</div>
+          <Footer />
+          <Toaster richColors position="top-center" />
+        </AppAnalytics>
         <Analytics />
         <SpeedInsights />
       </body>
