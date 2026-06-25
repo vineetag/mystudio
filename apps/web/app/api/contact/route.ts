@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server"
 
 import { sendContactEmail } from "@/lib/email"
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MINUTE = 60 * 1000
+const HOUR = 60 * MINUTE
+const DAY = 24 * HOUR
 
 type Errors = Record<string, string>
 
@@ -41,6 +45,27 @@ export async function POST(request: Request) {
 
   if (Object.keys(errors).length > 0) {
     return NextResponse.json({ errors }, { status: 422 })
+  }
+
+  const clientIp = getClientIp(request)
+  const normalizedEmail = cleanEmail.toLowerCase()
+  const rateLimit = checkRateLimit([
+    // Stop short bursts from turning directly into Resend API calls.
+    { key: `contact:ip:${clientIp}:burst`, limit: 3, windowMs: MINUTE },
+    // Keep sustained abuse from one network bounded.
+    { key: `contact:ip:${clientIp}:hour`, limit: 10, windowMs: HOUR },
+    // Also throttle repeated sends for the same submitted address.
+    { key: `contact:email:${normalizedEmail}:day`, limit: 5, windowMs: DAY },
+  ])
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many messages. Please wait a bit before trying again." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+      },
+    )
   }
 
   try {
