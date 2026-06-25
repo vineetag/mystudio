@@ -24,13 +24,10 @@ export function getAdminAllowlist(): string[] {
     .map(normalizeEmailForComparison)
 }
 
-/** Collect every email Supabase may attach to a signed-in user. */
+/** Collect confirmed emails Supabase attaches to a signed-in user. */
 export function collectUserEmails(user: User): string[] {
   const emails = new Set<string>()
   if (user.email) emails.add(user.email)
-
-  const pending = (user as User & { new_email?: string | null }).new_email
-  if (pending) emails.add(pending)
 
   for (const identity of user.identities ?? []) {
     const identityEmail = identity.identity_data?.email
