@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 import type { User } from "@supabase/supabase-js"
 import {
   collectUserEmails,
@@ -25,6 +25,11 @@ describe("normalizeEmailForComparison", () => {
 })
 
 describe("isAdminUser", () => {
+  afterEach(() => {
+    delete process.env.ADMIN_EMAILS
+    delete process.env.ADMIN_EMAIL
+  })
+
   it("matches allowlisted emails from env", () => {
     process.env.ADMIN_EMAILS = "vineet140@gmail.com,other@example.com"
     expect(getAdminAllowlist()).toEqual([
@@ -54,5 +59,18 @@ describe("isAdminUser", () => {
 
     expect(collectUserEmails(user)).toEqual(["vineet140@gmail.com"])
     expect(isAdminUser(user)).toBe(true)
+  })
+
+  it("does not trust pending email changes for admin access", () => {
+    process.env.ADMIN_EMAILS = "vineet140@gmail.com"
+
+    const user = {
+      email: "attacker@example.com",
+      new_email: "vine.et140+pending@gmail.com",
+      identities: [],
+    } as unknown as User
+
+    expect(collectUserEmails(user)).toEqual(["attacker@example.com"])
+    expect(isAdminUser(user)).toBe(false)
   })
 })
