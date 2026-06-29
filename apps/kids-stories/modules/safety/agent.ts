@@ -13,18 +13,7 @@ import {
   SAFETY_SYSTEM_PROMPT,
   buildSafetyUserContent,
 } from "./prompt"
-
-/** Toggle screening off entirely (e.g. to save cost in a low-risk env). */
-function isSafetyEnabled(): boolean {
-  if (process.env.STORY_SAFETY_ENABLED === "false") return false
-  if (process.env.STORY_SAFETY_ENABLED === "true") return true
-
-  const isLocal = process.env.NODE_ENV === "development"
-  const isPreview = process.env.VERCEL_ENV === "preview"
-  if (isLocal || isPreview) return false
-
-  return true
-}
+import { isSafetyEnabled } from "./config"
 
 const ENABLED = isSafetyEnabled()
 /**

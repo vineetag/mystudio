@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createClient, createServiceClient } from "@/lib/db"
+import { createClient } from "@/lib/db"
 import { timezoneFromRequest } from "@/lib/timezone"
 import {
   generateStory,
@@ -15,17 +15,6 @@ import { screenStory, UNSAFE_STORY_MESSAGE } from "@/modules/safety"
 export const runtime = "nodejs"
 
 const MAX_NAME_LENGTH = 50
-
-async function refundGenerationSlot(userId: string, tz: string) {
-  const supabase = createServiceClient()
-  const { error } = await supabase.rpc("release_generation_slot", {
-    uid: userId,
-    tz,
-  })
-  if (error) {
-    console.error("release_generation_slot failed:", error)
-  }
-}
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -143,9 +132,8 @@ export async function POST(request: Request) {
   }
 
   // 3b. Screen for age-appropriateness BEFORE persisting or returning. The
-  // daily slot was already consumed by generateStory, so refund it whenever we
-  // don't deliver a story (blocked content or a paused spend cap) — the user
-  // shouldn't lose their allowance through no fault of their own.
+  // daily slot was already consumed by a paid generation attempt; blocked or
+  // failed screening must still count so retries cannot exhaust the AI budget.
   try {
     const safety = await screenStory({
       userId: user.id,
@@ -159,14 +147,12 @@ export async function POST(request: Request) {
         scores: safety.verdict?.scores,
         concerns: safety.verdict?.concerns,
       })
-      await refundGenerationSlot(user.id, tz)
       return NextResponse.json(
         { error: UNSAFE_STORY_MESSAGE, code: "unsafe_content" },
         { status: 422 },
       )
     }
   } catch (err) {
-    await refundGenerationSlot(user.id, tz)
     if (err instanceof SpendCapError) {
       return NextResponse.json(
         { error: "Story generation is paused for now. Please try again later.", code: "spend_cap" },

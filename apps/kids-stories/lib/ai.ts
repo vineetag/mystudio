@@ -2,6 +2,7 @@ import "server-only"
 
 import Anthropic from "@anthropic-ai/sdk"
 import { createServiceClient } from "@/lib/db"
+import { shouldRefundClaimedSlot } from "@/lib/generation-quota"
 import { resolveTimezone } from "@/lib/timezone"
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -281,15 +282,17 @@ export async function runStructuredModel(
  *   1. Hard monthly spend cap — reserved atomically in the ai_usage ledger.
  *   2. Per-user daily cap — claimed ATOMICALLY (claim_generation_slot) so two
  *      concurrent requests can't both slip past a separate count check.
- * The daily slot is refunded if generation fails, so a transient error doesn't
- * burn the user's allowance. Records token usage to the ledger. Never sends raw
- * user input without the system prompt above.
+ * The daily slot is refunded only before a potentially billable model request
+ * begins. Once we may have spent money, the attempt must count against quota.
+ * Records token usage to the ledger. Never sends raw user input without the
+ * system prompt above.
  */
 export async function generateStory(
   input: GenerateStoryInput,
 ): Promise<GeneratedStory> {
   const supabase = createServiceClient()
   const tz = resolveTimezone(input.timezone)
+  let chargeableAttemptStarted = false
 
   // 1. Hard monthly spend cap, reserved before any external model call so
   // concurrent requests cannot all pass the same pre-spend check.
@@ -338,6 +341,7 @@ export async function generateStory(
       .filter(Boolean)
       .join("\n")
 
+    chargeableAttemptStarted = true
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
@@ -384,8 +388,7 @@ export async function generateStory(
     return parsed
   } catch (err) {
     if (!usageReceived) await releaseAiSpendReservation(supabase, reservationId)
-    if (slotClaimed) {
-      // Refund the claimed daily slot — no usable story was produced.
+    if (slotClaimed && shouldRefundClaimedSlot({ chargeableAttemptStarted })) {
       await supabase.rpc("release_generation_slot", { uid: input.userId, tz })
     }
     throw err
