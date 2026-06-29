@@ -19,6 +19,11 @@ export const DAILY_STORY_LIMIT = Number(process.env.DAILY_STORY_LIMIT ?? "1")
 // Hard monthly spend ceiling (USD) across ALL users. A monorepo hard rule.
 const MONTHLY_BUDGET_USD = Number(process.env.ANTHROPIC_MONTHLY_BUDGET_USD ?? "20")
 
+// Conservative pre-call reservations prevent concurrent requests from racing the
+// monthly cap. Unused reservation is released once actual usage is known.
+const STORY_INPUT_TOKEN_RESERVATION = 2_500
+const STRUCTURED_INPUT_TOKEN_RESERVATION = 6_000
+
 // USD per 1M tokens. Keep in sync with the model above.
 const PRICING: Record<string, { input: number; output: number }> = {
   "claude-sonnet-4-6": { input: 3, output: 15 },
@@ -123,6 +128,79 @@ function estimateCostUsd(
   )
 }
 
+type ServiceClient = ReturnType<typeof createServiceClient>
+type SpendReservationId = number | string
+type ModelUsage = {
+  input_tokens: number
+  output_tokens: number
+  cache_creation_input_tokens?: number | null
+  cache_read_input_tokens?: number | null
+}
+
+function roundCostUpUsd(cost: number): number {
+  return Math.ceil(cost * 1_000_000) / 1_000_000
+}
+
+function estimateReservedCostUsd(maxInputTokens: number, maxOutputTokens: number): number {
+  return roundCostUpUsd(
+    estimateCostUsd(MODEL, maxInputTokens, maxOutputTokens, maxInputTokens, 0),
+  )
+}
+
+function costFromUsage(usage: ModelUsage): number {
+  return estimateCostUsd(
+    MODEL,
+    usage.input_tokens,
+    usage.output_tokens,
+    usage.cache_creation_input_tokens ?? 0,
+    usage.cache_read_input_tokens ?? 0,
+  )
+}
+
+async function reserveAiSpend(
+  supabase: ServiceClient,
+  userId: string,
+  maxInputTokens: number,
+  maxOutputTokens: number,
+): Promise<SpendReservationId> {
+  const { data, error } = await supabase.rpc("reserve_ai_spend", {
+    p_uid: userId,
+    p_model: MODEL,
+    p_estimated_cost: estimateReservedCostUsd(maxInputTokens, maxOutputTokens),
+    p_monthly_budget: MONTHLY_BUDGET_USD,
+  })
+  if (error) throw error
+  if (data === null || data === undefined) throw new SpendCapError()
+  return data as SpendReservationId
+}
+
+async function finalizeAiSpend(
+  supabase: ServiceClient,
+  reservationId: SpendReservationId,
+  userId: string,
+  usage: ModelUsage,
+) {
+  const { error } = await supabase.rpc("finalize_ai_spend_reservation", {
+    p_reservation_id: reservationId,
+    p_uid: userId,
+    p_model: MODEL,
+    p_input_tokens: usage.input_tokens,
+    p_output_tokens: usage.output_tokens,
+    p_cost_usd: costFromUsage(usage),
+  })
+  if (error) throw error
+}
+
+async function releaseAiSpendReservation(
+  supabase: ServiceClient,
+  reservationId: SpendReservationId,
+) {
+  const { error } = await supabase.rpc("release_ai_spend_reservation", {
+    p_reservation_id: reservationId,
+  })
+  if (error) console.error("release_ai_spend_reservation failed:", error)
+}
+
 export interface StructuredModelInput {
   /** User the spend is attributed to (recorded in the ai_usage ledger). */
   userId: string
@@ -149,67 +227,58 @@ export async function runStructuredModel(
   input: StructuredModelInput,
 ): Promise<unknown> {
   const supabase = createServiceClient()
-
-  // Hard monthly spend cap — checked before spending anything.
-  const { data: spend, error: spendError } = await supabase.rpc(
-    "ai_spend_this_month",
+  const reservationId = await reserveAiSpend(
+    supabase,
+    input.userId,
+    STRUCTURED_INPUT_TOKEN_RESERVATION,
+    input.maxTokens ?? 1024,
   )
-  if (spendError) throw spendError
-  if (Number(spend ?? 0) >= MONTHLY_BUDGET_USD) {
-    throw new SpendCapError()
-  }
 
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: input.maxTokens ?? 1024,
-    output_config: {
-      format: { type: "json_schema", schema: input.schema },
-    },
-    system: [
-      {
-        type: "text",
-        text: input.system,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages: [{ role: "user", content: input.userContent }],
-  })
-
-  // Record spend regardless of how the body parses below.
-  const usage = response.usage
-  await supabase.from("ai_usage").insert({
-    user_id: input.userId,
-    model: MODEL,
-    input_tokens: usage.input_tokens,
-    output_tokens: usage.output_tokens,
-    cost_usd: estimateCostUsd(
-      MODEL,
-      usage.input_tokens,
-      usage.output_tokens,
-      usage.cache_creation_input_tokens ?? 0,
-      usage.cache_read_input_tokens ?? 0,
-    ),
-  })
-
-  if (response.stop_reason === "refusal") {
-    throw new AIContentError("The model declined this request for safety reasons.")
-  }
-
-  const textBlock = response.content.find((b) => b.type === "text")
-  if (!textBlock || textBlock.type !== "text") {
-    throw new AIContentError("The model returned no usable output.")
-  }
-
+  let usageReceived = false
   try {
-    return JSON.parse(textBlock.text)
-  } catch {
-    throw new AIContentError("Model output was not valid JSON.")
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: input.maxTokens ?? 1024,
+      output_config: {
+        format: { type: "json_schema", schema: input.schema },
+      },
+      system: [
+        {
+          type: "text",
+          text: input.system,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages: [{ role: "user", content: input.userContent }],
+    })
+
+    // Finalize spend as soon as usage is available, before any parsing errors.
+    usageReceived = true
+    await finalizeAiSpend(supabase, reservationId, input.userId, response.usage)
+
+    if (response.stop_reason === "refusal") {
+      throw new AIContentError("The model declined this request for safety reasons.")
+    }
+
+    const textBlock = response.content.find((b) => b.type === "text")
+    if (!textBlock || textBlock.type !== "text") {
+      throw new AIContentError("The model returned no usable output.")
+    }
+
+    try {
+      return JSON.parse(textBlock.text)
+    } catch {
+      throw new AIContentError("Model output was not valid JSON.")
+    }
+  } catch (err) {
+    if (!usageReceived) await releaseAiSpendReservation(supabase, reservationId)
+    throw err
   }
 }
 
 /**
  * Generates one story for a user, enforcing BOTH limits before spending money:
- *   1. Hard monthly spend cap (via the ai_usage ledger) — checked first.
+ *   1. Hard monthly spend cap — reserved atomically in the ai_usage ledger.
  *   2. Per-user daily cap — claimed ATOMICALLY (claim_generation_slot) so two
  *      concurrent requests can't both slip past a separate count check.
  * The daily slot is refunded if generation fails, so a transient error doesn't
@@ -222,24 +291,28 @@ export async function generateStory(
   const supabase = createServiceClient()
   const tz = resolveTimezone(input.timezone)
 
-  // 1. Hard monthly spend cap (no side effects, so check before claiming).
-  const { data: spend, error: spendError } = await supabase.rpc(
-    "ai_spend_this_month",
+  // 1. Hard monthly spend cap, reserved before any external model call so
+  // concurrent requests cannot all pass the same pre-spend check.
+  const reservationId = await reserveAiSpend(
+    supabase,
+    input.userId,
+    STORY_INPUT_TOKEN_RESERVATION,
+    MAX_TOKENS,
   )
-  if (spendError) throw spendError
-  if (Number(spend ?? 0) >= MONTHLY_BUDGET_USD) {
-    throw new SpendCapError()
-  }
 
   // 2. Atomically claim a daily slot (race-safe insert-if-under-limit).
-  const { data: claimed, error: claimError } = await supabase.rpc(
-    "claim_generation_slot",
-    { uid: input.userId, daily_limit: DAILY_STORY_LIMIT, tz },
-  )
-  if (claimError) throw claimError
-  if (!claimed) throw new DailyLimitError(DAILY_STORY_LIMIT)
+  let slotClaimed = false
+  let usageReceived = false
 
   try {
+    const { data: claimed, error: claimError } = await supabase.rpc(
+      "claim_generation_slot",
+      { uid: input.userId, daily_limit: DAILY_STORY_LIMIT, tz },
+    )
+    if (claimError) throw claimError
+    if (!claimed) throw new DailyLimitError(DAILY_STORY_LIMIT)
+    slotClaimed = true
+
     const LENGTH_MAP = {
       short: "~150–200 words",
       medium: "~350–450 words",
@@ -282,21 +355,9 @@ export async function generateStory(
       messages: [{ role: "user", content: userMessage }],
     })
 
-    // Record spend regardless of how we parse the body below.
-    const usage = response.usage
-    await supabase.from("ai_usage").insert({
-      user_id: input.userId,
-      model: MODEL,
-      input_tokens: usage.input_tokens,
-      output_tokens: usage.output_tokens,
-      cost_usd: estimateCostUsd(
-        MODEL,
-        usage.input_tokens,
-        usage.output_tokens,
-        usage.cache_creation_input_tokens ?? 0,
-        usage.cache_read_input_tokens ?? 0,
-      ),
-    })
+    // Finalize spend as soon as usage is available, before any parsing errors.
+    usageReceived = true
+    await finalizeAiSpend(supabase, reservationId, input.userId, response.usage)
 
     if (response.stop_reason === "refusal") {
       throw new AIContentError(
@@ -322,8 +383,11 @@ export async function generateStory(
 
     return parsed
   } catch (err) {
-    // Refund the claimed daily slot — no usable story was produced.
-    await supabase.rpc("release_generation_slot", { uid: input.userId, tz })
+    if (!usageReceived) await releaseAiSpendReservation(supabase, reservationId)
+    if (slotClaimed) {
+      // Refund the claimed daily slot — no usable story was produced.
+      await supabase.rpc("release_generation_slot", { uid: input.userId, tz })
+    }
     throw err
   }
 }
