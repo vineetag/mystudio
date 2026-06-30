@@ -2,12 +2,11 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ANON_CLAIM_KEY } from "@/lib/anon-claim"
+import { ANON_CLAIM_KEY, parseAnonClaimMarker } from "@/lib/anon-claim"
 import { createClient } from "@/lib/supabase-browser"
 
 /**
- * Transfers stories created during an anonymous session to a user's permanent
- * account once they authenticate.
+ * Cleans up anonymous-claim state after a visitor authenticates.
  *
  * Why client-side (and not in /auth/callback): in production, Google OAuth
  * returns to the Supabase Site URL (the app root `/`), where @supabase/ssr
@@ -16,10 +15,10 @@ import { createClient } from "@/lib/supabase-browser"
  * the root layout, so it fires on whatever page OAuth lands on, the moment a
  * permanent session exists — independent of the redirect path Supabase chooses.
  *
- * The anonymous user id is stashed in localStorage before the auth redirect
- * (see auth-form). When a non-anonymous session appears whose id differs from
- * that stashed id, we move the stories server-side via /api/claim-stories, then
- * refresh so the freshly transferred stories render.
+ * The safe upgrade paths preserve the same Supabase user id, so there is no
+ * cross-account story transfer here. If a legacy marker exists after login, the
+ * server endpoint clears the old httpOnly cookie and this component clears the
+ * localStorage hint.
  */
 export function StoryClaimer() {
   const router = useRouter()
@@ -27,7 +26,9 @@ export function StoryClaimer() {
   useEffect(() => {
     let anonId: string | null = null
     try {
-      anonId = localStorage.getItem(ANON_CLAIM_KEY)
+      const stored = localStorage.getItem(ANON_CLAIM_KEY)
+      anonId = parseAnonClaimMarker(stored)
+      if (stored && !anonId) safeClear()
     } catch {
       // localStorage unavailable (private mode / blocked) — nothing to do.
     }
@@ -51,7 +52,7 @@ export function StoryClaimer() {
         const res = await fetch("/api/claim-stories", { method: "POST" })
         if (res.ok) {
           safeClear()
-          // Re-render server components (e.g. /library) with the moved stories.
+          // Re-render server components after cookie cleanup.
           router.refresh()
         } else {
           // Allow a later page load to retry.
