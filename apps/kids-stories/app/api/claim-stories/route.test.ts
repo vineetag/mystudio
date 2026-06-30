@@ -9,6 +9,10 @@ vi.mock("next/headers", () => ({
   })),
 }))
 
+vi.mock("@/lib/anon-claim", () => ({
+  ANON_CLAIM_COOKIE: "zippy_anon_claim",
+}))
+
 vi.mock("@/lib/db", () => ({
   createClient: vi.fn(async () => ({
     auth: { getUser },
