@@ -302,6 +302,25 @@ pnpm --filter kids-stories dev
 
 Other apps follow the same pattern (`pnpm --filter math-workbook dev` → port 3002, `pnpm --filter wealth dev` → port 3003).
 
+### Troubleshooting
+
+A few gotchas worth knowing when setting up locally:
+
+- **`kids-stories` returns a 500 until Supabase env is set.** Its middleware creates a Supabase client on *every* request, so an empty `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` throws before any page renders. Fill those in `apps/kids-stories/.env.local` first. (The `web`, `math-workbook`, and `wealth` apps boot without credentials.)
+
+- **A DB password with special characters breaks the migration scripts.** If your Supabase connection string's password contains characters like `@ ? $ ! /` un-encoded, `scripts/setup-db.sh` fails while `source`-ing `.env.local` (`unbound variable`) and `apps/kids-stories/scripts/run-migrations.mjs` fails to parse the URI (`ERR_INVALID_URL`). Two easy fixes:
+  - Percent-encode the password in `DATABASE_URL` (e.g. `@` → `%40`, `$` → `%24`), **or**
+  - Run `psql` directly with discrete connection env vars, which need no encoding:
+    ```bash
+    PGHOST=<host> PGPORT=<port> PGUSER=<user> PGPASSWORD='<raw-password>' \
+      PGDATABASE=postgres PGSSLMODE=require \
+      psql -f apps/kids-stories/supabase/migrations/0001_init.sql
+    ```
+
+- **The migration scripts need `psql`** (`postgresql-client`): `brew install libpq` (macOS) or `sudo apt-get install postgresql-client` (Debian/Ubuntu).
+
+- **The `/agents` CLIs need a recent Node.** `pnpm agents:rules` / `pnpm agents:cost` run TypeScript directly via `node file.ts`, which requires Node ≥ 22.18 (or Node 24, as CI uses). On older Node you'll see `ERR_UNKNOWN_FILE_EXTENSION`; either upgrade Node or pass `--experimental-strip-types`.
+
 ---
 
 ## Contributing
