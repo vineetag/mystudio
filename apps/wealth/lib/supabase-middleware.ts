@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server"
 
 // Routes only the allowlisted owner may see. Everything else is public:
 // anonymous visitors get demo mode.
-const OWNER_ONLY_PREFIXES = ["/admin"]
+const OWNER_ONLY_PREFIXES = ["/admin", "/accounts"]
 
 /**
  * Refreshes the Supabase auth session on every request and gates owner-only

@@ -25,6 +25,24 @@ export function isOwnerEmail(email: string | null | undefined): boolean {
 }
 
 /**
+ * Guard for mutating server actions: resolves to the owner's user id, or a
+ * clear refusal for anyone else (anonymous or foreign session).
+ */
+export async function requireOwner(): Promise<
+  { ok: true; userId: string } | { ok: false; error: string }
+> {
+  const viewer = await getViewer()
+  if (!viewer.isOwner || !viewer.user) {
+    return {
+      ok: false,
+      error:
+        "Only the signed-in owner can make changes. You're viewing demo mode.",
+    }
+  }
+  return { ok: true, userId: viewer.user.id }
+}
+
+/**
  * Resolve the current viewer once per request (React cache). Server-side only.
  */
 export const getViewer = cache(async (): Promise<Viewer> => {
