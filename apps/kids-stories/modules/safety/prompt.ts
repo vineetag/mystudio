@@ -38,7 +38,14 @@ export const SAFETY_SCHEMA = {
         type: "object",
         properties: {
           category: { type: "string", enum: [...SAFETY_CATEGORIES] },
-          level: { type: "integer", minimum: 0, maximum: 3 },
+          // NOTE: Do NOT add JSON-schema `minimum`/`maximum` here — the Anthropic
+          // structured-output API rejects numeric bounds on `integer` with a 400,
+          // which would fail the whole screen closed. The 0–3 range is stated in
+          // the description and enforced at parse time by clampLevel() in agent.ts.
+          level: {
+            type: "integer",
+            description: "Severity: 0 none, 1 mild, 2 concerning, 3 severe.",
+          },
         },
         required: ["category", "level"],
         additionalProperties: false,
