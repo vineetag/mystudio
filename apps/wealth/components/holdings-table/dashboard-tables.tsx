@@ -63,18 +63,18 @@ export function DashboardTables({
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Filter by symbol or account…"
           aria-label="Filter holdings"
-          className="min-h-12 w-full max-w-sm rounded-md border border-neutral-300 px-4 text-base outline-none focus:border-neutral-500"
+          className="min-h-12 w-full max-w-sm rounded-md border border-rule px-4 text-base outline-none focus:border-moss"
         />
       </div>
 
       <section>
-        <h2 className="mb-2 text-lg font-semibold text-neutral-900">All holdings</h2>
-        <p className="mb-3 text-sm text-neutral-600">
+        <h2 className="mb-2 font-display text-xl font-medium text-ink">All holdings</h2>
+        <p className="mb-3 text-sm text-ink/70">
           One row per ticker across every account — expand a row for the
           per-account breakdown.
         </p>
         {filteredConsolidated.length === 0 ? (
-          <p className="rounded-md border border-dashed border-neutral-300 p-6 text-sm text-neutral-600">
+          <p className="rounded-md border border-dashed border-rule p-6 text-sm text-ink/70">
             {needle
               ? `Nothing matches "${query}".`
               : "No holdings yet."}
@@ -86,11 +86,11 @@ export function DashboardTables({
 
       {accountSections.length > 0 && (
         <section className="flex flex-col gap-6">
-          <h2 className="text-lg font-semibold text-neutral-900">By account</h2>
+          <h2 className="font-display text-xl font-medium text-ink">By account</h2>
           {accountSections.map(({ account, positions }) => (
             <div key={account.id}>
-              <h3 className="mb-1 font-medium text-neutral-900">{account.name}</h3>
-              <p className="mb-2 text-sm text-neutral-500">
+              <h3 className="mb-1 font-medium text-ink">{account.name}</h3>
+              <p className="mb-2 text-sm text-ink/60">
                 {account.broker} · {account.typeLabel}
               </p>
               <PositionsTable positions={positions} />

@@ -34,15 +34,15 @@ export interface HoldingsColumn {
 }
 
 // Restrained gain/loss shades (deliberately not Tailwind's default 500s).
-export const GAIN_TEXT = "text-emerald-700"
-export const LOSS_TEXT = "text-rose-700"
+export const GAIN_TEXT = "text-gain"
+export const LOSS_TEXT = "text-loss"
 
 function signedClass(value: number): string {
-  return value === 0 ? "text-neutral-600" : value > 0 ? GAIN_TEXT : LOSS_TEXT
+  return value === 0 ? "text-ink/70" : value > 0 ? GAIN_TEXT : LOSS_TEXT
 }
 
 function Muted({ children }: { children: ReactNode }) {
-  return <span className="text-neutral-400">{children}</span>
+  return <span className="text-ink/40">{children}</span>
 }
 
 /**
@@ -85,7 +85,7 @@ export const HOLDINGS_COLUMNS: HoldingsColumn[] = [
       ) : (
         <span className="inline-flex flex-col items-end">
           <span>{formatMoney(row.price)}</span>
-          <span className="whitespace-nowrap text-xs text-neutral-400">
+          <span className="whitespace-nowrap text-xs text-ink/40">
             {row.fetchedAt && formatAsOf(row.fetchedAt)}
             {row.isStaleQuote && (
               <span className="ml-1 rounded bg-amber-100 px-1 py-px font-medium text-amber-800">

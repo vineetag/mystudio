@@ -4,13 +4,13 @@ export default function Loading() {
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8" aria-busy>
       <div className="grid gap-4 sm:grid-cols-3">
         {[0, 1, 2].map((index) => (
-          <div key={index} className="h-24 animate-pulse rounded-lg bg-neutral-100" />
+          <div key={index} className="h-24 animate-pulse rounded-lg bg-ink/5" />
         ))}
       </div>
-      <div className="h-10 w-72 max-w-full animate-pulse rounded-md bg-neutral-100" />
+      <div className="h-10 w-72 max-w-full animate-pulse rounded-md bg-ink/5" />
       <div className="flex flex-col gap-2">
         {[0, 1, 2, 3, 4, 5].map((index) => (
-          <div key={index} className="h-10 animate-pulse rounded bg-neutral-100" />
+          <div key={index} className="h-10 animate-pulse rounded bg-ink/5" />
         ))}
       </div>
     </main>

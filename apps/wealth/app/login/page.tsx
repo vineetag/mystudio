@@ -13,8 +13,8 @@ export default async function LoginPage({
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-4 py-12">
       <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Sign in to OneFolio</h1>
-        <p className="mt-2 text-sm text-neutral-600">
+        <h1 className="font-display text-3xl font-medium text-ink">Sign in to OneFolio</h1>
+        <p className="mt-2 text-sm text-ink/70">
           Single-owner app. Only the allowlisted email can sign in — everyone
           else can{" "}
           <Link href="/" className="underline">
@@ -26,13 +26,13 @@ export default async function LoginPage({
 
       {viewer.isOwner ? (
         <div className="flex flex-col gap-3">
-          <p className="rounded-md border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
+          <p className="rounded-md border border-rule bg-ink/[0.04] p-4 text-sm text-ink/80">
             Signed in as {viewer.user?.email} (LIVE mode).
           </p>
           <form action={signOut}>
             <button
               type="submit"
-              className="min-h-12 w-full rounded-md border border-neutral-300 px-4 text-base font-medium text-neutral-900"
+              className="min-h-12 w-full rounded-md border border-rule px-4 text-base font-medium text-ink"
             >
               Sign out
             </button>

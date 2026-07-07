@@ -5,7 +5,7 @@ import { deleteHolding, updateHolding } from "@/modules/holdings/actions"
 import type { Holding } from "@/modules/holdings/types"
 
 const numberInputClass =
-  "min-h-12 w-full rounded-md border border-neutral-300 px-2 text-right text-base tabular-nums outline-none focus:border-neutral-500"
+  "min-h-12 w-full rounded-md border border-rule px-2 text-right text-base tabular-nums outline-none focus:border-moss"
 
 export function HoldingRow({ holding }: { holding: Holding }) {
   const [isEditing, setIsEditing] = useState(false)
@@ -44,11 +44,11 @@ export function HoldingRow({ holding }: { holding: Holding }) {
     })
   }
 
-  const buttonClass = "min-h-12 rounded-md border border-neutral-300 px-3 text-sm"
+  const buttonClass = "min-h-12 rounded-md border border-rule px-3 text-sm"
 
   return (
     <>
-      <tr className="border-t border-neutral-200">
+      <tr className="border-t border-rule">
         <td className="py-2 pr-3 font-medium">{holding.symbol}</td>
         <td className="py-2 pr-3 text-right tabular-nums">
           {isEditing ? (

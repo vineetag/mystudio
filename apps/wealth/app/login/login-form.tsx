@@ -27,7 +27,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
 
   if (sentMessage) {
     return (
-      <p role="status" className="rounded-md border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
+      <p role="status" className="rounded-md border border-rule bg-ink/[0.04] p-4 text-sm text-ink/80">
         {sentMessage}
       </p>
     )
@@ -35,7 +35,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <label htmlFor="email" className="text-sm font-medium text-neutral-700">
+      <label htmlFor="email" className="text-sm font-medium text-ink/80">
         Owner email
       </label>
       <input
@@ -46,12 +46,12 @@ export function LoginForm({ initialError }: { initialError?: string }) {
         value={email}
         onChange={(event) => setEmail(event.target.value)}
         placeholder="you@example.com"
-        className="min-h-12 rounded-md border border-neutral-300 px-4 text-base outline-none focus:border-neutral-500"
+        className="min-h-12 rounded-md border border-rule px-4 text-base outline-none focus:border-moss"
       />
       <button
         type="submit"
         disabled={isPending}
-        className="min-h-12 rounded-md bg-neutral-900 px-4 text-base font-medium text-white disabled:opacity-60"
+        className="min-h-12 rounded-md bg-ink px-4 text-base font-medium text-white disabled:opacity-60"
       >
         {isPending ? "Sending link…" : "Email me a sign-in link"}
       </button>

@@ -30,7 +30,7 @@ export function AddHoldingForm({ accountId }: { accountId: string }) {
   }
 
   const inputClass =
-    "min-h-12 rounded-md border border-neutral-300 px-3 text-base outline-none focus:border-neutral-500"
+    "min-h-12 rounded-md border border-rule px-3 text-base outline-none focus:border-moss"
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2">
@@ -63,7 +63,7 @@ export function AddHoldingForm({ accountId }: { accountId: string }) {
         <button
           type="submit"
           disabled={isPending}
-          className="min-h-12 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:opacity-60"
+          className="min-h-12 rounded-md bg-ink px-4 text-sm font-medium text-white disabled:opacity-60"
         >
           {isPending ? "Adding…" : "Add holding"}
         </button>

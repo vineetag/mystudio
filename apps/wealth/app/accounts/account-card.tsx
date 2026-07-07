@@ -27,21 +27,21 @@ export function AccountCard({ account }: { account: AccountWithHoldings }) {
   }
 
   return (
-    <section className="rounded-lg border border-neutral-200 p-4">
+    <section className="rounded-lg border border-rule p-4">
       {isEditing ? (
         <AccountForm account={account} onDone={() => setIsEditing(false)} />
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">{account.name}</h2>
-            <p className="text-sm text-neutral-600">
+            <h2 className="text-lg font-semibold text-ink">{account.name}</h2>
+            <p className="text-sm text-ink/70">
               {account.broker} · {ACCOUNT_TYPE_LABELS[account.accountType]}
             </p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setIsEditing(true)}
-              className="min-h-12 rounded-md border border-neutral-300 px-3 text-sm"
+              className="min-h-12 rounded-md border border-rule px-3 text-sm"
             >
               Edit
             </button>
@@ -52,7 +52,7 @@ export function AccountCard({ account }: { account: AccountWithHoldings }) {
               className={`min-h-12 rounded-md border px-3 text-sm ${
                 confirmingDelete
                   ? "border-red-300 bg-red-50 text-red-800"
-                  : "border-neutral-300"
+                  : "border-rule"
               }`}
             >
               {confirmingDelete
@@ -71,13 +71,13 @@ export function AccountCard({ account }: { account: AccountWithHoldings }) {
 
       <div className="mt-4 overflow-x-auto">
         {account.holdings.length === 0 ? (
-          <p className="rounded-md border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">
+          <p className="rounded-md border border-dashed border-rule p-4 text-sm text-ink/70">
             No holdings yet — add the first one below or use CSV import.
           </p>
         ) : (
           <table className="w-full min-w-[28rem] text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-neutral-500">
+              <tr className="text-left text-xs uppercase tracking-wide text-ink/60">
                 <th className="py-2 pr-3 font-medium">Symbol</th>
                 <th className="py-2 pr-3 text-right font-medium">Quantity</th>
                 <th className="py-2 pr-3 text-right font-medium">Avg cost</th>

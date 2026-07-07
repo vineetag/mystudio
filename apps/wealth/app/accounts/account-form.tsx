@@ -43,12 +43,12 @@ export function AccountForm({
   }
 
   const inputClass =
-    "min-h-12 rounded-md border border-neutral-300 px-3 text-base outline-none focus:border-neutral-500"
+    "min-h-12 rounded-md border border-rule px-3 text-base outline-none focus:border-moss"
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
       <div className="grid gap-3 sm:grid-cols-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-neutral-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-ink/80">
           Name
           <input
             required
@@ -58,7 +58,7 @@ export function AccountForm({
             className={inputClass}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-neutral-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-ink/80">
           Broker
           <input
             required
@@ -68,7 +68,7 @@ export function AccountForm({
             className={inputClass}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-neutral-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-ink/80">
           Type
           <select
             value={accountType}
@@ -87,7 +87,7 @@ export function AccountForm({
         <button
           type="submit"
           disabled={isPending}
-          className="min-h-12 rounded-md bg-neutral-900 px-4 text-base font-medium text-white disabled:opacity-60"
+          className="min-h-12 rounded-md bg-ink px-4 text-base font-medium text-white disabled:opacity-60"
         >
           {isPending ? "Saving…" : account ? "Save changes" : "Add account"}
         </button>
@@ -95,7 +95,7 @@ export function AccountForm({
           <button
             type="button"
             onClick={onDone}
-            className="min-h-12 rounded-md border border-neutral-300 px-4 text-base"
+            className="min-h-12 rounded-md border border-rule px-4 text-base"
           >
             Cancel
           </button>
