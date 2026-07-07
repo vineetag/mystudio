@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { ShieldCheck } from "lucide-react"
 import { Button } from "@studio/ui"
 import { createClient } from "@/lib/supabase-browser"
-import { ANON_CLAIM_KEY } from "@/lib/anon-claim"
+import { ANON_CLAIM_KEY, createAnonClaimMarker } from "@/lib/anon-claim"
 import { Events, useAnalytics } from "@/lib/analytics"
 import { safeAuthRedirectPath } from "@/lib/redirects"
 
@@ -88,13 +88,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
     supabase.auth.getUser().then(({ data }) => {
       const isAnon = data.user?.is_anonymous ?? false
       setIsAnonymous(isAnon)
-      // Stash the anon id so StoryClaimer can transfer stories after auth, no
-      // matter which page the OAuth flow lands on. See components/story-claimer.
-      if (isAnon && data.user) {
-        try {
-          localStorage.setItem(ANON_CLAIM_KEY, data.user.id)
-        } catch {}
-      }
+      if (!isAnon) safeClearAnonClaimMarker()
     })
   }, [])
 
@@ -118,20 +112,19 @@ export function AuthForm({ mode }: { mode: Mode }) {
         : window.location.origin
     const callbackUrl = `${baseUrl}/auth/callback?next=${encodeURIComponent(redirectTo)}`
 
-    // Stash the anon id so StoryClaimer transfers stories once the permanent
-    // session exists — works regardless of where OAuth redirects back to.
+    // Explicit OAuth upgrade from an anonymous session. linkIdentity preserves
+    // the Supabase user id for new identities, so stories stay with the user
+    // without any service-role cross-account transfer. If the provider identity
+    // already exists, fall back to normal sign-in; old claim state is cleanup-only.
     if (currentIsAnonymous && currentUser) {
-      try {
-        localStorage.setItem(ANON_CLAIM_KEY, currentUser.id)
-      } catch {}
+      safeStoreAnonClaimMarker(currentUser.id)
+      const { error: linkError } = await supabase.auth.linkIdentity({
+        provider,
+        options: { redirectTo: callbackUrl },
+      })
+      if (!linkError) return
     }
 
-    // Always signInWithOAuth — never linkIdentity. Linking an anonymous user to
-    // a Google account that already belongs to someone throws
-    // identity_already_exists, whose error lands in the URL hash and is awkward
-    // to recover from. signInWithOAuth instead signs into whichever account the
-    // Google login resolves to (new or existing); StoryClaimer then moves the
-    // anonymous stories onto it. One path, no linking conflicts.
     const { error: authError } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: callbackUrl },
@@ -358,4 +351,20 @@ export function AuthForm({ mode }: { mode: Mode }) {
       </p>
     </div>
   )
+}
+
+function safeStoreAnonClaimMarker(anonId: string) {
+  try {
+    localStorage.setItem(ANON_CLAIM_KEY, createAnonClaimMarker(anonId))
+  } catch {
+    // ignore
+  }
+}
+
+function safeClearAnonClaimMarker() {
+  try {
+    localStorage.removeItem(ANON_CLAIM_KEY)
+  } catch {
+    // ignore
+  }
 }

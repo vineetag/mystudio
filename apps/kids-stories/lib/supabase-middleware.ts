@@ -69,15 +69,15 @@ export async function updateSession(request: NextRequest) {
     return redirectResponse
   }
 
-  // Bind anonymous story ownership to this browser via an httpOnly cookie so
-  // /api/claim-stories can verify the caller actually held the anon session.
-  if (user?.is_anonymous) {
-    supabaseResponse.cookies.set(ANON_CLAIM_COOKIE, user.id, {
+  // Clear legacy browser-level claim cookies once a permanent session exists.
+  // Cross-user story moves are no longer allowed; safe upgrades preserve user id.
+  if (user && !user.is_anonymous) {
+    supabaseResponse.cookies.set(ANON_CLAIM_COOKIE, "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24 * 30,
+      maxAge: 0,
     })
   }
 

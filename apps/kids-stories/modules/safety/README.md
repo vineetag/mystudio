@@ -21,7 +21,9 @@ dev-workflow agents in `/agents`, which are deterministic on purpose.)
    `runStructuredModel` (so it inherits the **monthly spend cap** and usage
    logging), scoring the story across safety categories.
 4. The pure `decideAction()` policy turns the verdict into `allow` / `block`.
-   Blocking refunds the user's daily slot and returns a clear 422.
+   Blocking returns a clear 422. The paid generation attempt still counts
+   against the user's daily slot so repeated blocked generations cannot exhaust
+   the shared AI budget.
 
 ```
 route → generateStory (lib/ai)        # create
@@ -45,7 +47,7 @@ No dependency cycle: `lib/ai` never imports this module; this module calls into
 
 | Var | Default | Effect |
 |-----|---------|--------|
-| `STORY_SAFETY_ENABLED` | auto | `false` disables everywhere; `true` forces on (even locally); unset = **on in production only**, off in local dev and Vercel preview. |
+| `STORY_SAFETY_ENABLED` | auto | `false` disables everywhere; `true` forces on (even locally); unset = **on outside local dev**, off only when `NODE_ENV=development`. |
 | `STORY_SAFETY_FAIL_MODE` | `closed` | If the screener errors, `closed` blocks (safe default for kids); `open` allows. |
 
 ## Cost note
