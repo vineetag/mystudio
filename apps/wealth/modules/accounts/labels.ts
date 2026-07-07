@@ -1,4 +1,4 @@
-import type { AccountType } from "@/modules/accounts/types"
+import type { AccountType } from "./types"
 
 export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   taxable: "Taxable",

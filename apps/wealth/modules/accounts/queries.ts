@@ -1,6 +1,7 @@
 import "server-only"
 
 import { createClient } from "@/lib/db"
+import { getViewer } from "@/modules/auth"
 import type { Holding } from "@/modules/holdings"
 import type { Account, AccountSource, AccountType } from "./types"
 
@@ -45,11 +46,28 @@ export function rowToHolding(row: any): Holding {
 export async function listOwnerAccountsWithHoldings(): Promise<
   AccountWithHoldings[]
 > {
+  return listAccountsWithHoldings(false)
+}
+
+/**
+ * What the current viewer sees on the dashboard: the owner gets live
+ * accounts, everyone else gets the demo portfolio.
+ */
+export async function listViewerAccountsWithHoldings(): Promise<
+  AccountWithHoldings[]
+> {
+  const viewer = await getViewer()
+  return listAccountsWithHoldings(!viewer.isOwner)
+}
+
+async function listAccountsWithHoldings(
+  demo: boolean,
+): Promise<AccountWithHoldings[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("pt_accounts")
     .select("*, pt_holdings(*)")
-    .eq("is_demo", false)
+    .eq("is_demo", demo)
     .order("created_at", { ascending: true })
 
   if (error) throw new Error(`Failed to load accounts: ${error.message}`)

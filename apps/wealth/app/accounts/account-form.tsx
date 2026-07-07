@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react"
 import { createAccount, updateAccount, type AccountInput } from "@/modules/accounts/actions"
 import type { Account, AccountType } from "@/modules/accounts/types"
-import { ACCOUNT_TYPE_OPTIONS } from "./account-type-labels"
+import { ACCOUNT_TYPE_OPTIONS } from "@/modules/accounts/labels"
 
 /** Create form when `account` is absent, edit form when present. */
 export function AccountForm({

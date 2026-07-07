@@ -5,7 +5,7 @@ import { deleteAccount } from "@/modules/accounts/actions"
 import type { AccountWithHoldings } from "@/modules/accounts"
 import { AccountForm } from "./account-form"
 import { AddHoldingForm } from "./add-holding-form"
-import { ACCOUNT_TYPE_LABELS } from "./account-type-labels"
+import { ACCOUNT_TYPE_LABELS } from "@/modules/accounts/labels"
 import { HoldingRow } from "./holding-row"
 
 export function AccountCard({ account }: { account: AccountWithHoldings }) {

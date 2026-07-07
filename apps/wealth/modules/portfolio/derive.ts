@@ -1,0 +1,171 @@
+// Pure derivation: holdings × quotes × accounts → display rows.
+// No I/O — unit-tested. Null means "not computable" and renders as
+// unavailable; nothing is ever fabricated.
+
+import type { AccountWithHoldings } from "@/modules/accounts"
+import type { QuoteView } from "@/modules/quotes"
+
+/** One holding in one account, enriched with its quote and derived figures. */
+export interface PositionRow {
+  holdingId: string
+  accountId: string
+  accountName: string
+  symbol: string
+  quantity: number
+  avgCost: number | null
+  /** True when the row has no cost basis (401k transfer) — badged, no gain/loss. */
+  missingCostBasis: boolean
+  price: number | null
+  dayChangePct: number | null
+  fetchedAt: string | null
+  isStaleQuote: boolean
+  value: number | null
+  gainLoss: number | null
+  gainLossPct: number | null
+}
+
+/** One row per ticker across all accounts. */
+export interface ConsolidatedRow {
+  symbol: string
+  quantity: number
+  /** Weighted average over positions that have a cost basis; null if none do. */
+  avgCost: number | null
+  missingCostBasis: boolean
+  price: number | null
+  dayChangePct: number | null
+  fetchedAt: string | null
+  isStaleQuote: boolean
+  value: number | null
+  gainLoss: number | null
+  gainLossPct: number | null
+  positions: PositionRow[]
+}
+
+export interface PortfolioTotal {
+  value: number
+  /** Symbols whose price is unavailable — their value is NOT in `value`. */
+  unpricedSymbols: string[]
+}
+
+export function derivePositions(
+  accounts: AccountWithHoldings[],
+  quotes: Map<string, QuoteView>,
+): PositionRow[] {
+  const rows: PositionRow[] = []
+
+  for (const account of accounts) {
+    for (const holding of account.holdings) {
+      const quote = quotes.get(holding.symbol)
+      const price = quote?.price ?? null
+      const hasBasis = holding.avgCost !== null
+
+      const value = price === null ? null : price * holding.quantity
+      const gainLoss =
+        price !== null && hasBasis
+          ? (price - holding.avgCost!) * holding.quantity
+          : null
+      const gainLossPct =
+        price !== null && hasBasis && holding.avgCost! > 0
+          ? ((price - holding.avgCost!) / holding.avgCost!) * 100
+          : null
+
+      rows.push({
+        holdingId: holding.id,
+        accountId: account.id,
+        accountName: account.name,
+        symbol: holding.symbol,
+        quantity: holding.quantity,
+        avgCost: holding.avgCost,
+        missingCostBasis: !hasBasis,
+        price,
+        dayChangePct: quote?.dayChangePct ?? null,
+        fetchedAt: quote?.fetchedAt ?? null,
+        isStaleQuote: quote?.isStale ?? false,
+        value,
+        gainLoss,
+        gainLossPct,
+      })
+    }
+  }
+
+  return rows
+}
+
+/** Group positions by symbol; sort by value descending (unpriced last). */
+export function consolidate(positions: PositionRow[]): ConsolidatedRow[] {
+  const bySymbol = new Map<string, PositionRow[]>()
+  for (const position of positions) {
+    const group = bySymbol.get(position.symbol)
+    if (group) {
+      group.push(position)
+    } else {
+      bySymbol.set(position.symbol, [position])
+    }
+  }
+
+  const rows: ConsolidatedRow[] = []
+  for (const [symbol, group] of bySymbol) {
+    const first = group[0]
+    const quantity = group.reduce((sum, position) => sum + position.quantity, 0)
+
+    // Gain/loss aggregates only over positions with a cost basis AND a price.
+    const basisPositions = group.filter(
+      (position) => position.avgCost !== null,
+    )
+    const basisQuantity = basisPositions.reduce(
+      (sum, position) => sum + position.quantity,
+      0,
+    )
+    const costBasis = basisPositions.reduce(
+      (sum, position) => sum + position.avgCost! * position.quantity,
+      0,
+    )
+    const avgCost = basisQuantity > 0 ? costBasis / basisQuantity : null
+
+    const price = first.price
+    const value = price === null ? null : price * quantity
+    const gainLoss =
+      price !== null && basisQuantity > 0
+        ? price * basisQuantity - costBasis
+        : null
+    const gainLossPct =
+      gainLoss !== null && costBasis > 0 ? (gainLoss / costBasis) * 100 : null
+
+    rows.push({
+      symbol,
+      quantity,
+      avgCost,
+      missingCostBasis: group.some((position) => position.missingCostBasis),
+      price,
+      dayChangePct: first.dayChangePct,
+      fetchedAt: first.fetchedAt,
+      isStaleQuote: first.isStaleQuote,
+      value,
+      gainLoss,
+      gainLossPct,
+      positions: [...group].sort((a, b) =>
+        a.accountName.localeCompare(b.accountName),
+      ),
+    })
+  }
+
+  return rows.sort((a, b) => {
+    if (a.value === null && b.value === null) return a.symbol.localeCompare(b.symbol)
+    if (a.value === null) return 1
+    if (b.value === null) return -1
+    return b.value - a.value
+  })
+}
+
+export function portfolioTotal(positions: PositionRow[]): PortfolioTotal {
+  let value = 0
+  const unpriced = new Set<string>()
+  for (const position of positions) {
+    if (position.value === null) {
+      unpriced.add(position.symbol)
+    } else {
+      value += position.value
+    }
+  }
+  return { value, unpricedSymbols: [...unpriced].sort() }
+}
