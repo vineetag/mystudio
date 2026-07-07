@@ -1,4 +1,5 @@
 // Module boundary — import quote functionality from here only.
-// Finnhub fetch + cache engine lands in M3.
 
-export type { Quote } from "./types"
+export type { Quote, QuoteView } from "./types"
+export { getQuotes } from "./engine"
+export { QUOTE_TTL_MS } from "./cache"
