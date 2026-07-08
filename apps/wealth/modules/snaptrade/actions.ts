@@ -1,5 +1,6 @@
 "use server"
 
+import { headers } from "next/headers"
 import { revalidatePath } from "next/cache"
 import type { ActionResult, ActionResultWith } from "@/lib/action-result"
 import { createServiceClient } from "@/lib/db"
@@ -35,7 +36,12 @@ export async function getConnectPortalUrl(): Promise<ActionResultWith<string>> {
   try {
     const stUser = await getOrRegisterStUser(owner.userId)
     const snaptrade = getSnapTradeClient()
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3003"
+    // Same fallback chain as auth: explicit site URL, else the request's own
+    // origin — so the SnapTrade portal returns to the preview URL it left from.
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ??
+      (await headers()).get("origin") ??
+      "http://localhost:3003"
 
     const response = await withSnapTradeRetry(() =>
       snaptrade.authentication.loginSnapTradeUser({
