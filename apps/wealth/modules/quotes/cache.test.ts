@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
   partitionByFreshness,
+  partitionForPollRefresh,
+  QUOTE_POLL_MS,
   QUOTE_TTL_MS,
   rowToQuoteView,
   unavailableQuoteView,
@@ -62,6 +64,30 @@ describe("partitionByFreshness", () => {
     expect(fresh.map((view) => view.symbol)).toEqual(["A"])
     expect(toFetch).toEqual(["B", "C"])
     expect([...fallback.keys()]).toEqual(["B"])
+  })
+})
+
+describe("partitionForPollRefresh", () => {
+  it("serves rows younger than the poll interval as fresh", () => {
+    const { fresh, toFetch } = partitionForPollRefresh(
+      ["GOOG"],
+      [row("GOOG", QUOTE_POLL_MS - 1000)],
+      NOW,
+    )
+    expect(fresh).toHaveLength(1)
+    expect(fresh[0]).toMatchObject({ symbol: "GOOG", isStale: false })
+    expect(toFetch).toEqual([])
+  })
+
+  it("refetches rows at or past the poll interval", () => {
+    const { fresh, toFetch, fallback } = partitionForPollRefresh(
+      ["GOOG"],
+      [row("GOOG", QUOTE_POLL_MS)],
+      NOW,
+    )
+    expect(fresh).toEqual([])
+    expect(toFetch).toEqual(["GOOG"])
+    expect(fallback.get("GOOG")).toMatchObject({ isStale: true })
   })
 })
 

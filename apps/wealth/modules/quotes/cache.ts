@@ -5,6 +5,9 @@ import type { QuoteView } from "./types"
 /** Serve from pt_quotes when fetched less than 15 minutes ago. */
 export const QUOTE_TTL_MS = 15 * 60 * 1000
 
+/** Dashboard poll interval — live refresh refetches when cache is older than this. */
+export const QUOTE_POLL_MS = 60_000
+
 /** Dividend yield changes slowly — refresh it alongside a price fetch at most daily. */
 export const YIELD_TTL_MS = 24 * 60 * 60 * 1000
 
@@ -80,6 +83,35 @@ export function partitionByFreshness(
     }
     const age = now.getTime() - new Date(row.fetched_at).getTime()
     if (age < QUOTE_TTL_MS) {
+      fresh.push(rowToQuoteView(row, false))
+    } else {
+      toFetch.push(symbol)
+      fallback.set(symbol, rowToQuoteView(row, true))
+    }
+  }
+
+  return { fresh, toFetch, fallback }
+}
+
+/** Force-refresh partition: refetch symbols missing or older than QUOTE_POLL_MS. */
+export function partitionForPollRefresh(
+  symbols: string[],
+  rows: CachedQuoteRow[],
+  now: Date,
+): CachePartition {
+  const rowBySymbol = new Map(rows.map((row) => [row.symbol, row]))
+  const fresh: QuoteView[] = []
+  const toFetch: string[] = []
+  const fallback = new Map<string, QuoteView>()
+
+  for (const symbol of symbols) {
+    const row = rowBySymbol.get(symbol)
+    if (!row) {
+      toFetch.push(symbol)
+      continue
+    }
+    const age = now.getTime() - new Date(row.fetched_at).getTime()
+    if (age < QUOTE_POLL_MS) {
       fresh.push(rowToQuoteView(row, false))
     } else {
       toFetch.push(symbol)

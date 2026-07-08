@@ -2,8 +2,19 @@
 // No I/O — unit-tested. Null means "not computable" and renders as
 // unavailable; nothing is ever fabricated.
 
-import type { AccountWithHoldings } from "@/modules/accounts"
 import type { QuoteView } from "@/modules/quotes"
+
+/** Minimum account shape for quote derivation — works with full rows or SSR props. */
+export interface DeriveAccountInput {
+  id: string
+  name: string
+  holdings: {
+    id: string
+    symbol: string
+    quantity: number
+    avgCost: number | null
+  }[]
+}
 
 /** One holding in one account, enriched with its quote and derived figures. */
 export interface PositionRow {
@@ -56,7 +67,7 @@ export interface PortfolioTotal {
 }
 
 export function derivePositions(
-  accounts: AccountWithHoldings[],
+  accounts: DeriveAccountInput[],
   quotes: Map<string, QuoteView>,
 ): PositionRow[] {
   const rows: PositionRow[] = []

@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from "@/lib/db"
 import { getViewer } from "@/modules/auth"
 import {
   partitionByFreshness,
+  partitionForPollRefresh,
   rowToQuoteView,
   unavailableQuoteView,
   yieldNeedsRefresh,
@@ -16,8 +17,13 @@ import {
 } from "./finnhub"
 import type { QuoteView } from "./types"
 
-/** Fan-out cap: stays well under Finnhub's 60 calls/min for typical loads. */
-const FETCH_CONCURRENCY = 4
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** Finnhub free tier: 60 calls/min — one request per second keeps us under the cap. */
+const FETCH_CONCURRENCY = 1
+const FINNHUB_MIN_INTERVAL_MS = 1_100
 
 async function mapWithConcurrency<T, R>(
   items: T[],
@@ -42,19 +48,19 @@ export interface GetQuotesOptions {
   /**
    * Skip the viewer check. ONLY for server paths that carry their own
    * authentication and have no user session — today that's the CRON_SECRET-
-   * guarded snapshot route. Never set this from anything reachable by an
-   * anonymous request: demo mode must stay at zero key-bearing API calls.
+   * guarded snapshot route.
    */
   trusted?: boolean
+  /** Bypass the 15 min TTL; refetch symbols older than QUOTE_POLL_MS from Finnhub. */
+  forceRefresh?: boolean
 }
 
 /**
  * Resolve quotes for a set of symbols, one QuoteView per unique symbol.
  *
- * - Cache hits (< 15 min) come straight from pt_quotes.
- * - Misses are fetched from Finnhub and upserted — but ONLY for the owner.
- *   Demo mode never triggers a key-bearing API call (guardrail): anonymous
- *   viewers get whatever is cached, marked stale where it is.
+ * - Cache hits (< 15 min) come straight from pt_quotes when not force-refreshing.
+ * - Misses and stale rows are fetched from Finnhub and upserted into the shared
+ *   pt_quotes cache (live and demo both read the same table).
  * - A failed fetch falls back to the stale cached row; a symbol with no data
  *   anywhere comes back with price null ("unavailable"), never fabricated.
  */
@@ -85,24 +91,27 @@ export async function getQuotes(
   const cachedBySymbol = new Map(cachedRows.map((row) => [row.symbol, row]))
   const now = new Date()
 
-  const { fresh, toFetch, fallback } = partitionByFreshness(unique, cachedRows, now)
+  const { fresh, toFetch, fallback } = options.forceRefresh
+    ? partitionForPollRefresh(unique, cachedRows, now)
+    : partitionByFreshness(unique, cachedRows, now)
   for (const view of fresh) views.set(view.symbol, view)
 
-  const viewer = options.trusted ? null : await getViewer()
-  if ((viewer !== null && !viewer.isOwner) || toFetch.length === 0) {
-    for (const symbol of toFetch) {
-      views.set(symbol, fallback.get(symbol) ?? unavailableQuoteView(symbol))
-    }
-    return views
-  }
+  if (toFetch.length === 0) return views
+
+  // Resolve viewer once for trusted-path bypass; fetching is allowed for all modes.
+  if (!options.trusted) await getViewer()
 
   const fetchedAt = new Date().toISOString()
+  let lastFetchAt = 0
   const results = await mapWithConcurrency(toFetch, FETCH_CONCURRENCY, async (symbol) => {
+    const elapsed = Date.now() - lastFetchAt
+    if (elapsed < FINNHUB_MIN_INTERVAL_MS) {
+      await sleep(FINNHUB_MIN_INTERVAL_MS - elapsed)
+    }
+    lastFetchAt = Date.now()
+
     try {
       const quote = await fetchFinnhubQuote(symbol)
-      // Dividend yield rides along on a price refresh, at most once a day.
-      // Best-effort: a null here either means "no dividend" (cached as such)
-      // or a transient miss — either way the price still lands.
       const cached = cachedBySymbol.get(symbol)
       const refreshYield = yieldNeedsRefresh(cached, now)
       const dividendYield = refreshYield
@@ -146,13 +155,11 @@ export async function getQuotes(
   }
 
   if (upsertRows.length > 0) {
-    // Service role: pt_quotes has no client write policy by design.
     const service = createServiceClient()
     const { error: upsertError } = await service
       .from("pt_quotes")
       .upsert(upsertRows, { onConflict: "symbol" })
     if (upsertError) {
-      // Views are already correct for this request; only the cache write failed.
       console.error(`pt_quotes upsert failed: ${upsertError.message}`)
     }
   }

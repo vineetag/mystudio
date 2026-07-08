@@ -11,8 +11,7 @@ export interface Quote {
  * What the UI consumes for one symbol. Never fabricated:
  * - price null   → no data exists anywhere ("unavailable")
  * - isStale true → cached value older than the TTL, served because a fresh
- *                  fetch wasn't possible (Finnhub down, or demo mode which
- *                  never triggers fetches)
+ *                  fetch wasn't possible (Finnhub down)
  */
 export interface QuoteView {
   symbol: string
