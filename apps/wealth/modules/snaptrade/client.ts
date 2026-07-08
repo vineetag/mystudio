@@ -62,7 +62,17 @@ export async function withSnapTradeRetry<T>(fn: () => Promise<T>): Promise<T> {
 /** Human-readable message from a failed SnapTrade call. */
 export function snapTradeErrorMessage(error: unknown): string {
   if (error instanceof SnaptradeError) {
-    return `SnapTrade responded ${error.status ?? "with an error"}: ${error.message}`
+    // The axios message is generic ("Request failed with status code 400");
+    // the actual reason lives in the JSON body as { detail, code }.
+    const body = error.responseBody as
+      | { detail?: string; code?: string }
+      | null
+      | undefined
+    const detail =
+      body && typeof body === "object" && typeof body.detail === "string"
+        ? `${body.detail}${body.code ? ` (code ${body.code})` : ""}`
+        : error.message
+    return `SnapTrade responded ${error.status ?? "with an error"}: ${detail}`
   }
   return error instanceof Error ? error.message : String(error)
 }
