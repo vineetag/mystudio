@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { after } from "next/server"
 import {
   ACCOUNT_TYPE_LABELS,
   listViewerAccountsWithHoldings,
@@ -6,9 +7,21 @@ import {
 import { getViewer } from "@/modules/auth"
 import { consolidate, derivePositions, portfolioTotal } from "@/modules/portfolio"
 import { getQuotes, type QuoteView } from "@/modules/quotes"
+import {
+  captureSnapshot,
+  computeChangeChips,
+  listSnapshots,
+  type ChangeChip,
+} from "@/modules/snapshots"
 import { DashboardTables } from "@/components/holdings-table/dashboard-tables"
+import { PortfolioChart } from "@/components/portfolio-chart"
 import { GAIN_TEXT, LOSS_TEXT } from "@/components/holdings-table/columns"
-import { formatAsOf, formatMoney, formatSignedPct } from "@/lib/format"
+import {
+  formatAsOf,
+  formatMoney,
+  formatSignedMoney,
+  formatSignedPct,
+} from "@/lib/format"
 
 // Index widgets: Finnhub's free tier has no real index quotes, so we track
 // liquid ETF proxies and label them as such — never presented as the index.
@@ -51,6 +64,27 @@ function IndexFigure({
   )
 }
 
+function ChangeChips({ chips }: { chips: ChangeChip[] }) {
+  if (chips.length === 0) return null
+  return (
+    <span className="inline-flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      {chips.map((chip) => (
+        <span key={chip.label} className="whitespace-nowrap tabular-nums">
+          <span className="text-ink/50">{chip.label}</span>{" "}
+          <span
+            className={
+              chip.abs === 0 ? "text-ink/70" : chip.abs > 0 ? GAIN_TEXT : LOSS_TEXT
+            }
+          >
+            {formatSignedPct(chip.pct)}
+            <span className="ml-1 text-xs">({formatSignedMoney(chip.abs)})</span>
+          </span>
+        </span>
+      ))}
+    </span>
+  )
+}
+
 export default async function DashboardPage() {
   const [viewer, accounts] = await Promise.all([
     getViewer(),
@@ -60,14 +94,28 @@ export default async function DashboardPage() {
   const holdingSymbols = accounts.flatMap((account) =>
     account.holdings.map((holding) => holding.symbol),
   )
-  const quotes = await getQuotes([
-    ...holdingSymbols,
-    ...INDEX_PROXIES.map((proxy) => proxy.symbol),
+  // Quotes and snapshot history are independent — fetch concurrently.
+  const [quotes, snapshots] = await Promise.all([
+    getQuotes([...holdingSymbols, ...INDEX_PROXIES.map((proxy) => proxy.symbol)]),
+    viewer.isOwner ? listSnapshots(370) : Promise.resolve([]),
   ])
 
   const positions = derivePositions(accounts, quotes)
   const consolidated = consolidate(positions)
   const total = portfolioTotal(positions)
+
+  const chips = viewer.isOwner
+    ? computeChangeChips(total.value, snapshots, new Date().toISOString().slice(0, 10))
+    : []
+
+  // Upsert-on-load keeps history flowing even if the daily cron misses;
+  // after() runs it once the response is sent, so the page never waits.
+  if (viewer.isOwner && accounts.length > 0) {
+    after(async () => {
+      const result = await captureSnapshot()
+      if (!result.ok) console.error(result.error)
+    })
+  }
 
   const newestQuote = positions
     .map((position) => position.fetchedAt)
@@ -104,6 +152,19 @@ export default async function DashboardPage() {
               </span>
             )}
           </p>
+          {chips.length > 0 && (
+            <p className="mt-1.5 text-sm">
+              <ChangeChips chips={chips} />
+            </p>
+          )}
+          {total.projectedAnnualIncome > 0 && (
+            <p className="mt-1.5 text-sm text-ink/60">
+              Projected dividends{" "}
+              <span className="font-medium text-ink tabular-nums">
+                {formatMoney(total.projectedAnnualIncome)}/yr
+              </span>
+            </p>
+          )}
         </div>
         <div className="flex flex-col gap-1.5 sm:min-w-64">
           {INDEX_PROXIES.map((proxy) => (
@@ -142,7 +203,10 @@ export default async function DashboardPage() {
           )}
         </div>
       ) : (
-        <DashboardTables consolidated={consolidated} accounts={accountSections} />
+        <>
+          <DashboardTables consolidated={consolidated} accounts={accountSections} />
+          {viewer.isOwner && <PortfolioChart snapshots={snapshots} />}
+        </>
       )}
     </main>
   )

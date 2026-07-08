@@ -6,9 +6,14 @@ import {
   partitionByFreshness,
   rowToQuoteView,
   unavailableQuoteView,
+  yieldNeedsRefresh,
   type CachedQuoteRow,
 } from "./cache"
-import { fetchFinnhubQuote, UnknownSymbolError } from "./finnhub"
+import {
+  fetchFinnhubDividendYield,
+  fetchFinnhubQuote,
+  UnknownSymbolError,
+} from "./finnhub"
 import type { QuoteView } from "./types"
 
 /** Fan-out cap: stays well under Finnhub's 60 calls/min for typical loads. */
@@ -33,6 +38,16 @@ async function mapWithConcurrency<T, R>(
   return results
 }
 
+export interface GetQuotesOptions {
+  /**
+   * Skip the viewer check. ONLY for server paths that carry their own
+   * authentication and have no user session — today that's the CRON_SECRET-
+   * guarded snapshot route. Never set this from anything reachable by an
+   * anonymous request: demo mode must stay at zero key-bearing API calls.
+   */
+  trusted?: boolean
+}
+
 /**
  * Resolve quotes for a set of symbols, one QuoteView per unique symbol.
  *
@@ -45,6 +60,7 @@ async function mapWithConcurrency<T, R>(
  */
 export async function getQuotes(
   symbols: string[],
+  options: GetQuotesOptions = {},
 ): Promise<Map<string, QuoteView>> {
   const unique = [...new Set(symbols.map((symbol) => symbol.trim().toUpperCase()))]
     .filter((symbol) => symbol.length > 0)
@@ -55,7 +71,7 @@ export async function getQuotes(
   const supabase = await createClient()
   const { data: rows, error } = await supabase
     .from("pt_quotes")
-    .select("symbol, price, day_change_pct, fetched_at")
+    .select("symbol, price, day_change_pct, dividend_yield, fetched_at, yield_fetched_at")
     .in("symbol", unique)
 
   // Cache unreadable: degrade to "unavailable" rather than throwing the page.
@@ -65,15 +81,15 @@ export async function getQuotes(
     return views
   }
 
-  const { fresh, toFetch, fallback } = partitionByFreshness(
-    unique,
-    (rows ?? []) as CachedQuoteRow[],
-    new Date(),
-  )
+  const cachedRows = (rows ?? []) as CachedQuoteRow[]
+  const cachedBySymbol = new Map(cachedRows.map((row) => [row.symbol, row]))
+  const now = new Date()
+
+  const { fresh, toFetch, fallback } = partitionByFreshness(unique, cachedRows, now)
   for (const view of fresh) views.set(view.symbol, view)
 
-  const viewer = await getViewer()
-  if (!viewer.isOwner || toFetch.length === 0) {
+  const viewer = options.trusted ? null : await getViewer()
+  if ((viewer !== null && !viewer.isOwner) || toFetch.length === 0) {
     for (const symbol of toFetch) {
       views.set(symbol, fallback.get(symbol) ?? unavailableQuoteView(symbol))
     }
@@ -84,32 +100,45 @@ export async function getQuotes(
   const results = await mapWithConcurrency(toFetch, FETCH_CONCURRENCY, async (symbol) => {
     try {
       const quote = await fetchFinnhubQuote(symbol)
-      return { symbol, quote }
+      // Dividend yield rides along on a price refresh, at most once a day.
+      // Best-effort: a null here either means "no dividend" (cached as such)
+      // or a transient miss — either way the price still lands.
+      const cached = cachedBySymbol.get(symbol)
+      const refreshYield = yieldNeedsRefresh(cached, now)
+      const dividendYield = refreshYield
+        ? await fetchFinnhubDividendYield(symbol)
+        : cached?.dividend_yield === null || cached?.dividend_yield === undefined
+          ? null
+          : Number(cached.dividend_yield)
+      return { symbol, quote, dividendYield, refreshedYield: refreshYield }
     } catch (fetchError) {
       if (!(fetchError instanceof UnknownSymbolError)) {
         console.error(`Quote fetch failed for ${symbol}:`, fetchError)
       }
-      return { symbol, quote: null }
+      return { symbol, quote: null, dividendYield: null, refreshedYield: false }
     }
   })
 
   const upsertRows = []
-  for (const { symbol, quote } of results) {
+  for (const { symbol, quote, dividendYield, refreshedYield } of results) {
     if (quote) {
       views.set(symbol, {
         symbol,
         price: quote.price,
         dayChangePct: quote.dayChangePct,
+        dividendYield,
         fetchedAt,
         isStale: false,
       })
-      // dividend_yield intentionally omitted — Phase 2 owns that column, and
-      // a partial upsert leaves existing values untouched.
       upsertRows.push({
         symbol,
         price: quote.price,
         day_change_pct: quote.dayChangePct,
+        dividend_yield: dividendYield,
         fetched_at: fetchedAt,
+        yield_fetched_at: refreshedYield
+          ? fetchedAt
+          : (cachedBySymbol.get(symbol)?.yield_fetched_at ?? null),
       })
     } else {
       views.set(symbol, fallback.get(symbol) ?? unavailableQuoteView(symbol))

@@ -5,12 +5,17 @@ import type { QuoteView } from "./types"
 /** Serve from pt_quotes when fetched less than 15 minutes ago. */
 export const QUOTE_TTL_MS = 15 * 60 * 1000
 
+/** Dividend yield changes slowly — refresh it alongside a price fetch at most daily. */
+export const YIELD_TTL_MS = 24 * 60 * 60 * 1000
+
 /** Row shape as it comes back from pt_quotes (numerics arrive as strings). */
 export interface CachedQuoteRow {
   symbol: string
   price: string | number
   day_change_pct: string | number | null
+  dividend_yield: string | number | null
   fetched_at: string
+  yield_fetched_at: string | null
 }
 
 export function rowToQuoteView(row: CachedQuoteRow, isStale: boolean): QuoteView {
@@ -18,13 +23,34 @@ export function rowToQuoteView(row: CachedQuoteRow, isStale: boolean): QuoteView
     symbol: row.symbol,
     price: Number(row.price),
     dayChangePct: row.day_change_pct === null ? null : Number(row.day_change_pct),
+    dividendYield: row.dividend_yield === null ? null : Number(row.dividend_yield),
     fetchedAt: row.fetched_at,
     isStale,
   }
 }
 
 export function unavailableQuoteView(symbol: string): QuoteView {
-  return { symbol, price: null, dayChangePct: null, fetchedAt: null, isStale: false }
+  return {
+    symbol,
+    price: null,
+    dayChangePct: null,
+    dividendYield: null,
+    fetchedAt: null,
+    isStale: false,
+  }
+}
+
+/**
+ * True when the row's dividend yield needs a refresh: never fetched, or
+ * older than YIELD_TTL_MS. A stored null yield with a recent timestamp is
+ * fresh — it means "this symbol pays no dividend", not "unknown".
+ */
+export function yieldNeedsRefresh(
+  row: Pick<CachedQuoteRow, "yield_fetched_at"> | undefined,
+  now: Date,
+): boolean {
+  if (!row || row.yield_fetched_at === null) return true
+  return now.getTime() - new Date(row.yield_fetched_at).getTime() >= YIELD_TTL_MS
 }
 
 export interface CachePartition {

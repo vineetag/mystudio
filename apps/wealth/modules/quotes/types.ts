@@ -18,6 +18,8 @@ export interface QuoteView {
   symbol: string
   price: number | null
   dayChangePct: number | null
+  /** Annual dividend yield in percent (e.g. 0.55 = 0.55%); null when unknown. */
+  dividendYield: number | null
   fetchedAt: string | null
   isStale: boolean
 }

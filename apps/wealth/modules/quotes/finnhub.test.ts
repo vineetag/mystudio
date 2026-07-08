@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { fetchFinnhubQuote, UnknownSymbolError } from "./finnhub"
+import {
+  fetchFinnhubDividendYield,
+  fetchFinnhubQuote,
+  UnknownSymbolError,
+} from "./finnhub"
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -67,5 +71,60 @@ describe("fetchFinnhubQuote", () => {
     vi.stubGlobal("fetch", fetchMock)
     await expect(fetchFinnhubQuote("GOOG")).rejects.toThrow('Finnhub responded 401 for "GOOG".')
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("fetchFinnhubDividendYield", () => {
+  beforeEach(() => {
+    vi.stubEnv("FINNHUB_API_KEY", "test-key")
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
+
+  it("prefers the TTM yield, falling back to indicated annual", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({ metric: { currentDividendYieldTTM: 0.55 } }),
+      ),
+    )
+    await expect(fetchFinnhubDividendYield("AAPL")).resolves.toBe(0.55)
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({ metric: { dividendYieldIndicatedAnnual: 1.2 } }),
+      ),
+    )
+    await expect(fetchFinnhubDividendYield("VTI")).resolves.toBe(1.2)
+  })
+
+  it("resolves null on missing metrics or non-OK responses — never throws", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ metric: {} })))
+    await expect(fetchFinnhubDividendYield("GOOG")).resolves.toBeNull()
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 403)))
+    await expect(fetchFinnhubDividendYield("GOOG")).resolves.toBeNull()
+
+    vi.stubEnv("FINNHUB_API_KEY", "")
+    await expect(fetchFinnhubDividendYield("GOOG")).resolves.toBeNull()
+  })
+
+  it("retries 429 then succeeds", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({}, 429))
+      .mockResolvedValueOnce(jsonResponse({ metric: { currentDividendYieldTTM: 2 } }))
+    vi.stubGlobal("fetch", fetchMock)
+
+    const promise = fetchFinnhubDividendYield("SCHD")
+    await vi.advanceTimersByTimeAsync(1200)
+    await expect(promise).resolves.toBe(2)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

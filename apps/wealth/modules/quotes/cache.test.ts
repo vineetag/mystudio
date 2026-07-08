@@ -4,6 +4,8 @@ import {
   QUOTE_TTL_MS,
   rowToQuoteView,
   unavailableQuoteView,
+  YIELD_TTL_MS,
+  yieldNeedsRefresh,
   type CachedQuoteRow,
 } from "./cache"
 
@@ -14,7 +16,9 @@ function row(symbol: string, ageMs: number, price = "100.5"): CachedQuoteRow {
     symbol,
     price,
     day_change_pct: "1.25",
+    dividend_yield: null,
     fetched_at: new Date(NOW.getTime() - ageMs).toISOString(),
+    yield_fetched_at: null,
   }
 }
 
@@ -64,13 +68,21 @@ describe("partitionByFreshness", () => {
 describe("rowToQuoteView", () => {
   it("converts numeric strings and preserves null day change", () => {
     const view = rowToQuoteView(
-      { symbol: "X", price: "42.1", day_change_pct: null, fetched_at: NOW.toISOString() },
+      {
+        symbol: "X",
+        price: "42.1",
+        day_change_pct: null,
+        dividend_yield: "0.55",
+        fetched_at: NOW.toISOString(),
+        yield_fetched_at: NOW.toISOString(),
+      },
       true,
     )
     expect(view).toEqual({
       symbol: "X",
       price: 42.1,
       dayChangePct: null,
+      dividendYield: 0.55,
       fetchedAt: NOW.toISOString(),
       isStale: true,
     })
@@ -83,8 +95,26 @@ describe("unavailableQuoteView", () => {
       symbol: "FXAIX",
       price: null,
       dayChangePct: null,
+      dividendYield: null,
       fetchedAt: null,
       isStale: false,
     })
+  })
+})
+
+describe("yieldNeedsRefresh", () => {
+  it("wants a refresh when the row is missing or never fetched", () => {
+    expect(yieldNeedsRefresh(undefined, NOW)).toBe(true)
+    expect(yieldNeedsRefresh({ yield_fetched_at: null }, NOW)).toBe(true)
+  })
+
+  it("keeps a yield fetched within 24 hours — even a stored null", () => {
+    const recent = new Date(NOW.getTime() - YIELD_TTL_MS + 60_000).toISOString()
+    expect(yieldNeedsRefresh({ yield_fetched_at: recent }, NOW)).toBe(false)
+  })
+
+  it("refreshes once the yield is a day old", () => {
+    const old = new Date(NOW.getTime() - YIELD_TTL_MS).toISOString()
+    expect(yieldNeedsRefresh({ yield_fetched_at: old }, NOW)).toBe(true)
   })
 })

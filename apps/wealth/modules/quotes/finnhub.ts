@@ -81,3 +81,48 @@ export async function fetchFinnhubQuote(symbol: string): Promise<FinnhubQuote> {
 
   throw lastError
 }
+
+/**
+ * Fetch a symbol's annual dividend yield (percent) from Finnhub's basic
+ * financials. Best-effort by design: any failure — endpoint not on the free
+ * tier, unknown symbol, network trouble — resolves to null so a yield lookup
+ * can never break a price refresh. Retries 429/5xx like the quote fetch.
+ */
+export async function fetchFinnhubDividendYield(
+  symbol: string,
+): Promise<number | null> {
+  const apiKey = process.env.FINNHUB_API_KEY
+  if (!apiKey) return null
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    if (attempt > 0) await sleep(BASE_DELAY_MS * 2 ** (attempt - 1))
+
+    let response: Response
+    try {
+      response = await fetch(
+        `${FINNHUB_BASE}/stock/metric?symbol=${encodeURIComponent(symbol)}&metric=all&token=${apiKey}`,
+        { cache: "no-store" },
+      )
+    } catch {
+      continue
+    }
+
+    if (response.status === 429 || response.status >= 500) continue
+    if (!response.ok) return null
+
+    const body = (await response.json()) as {
+      metric?: {
+        currentDividendYieldTTM?: number | null
+        dividendYieldIndicatedAnnual?: number | null
+      }
+    }
+
+    const yieldPct =
+      body.metric?.currentDividendYieldTTM ??
+      body.metric?.dividendYieldIndicatedAnnual ??
+      null
+    return typeof yieldPct === "number" && yieldPct >= 0 ? yieldPct : null
+  }
+
+  return null
+}

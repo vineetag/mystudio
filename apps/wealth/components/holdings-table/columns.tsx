@@ -24,6 +24,8 @@ export type HoldingDisplayRow = Pick<
   | "value"
   | "gainLoss"
   | "gainLossPct"
+  | "dividendYield"
+  | "projectedAnnualIncome"
 >
 
 export interface HoldingsColumn {
@@ -123,6 +125,24 @@ export const HOLDINGS_COLUMNS: HoldingsColumn[] = [
       ) : (
         <span className={signedClass(row.gainLossPct)}>
           {formatSignedPct(row.gainLossPct)}
+        </span>
+      ),
+  },
+  {
+    key: "dividend",
+    header: "Div yield",
+    align: "right",
+    render: (row) =>
+      row.dividendYield === null ? (
+        <Muted>—</Muted>
+      ) : (
+        <span className="inline-flex flex-col items-end">
+          <span>{row.dividendYield.toFixed(2)}%</span>
+          {row.projectedAnnualIncome !== null && (
+            <span className="whitespace-nowrap text-xs text-ink/40">
+              {formatMoney(row.projectedAnnualIncome)}/yr
+            </span>
+          )}
         </span>
       ),
   },

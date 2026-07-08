@@ -22,6 +22,10 @@ export interface PositionRow {
   value: number | null
   gainLoss: number | null
   gainLossPct: number | null
+  /** Annual dividend yield in percent; null when the quote has no yield data. */
+  dividendYield: number | null
+  /** value × yield — projected annual dividend income; null when not computable. */
+  projectedAnnualIncome: number | null
 }
 
 /** One row per ticker across all accounts. */
@@ -38,6 +42,8 @@ export interface ConsolidatedRow {
   value: number | null
   gainLoss: number | null
   gainLossPct: number | null
+  dividendYield: number | null
+  projectedAnnualIncome: number | null
   positions: PositionRow[]
 }
 
@@ -45,6 +51,8 @@ export interface PortfolioTotal {
   value: number
   /** Symbols whose price is unavailable — their value is NOT in `value`. */
   unpricedSymbols: string[]
+  /** Sum of projected annual dividend income over positions where it's known. */
+  projectedAnnualIncome: number
 }
 
 export function derivePositions(
@@ -69,6 +77,12 @@ export function derivePositions(
           ? ((price - holding.avgCost!) / holding.avgCost!) * 100
           : null
 
+      const dividendYield = quote?.dividendYield ?? null
+      const projectedAnnualIncome =
+        value !== null && dividendYield !== null
+          ? value * (dividendYield / 100)
+          : null
+
       rows.push({
         holdingId: holding.id,
         accountId: account.id,
@@ -84,6 +98,8 @@ export function derivePositions(
         value,
         gainLoss,
         gainLossPct,
+        dividendYield,
+        projectedAnnualIncome,
       })
     }
   }
@@ -131,6 +147,12 @@ export function consolidate(positions: PositionRow[]): ConsolidatedRow[] {
     const gainLossPct =
       gainLoss !== null && costBasis > 0 ? (gainLoss / costBasis) * 100 : null
 
+    const dividendYield = first.dividendYield
+    const projectedAnnualIncome =
+      value !== null && dividendYield !== null
+        ? value * (dividendYield / 100)
+        : null
+
     rows.push({
       symbol,
       quantity,
@@ -143,6 +165,8 @@ export function consolidate(positions: PositionRow[]): ConsolidatedRow[] {
       value,
       gainLoss,
       gainLossPct,
+      dividendYield,
+      projectedAnnualIncome,
       positions: [...group].sort((a, b) =>
         a.accountName.localeCompare(b.accountName),
       ),
@@ -159,6 +183,7 @@ export function consolidate(positions: PositionRow[]): ConsolidatedRow[] {
 
 export function portfolioTotal(positions: PositionRow[]): PortfolioTotal {
   let value = 0
+  let projectedAnnualIncome = 0
   const unpriced = new Set<string>()
   for (const position of positions) {
     if (position.value === null) {
@@ -166,6 +191,9 @@ export function portfolioTotal(positions: PositionRow[]): PortfolioTotal {
     } else {
       value += position.value
     }
+    if (position.projectedAnnualIncome !== null) {
+      projectedAnnualIncome += position.projectedAnnualIncome
+    }
   }
-  return { value, unpricedSymbols: [...unpriced].sort() }
+  return { value, unpricedSymbols: [...unpriced].sort(), projectedAnnualIncome }
 }

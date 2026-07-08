@@ -93,6 +93,16 @@ function HoldingCardBody({ row }: { row: HoldingDisplayRow }) {
           </span>
         )}
       </CardFigure>
+      {row.dividendYield !== null && (
+        <CardFigure label="Div yield">
+          {row.dividendYield.toFixed(2)}%
+          {row.projectedAnnualIncome !== null && (
+            <span className="ml-1.5 text-xs text-ink/40">
+              {formatMoney(row.projectedAnnualIncome)}/yr
+            </span>
+          )}
+        </CardFigure>
+      )}
     </div>
   )
 }
@@ -116,7 +126,7 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
   return (
     <>
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[44rem] text-sm">
+        <table className="w-full min-w-[50rem] text-sm">
           <HeaderRow />
           <tbody>
             {positions.map((position) => (
@@ -165,7 +175,7 @@ export function ConsolidatedTable({ rows }: { rows: ConsolidatedRow[] }) {
   return (
     <>
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[46rem] text-sm">
+        <table className="w-full min-w-[52rem] text-sm">
           <HeaderRow leadingCell />
           <tbody>
             {rows.map((row) => (

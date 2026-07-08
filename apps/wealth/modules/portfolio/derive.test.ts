@@ -32,13 +32,19 @@ function account(
   }
 }
 
-function quote(symbol: string, price: number | null, isStale = false): [string, QuoteView] {
+function quote(
+  symbol: string,
+  price: number | null,
+  isStale = false,
+  dividendYield: number | null = null,
+): [string, QuoteView] {
   return [
     symbol,
     {
       symbol,
       price,
       dayChangePct: price === null ? null : 0.5,
+      dividendYield,
       fetchedAt: price === null ? null : FETCHED_AT,
       isStale,
     },
@@ -86,6 +92,31 @@ describe("derivePositions", () => {
       new Map([quote("GOOG", 10)]),
     )
     expect(rows[0]).toMatchObject({ gainLoss: 20, gainLossPct: null })
+  })
+
+  it("projects annual dividend income from value × yield", () => {
+    const rows = derivePositions(
+      [account("a1", "Roth", [{ symbol: "VTI", quantity: 10, avgCost: 100 }])],
+      new Map([quote("VTI", 200, false, 1.5)]),
+    )
+    expect(rows[0]).toMatchObject({
+      dividendYield: 1.5,
+      projectedAnnualIncome: 30, // 2000 × 1.5%
+    })
+  })
+
+  it("leaves dividend income null without yield data or price", () => {
+    const rows = derivePositions(
+      [
+        account("a1", "Roth", [
+          { symbol: "GOOG", quantity: 1, avgCost: 100 },
+          { symbol: "FXAIX", quantity: 1, avgCost: 100 },
+        ]),
+      ],
+      new Map([quote("GOOG", 150), quote("FXAIX", null, false, 2)]),
+    )
+    expect(rows[0]).toMatchObject({ dividendYield: null, projectedAnnualIncome: null })
+    expect(rows[1]).toMatchObject({ projectedAnnualIncome: null })
   })
 })
 
@@ -145,6 +176,20 @@ describe("portfolioTotal", () => {
     expect(portfolioTotal(positions)).toEqual({
       value: 1500,
       unpricedSymbols: ["FXAIX"],
+      projectedAnnualIncome: 0,
     })
+  })
+
+  it("sums projected dividend income over positions where it's known", () => {
+    const positions = derivePositions(
+      [
+        account("a1", "Roth", [
+          { symbol: "VTI", quantity: 10, avgCost: 100 }, // 2000 × 1.5% = 30
+          { symbol: "GOOG", quantity: 1, avgCost: 100 }, // no yield data
+        ]),
+      ],
+      new Map([quote("VTI", 200, false, 1.5), quote("GOOG", 150)]),
+    )
+    expect(portfolioTotal(positions).projectedAnnualIncome).toBe(30)
   })
 })
