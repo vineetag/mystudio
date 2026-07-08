@@ -26,6 +26,7 @@
     "next": "^15.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "snaptrade-typescript-sdk": "^10.0.18",
     "tailwind-merge": "^2.6.1"
   },
   "devDependencies": {

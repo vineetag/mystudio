@@ -33,7 +33,14 @@ export function AccountCard({ account }: { account: AccountWithHoldings }) {
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold text-ink">{account.name}</h2>
+            <h2 className="text-lg font-semibold text-ink">
+              {account.name}
+              {account.source === "snaptrade" && (
+                <span className="ml-2 rounded bg-moss/10 px-1.5 py-0.5 text-xs font-medium text-moss align-middle">
+                  via SnapTrade
+                </span>
+              )}
+            </h2>
             <p className="text-sm text-ink/70">
               {account.broker} · {ACCOUNT_TYPE_LABELS[account.accountType]}
             </p>

@@ -1,11 +1,41 @@
+import { redirect } from "next/navigation"
 import { listOwnerAccountsWithHoldings } from "@/modules/accounts"
+import { requireOwner } from "@/modules/auth"
+import { isSnapTradeConfigured, listConnections } from "@/modules/snaptrade"
+import { getOrRegisterStUser, syncSnapTradeHoldings } from "@/modules/snaptrade"
 import { AccountCard } from "./account-card"
 import { AccountForm } from "./account-form"
+import { ConnectedBrokerages } from "./connected-brokerages"
 import { CsvImport } from "./csv-import"
 
 // Owner-only (enforced in middleware). Minimal M2 page — design pass is M5.
-export default async function AccountsPage() {
-  const accounts = await listOwnerAccountsWithHoldings()
+export default async function AccountsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ snaptrade?: string }>
+}) {
+  // Returning from the SnapTrade connection portal: pull positions right
+  // away, then land on a clean URL so a refresh doesn't re-sync.
+  const params = await searchParams
+  if (params.snaptrade === "connected" && isSnapTradeConfigured()) {
+    const owner = await requireOwner()
+    if (owner.ok) {
+      try {
+        const stUser = await getOrRegisterStUser(owner.userId)
+        await syncSnapTradeHoldings(owner.userId, stUser)
+      } catch (error) {
+        // Sync errors land on the connection rows; the page still renders.
+        console.error("SnapTrade post-connect sync failed:", error)
+      }
+    }
+    redirect("/accounts")
+  }
+
+  const snapTradeEnabled = isSnapTradeConfigured()
+  const [accounts, connections] = await Promise.all([
+    listOwnerAccountsWithHoldings(),
+    snapTradeEnabled ? listConnections() : Promise.resolve([]),
+  ])
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8">
@@ -15,6 +45,8 @@ export default async function AccountsPage() {
           Manage brokerage accounts and their holdings. LIVE data.
         </p>
       </div>
+
+      {snapTradeEnabled && <ConnectedBrokerages connections={connections} />}
 
       <section className="rounded-lg border border-rule p-4">
         <h2 className="mb-3 text-lg font-semibold text-ink">New account</h2>
