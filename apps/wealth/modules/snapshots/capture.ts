@@ -3,7 +3,7 @@ import "server-only"
 import { createServiceClient } from "@/lib/db"
 import { rowToAccount, rowToHolding } from "@/modules/accounts"
 import { derivePositions, portfolioTotal } from "@/modules/portfolio"
-import { getQuotes, type GetQuotesOptions } from "@/modules/quotes"
+import { getQuotes } from "@/modules/quotes"
 import type { SnapshotAccountValue } from "./types"
 
 /** Benchmark ETF proxies stored with every snapshot for the comparison chart. */
@@ -18,14 +18,14 @@ function todayUtc(): string {
  * row (date PK — idempotent, later runs the same day win).
  *
  * Runs from two places:
- * - the CRON_SECRET-guarded route (no session → quotes fetched as trusted)
- * - dashboard load for the signed-in owner (viewer check already passed)
+ * - the CRON_SECRET-guarded route (no session)
+ * - dashboard load for the signed-in owner
  *
  * Reads via the service client because the cron has no user session.
  */
-export async function captureSnapshot(
-  quoteOptions: GetQuotesOptions = {},
-): Promise<{ ok: true; totalValue: number } | { ok: false; error: string }> {
+export async function captureSnapshot(): Promise<
+  { ok: true; totalValue: number } | { ok: false; error: string }
+> {
   const service = createServiceClient()
 
   const { data, error } = await service
@@ -43,7 +43,7 @@ export async function captureSnapshot(
   const symbols = accounts.flatMap((account) =>
     account.holdings.map((holding) => holding.symbol),
   )
-  const quotes = await getQuotes([...symbols, ...BENCHMARKS], quoteOptions)
+  const quotes = await getQuotes([...symbols, ...BENCHMARKS])
 
   const positions = derivePositions(accounts, quotes)
   const total = portfolioTotal(positions)

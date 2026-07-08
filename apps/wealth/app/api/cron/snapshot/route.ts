@@ -20,8 +20,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 })
   }
 
-  // Trusted: this request authenticated via CRON_SECRET and has no session.
-  const result = await captureSnapshot({ trusted: true })
+  const result = await captureSnapshot()
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 500 })
   }

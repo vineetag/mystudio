@@ -1,7 +1,6 @@
 import "server-only"
 
 import { createClient, createServiceClient } from "@/lib/db"
-import { getViewer } from "@/modules/auth"
 import {
   partitionByFreshness,
   partitionForPollRefresh,
@@ -45,12 +44,6 @@ async function mapWithConcurrency<T, R>(
 }
 
 export interface GetQuotesOptions {
-  /**
-   * Skip the viewer check. ONLY for server paths that carry their own
-   * authentication and have no user session — today that's the CRON_SECRET-
-   * guarded snapshot route.
-   */
-  trusted?: boolean
   /** Bypass the 15 min TTL; refetch symbols older than QUOTE_POLL_MS from Finnhub. */
   forceRefresh?: boolean
 }
@@ -98,9 +91,8 @@ export async function getQuotes(
 
   if (toFetch.length === 0) return views
 
-  // Resolve viewer once for trusted-path bypass; fetching is allowed for all modes.
-  if (!options.trusted) await getViewer()
-
+  // Fetching is allowed for all modes — callers gate WHICH symbols may spend
+  // Finnhub budget (dashboard/API restrict to visible holdings + proxies).
   const fetchedAt = new Date().toISOString()
   let lastFetchAt = 0
   const results = await mapWithConcurrency(toFetch, FETCH_CONCURRENCY, async (symbol) => {
