@@ -58,6 +58,10 @@ export async function fetchFinnhubQuote(symbol: string): Promise<FinnhubQuote> {
       lastError = new Error(`Finnhub responded ${response.status}.`)
       continue
     }
+    // Free tier returns 403 for unsupported symbols (e.g. mutual funds like FXAIX).
+    if (response.status === 403 || response.status === 404) {
+      throw new UnknownSymbolError(symbol)
+    }
     if (!response.ok) {
       throw new Error(`Finnhub responded ${response.status} for "${symbol}".`)
     }

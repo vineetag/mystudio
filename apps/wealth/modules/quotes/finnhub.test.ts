@@ -61,6 +61,13 @@ describe("fetchFinnhubQuote", () => {
     await expect(fetchFinnhubQuote("FXAIX")).rejects.toBeInstanceOf(UnknownSymbolError)
   })
 
+  it("throws UnknownSymbolError when Finnhub returns 403 for unsupported symbols", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({}, 403))
+    vi.stubGlobal("fetch", fetchMock)
+    await expect(fetchFinnhubQuote("FXAIX")).rejects.toBeInstanceOf(UnknownSymbolError)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it("fails clearly when the API key is missing", async () => {
     vi.stubEnv("FINNHUB_API_KEY", "")
     await expect(fetchFinnhubQuote("GOOG")).rejects.toThrow("FINNHUB_API_KEY is not set")
