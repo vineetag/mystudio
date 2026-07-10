@@ -17,7 +17,18 @@ const config: Config = {
       screens: { "2xl": "1400px" },
     },
     extend: {
+      fontFamily: {
+        sans: ["var(--font-plex)", "system-ui", "sans-serif"],
+        display: ["var(--font-newsreader)", "Georgia", "serif"],
+      },
       colors: {
+        // OneFolio ledger tokens
+        paper: "#F7F8F6",
+        ink: "#20281F",
+        rule: "#DBE2DA",
+        moss: "#3D6B5E",
+        gain: "#2E7D5B",
+        loss: "#B4483E",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

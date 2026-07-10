@@ -64,6 +64,25 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-paper text-ink;
+    font-feature-settings: "tnum";
+  }
+}
+
+@layer components {
+  /* DEMO banner texture: caution stripes, but ledger-calm. */
+  .demo-stripes {
+    background: repeating-linear-gradient(
+      135deg,
+      #f0c948 0,
+      #f0c948 12px,
+      #e6bb33 12px,
+      #e6bb33 24px
+    );
+  }
+
+  /* The signature: an accountant's double rule under a completed sum. */
+  .ledger-sum {
+    border-bottom: 4px double #20281f;
   }
 }

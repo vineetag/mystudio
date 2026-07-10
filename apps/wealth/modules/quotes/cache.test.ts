@@ -1,0 +1,146 @@
+import { describe, expect, it } from "vitest"
+import {
+  partitionByFreshness,
+  partitionForPollRefresh,
+  QUOTE_POLL_MS,
+  QUOTE_TTL_MS,
+  rowToQuoteView,
+  unavailableQuoteView,
+  YIELD_TTL_MS,
+  yieldNeedsRefresh,
+  type CachedQuoteRow,
+} from "./cache"
+
+const NOW = new Date("2026-07-06T12:00:00Z")
+
+function row(symbol: string, ageMs: number, price = "100.5"): CachedQuoteRow {
+  return {
+    symbol,
+    price,
+    day_change_pct: "1.25",
+    dividend_yield: null,
+    fetched_at: new Date(NOW.getTime() - ageMs).toISOString(),
+    yield_fetched_at: null,
+  }
+}
+
+describe("partitionByFreshness", () => {
+  it("serves rows younger than the TTL as fresh", () => {
+    const { fresh, toFetch, fallback } = partitionByFreshness(
+      ["GOOG"],
+      [row("GOOG", QUOTE_TTL_MS - 1000)],
+      NOW,
+    )
+    expect(fresh).toHaveLength(1)
+    expect(fresh[0]).toMatchObject({ symbol: "GOOG", price: 100.5, isStale: false })
+    expect(toFetch).toEqual([])
+    expect(fallback.size).toBe(0)
+  })
+
+  it("marks rows at or past the TTL for refetch, keeping a stale fallback", () => {
+    const { fresh, toFetch, fallback } = partitionByFreshness(
+      ["GOOG"],
+      [row("GOOG", QUOTE_TTL_MS)],
+      NOW,
+    )
+    expect(fresh).toEqual([])
+    expect(toFetch).toEqual(["GOOG"])
+    expect(fallback.get("GOOG")).toMatchObject({ price: 100.5, isStale: true })
+  })
+
+  it("queues symbols absent from cache with no fallback", () => {
+    const { fresh, toFetch, fallback } = partitionByFreshness(["NVDA"], [], NOW)
+    expect(fresh).toEqual([])
+    expect(toFetch).toEqual(["NVDA"])
+    expect(fallback.has("NVDA")).toBe(false)
+  })
+
+  it("handles a mixed set", () => {
+    const { fresh, toFetch, fallback } = partitionByFreshness(
+      ["A", "B", "C"],
+      [row("A", 60_000), row("B", QUOTE_TTL_MS * 2)],
+      NOW,
+    )
+    expect(fresh.map((view) => view.symbol)).toEqual(["A"])
+    expect(toFetch).toEqual(["B", "C"])
+    expect([...fallback.keys()]).toEqual(["B"])
+  })
+})
+
+describe("partitionForPollRefresh", () => {
+  it("serves rows younger than the poll interval as fresh", () => {
+    const { fresh, toFetch } = partitionForPollRefresh(
+      ["GOOG"],
+      [row("GOOG", QUOTE_POLL_MS - 1000)],
+      NOW,
+    )
+    expect(fresh).toHaveLength(1)
+    expect(fresh[0]).toMatchObject({ symbol: "GOOG", isStale: false })
+    expect(toFetch).toEqual([])
+  })
+
+  it("refetches rows at or past the poll interval", () => {
+    const { fresh, toFetch, fallback } = partitionForPollRefresh(
+      ["GOOG"],
+      [row("GOOG", QUOTE_POLL_MS)],
+      NOW,
+    )
+    expect(fresh).toEqual([])
+    expect(toFetch).toEqual(["GOOG"])
+    expect(fallback.get("GOOG")).toMatchObject({ isStale: true })
+  })
+})
+
+describe("rowToQuoteView", () => {
+  it("converts numeric strings and preserves null day change", () => {
+    const view = rowToQuoteView(
+      {
+        symbol: "X",
+        price: "42.1",
+        day_change_pct: null,
+        dividend_yield: "0.55",
+        fetched_at: NOW.toISOString(),
+        yield_fetched_at: NOW.toISOString(),
+      },
+      true,
+    )
+    expect(view).toEqual({
+      symbol: "X",
+      price: 42.1,
+      dayChangePct: null,
+      dividendYield: 0.55,
+      fetchedAt: NOW.toISOString(),
+      isStale: true,
+    })
+  })
+})
+
+describe("unavailableQuoteView", () => {
+  it("has null price and timestamp — nothing fabricated", () => {
+    expect(unavailableQuoteView("FXAIX")).toEqual({
+      symbol: "FXAIX",
+      price: null,
+      dayChangePct: null,
+      dividendYield: null,
+      fetchedAt: null,
+      isStale: false,
+    })
+  })
+})
+
+describe("yieldNeedsRefresh", () => {
+  it("wants a refresh when the row is missing or never fetched", () => {
+    expect(yieldNeedsRefresh(undefined, NOW)).toBe(true)
+    expect(yieldNeedsRefresh({ yield_fetched_at: null }, NOW)).toBe(true)
+  })
+
+  it("keeps a yield fetched within 24 hours — even a stored null", () => {
+    const recent = new Date(NOW.getTime() - YIELD_TTL_MS + 60_000).toISOString()
+    expect(yieldNeedsRefresh({ yield_fetched_at: recent }, NOW)).toBe(false)
+  })
+
+  it("refreshes once the yield is a day old", () => {
+    const old = new Date(NOW.getTime() - YIELD_TTL_MS).toISOString()
+    expect(yieldNeedsRefresh({ yield_fetched_at: old }, NOW)).toBe(true)
+  })
+})
