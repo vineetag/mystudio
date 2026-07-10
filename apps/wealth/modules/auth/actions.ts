@@ -12,9 +12,21 @@ export type RequestMagicLinkResult =
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 async function siteOrigin(): Promise<string> {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL
+  // Prefer the live request host so magic-link redirects match where the user
+  // actually signed in (e.g. getonefolio.app), not a shared monorepo env var
+  // that may point at appcrafter.studio.
   const origin = (await headers()).get("origin")
-  return origin ?? "http://localhost:3003"
+  if (origin) return origin
+
+  const host =
+    (await headers()).get("x-forwarded-host") ?? (await headers()).get("host")
+  if (host) {
+    const proto = (await headers()).get("x-forwarded-proto") ?? "https"
+    return `${proto}://${host.split(",")[0]?.trim()}`
+  }
+
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL
+  return "http://localhost:3003"
 }
 
 /**
