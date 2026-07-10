@@ -3,12 +3,20 @@
 import { useState, useTransition } from "react"
 import { deleteAccount } from "@/modules/accounts/actions"
 import type { AccountWithHoldings } from "@/modules/accounts"
+import type { SymbolInfo } from "@/modules/symbols/types"
 import { AccountForm } from "./account-form"
 import { AddHoldingForm } from "./add-holding-form"
 import { ACCOUNT_TYPE_LABELS } from "@/modules/accounts/labels"
+import { BrokerLogo } from "@/components/broker-logo"
 import { HoldingRow } from "./holding-row"
 
-export function AccountCard({ account }: { account: AccountWithHoldings }) {
+export function AccountCard({
+  account,
+  symbols,
+}: {
+  account: AccountWithHoldings
+  symbols: Record<string, SymbolInfo>
+}) {
   const [isEditing, setIsEditing] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [error, setError] = useState("")
@@ -32,18 +40,21 @@ export function AccountCard({ account }: { account: AccountWithHoldings }) {
         <AccountForm account={account} onDone={() => setIsEditing(false)} />
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-lg font-semibold text-ink">
-              {account.name}
-              {account.source === "snaptrade" && (
-                <span className="ml-2 rounded bg-moss/10 px-1.5 py-0.5 text-xs font-medium text-moss align-middle">
-                  via SnapTrade
-                </span>
-              )}
-            </h2>
-            <p className="text-sm text-ink/70">
-              {account.broker} · {ACCOUNT_TYPE_LABELS[account.accountType]}
-            </p>
+          <div className="flex items-center gap-3">
+            <BrokerLogo broker={account.broker} logoUrl={account.brokerLogoUrl} size={32} />
+            <div>
+              <h2 className="text-lg font-semibold text-ink">
+                {account.name}
+                {account.source === "snaptrade" && (
+                  <span className="ml-2 rounded bg-moss/10 px-1.5 py-0.5 text-xs font-medium text-moss align-middle">
+                    via SnapTrade
+                  </span>
+                )}
+              </h2>
+              <p className="text-sm text-ink/70">
+                {account.broker} · {ACCOUNT_TYPE_LABELS[account.accountType]}
+              </p>
+            </div>
           </div>
           <div className="flex gap-2">
             <button
@@ -93,7 +104,11 @@ export function AccountCard({ account }: { account: AccountWithHoldings }) {
             </thead>
             <tbody>
               {account.holdings.map((holding) => (
-                <HoldingRow key={holding.id} holding={holding} />
+                <HoldingRow
+                  key={holding.id}
+                  holding={holding}
+                  symbolInfo={symbols[holding.symbol] ?? null}
+                />
               ))}
             </tbody>
           </table>

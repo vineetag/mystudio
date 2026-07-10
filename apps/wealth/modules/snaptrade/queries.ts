@@ -8,7 +8,7 @@ export async function listConnections(): Promise<SnapTradeConnection[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("pt_snaptrade_connections")
-    .select("id, broker, status, last_synced_at, last_error")
+    .select("id, broker, logo_url, status, last_synced_at, last_error")
     .order("created_at", { ascending: true })
 
   if (error) {
@@ -19,6 +19,7 @@ export async function listConnections(): Promise<SnapTradeConnection[]> {
   return (data ?? []).map((row) => ({
     id: row.id,
     broker: row.broker,
+    logoUrl: row.logo_url ?? null,
     status: row.status as ConnectionStatus,
     lastSyncedAt: row.last_synced_at,
     lastError: row.last_error,

@@ -7,6 +7,8 @@ export interface Account {
   userId: string | null
   name: string
   broker: string
+  /** Official broker logo URL captured from SnapTrade (live); null otherwise. */
+  brokerLogoUrl: string | null
   accountType: AccountType
   source: AccountSource
   isDemo: boolean

@@ -3,11 +3,99 @@
 import { useState, useTransition } from "react"
 import { deleteHolding, updateHolding } from "@/modules/holdings/actions"
 import type { Holding } from "@/modules/holdings/types"
+import { setSymbolName } from "@/modules/symbols/actions"
+import type { SymbolInfo } from "@/modules/symbols/types"
+import { SymbolBadge } from "@/components/holdings-table/symbol-badge"
 
 const numberInputClass =
   "min-h-12 w-full rounded-md border border-rule px-2 text-right text-base tabular-nums outline-none focus:border-moss"
 
-export function HoldingRow({ holding }: { holding: Holding }) {
+/** Inline editor for a symbol's official/manual name (persisted in pt_symbols). */
+function SymbolNameEditor({
+  symbol,
+  initialName,
+}: {
+  symbol: string
+  initialName: string | null
+}) {
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(initialName ?? "")
+  const [error, setError] = useState("")
+  const [isPending, startTransition] = useTransition()
+
+  function handleSave() {
+    setError("")
+    startTransition(async () => {
+      const result = await setSymbolName(symbol, name)
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      setEditing(false)
+    })
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setName(initialName ?? "")
+          setEditing(true)
+        }}
+        className="mt-1 text-xs text-moss underline-offset-2 hover:underline"
+      >
+        {initialName ? "Edit name" : "+ Add name"}
+      </button>
+    )
+  }
+
+  return (
+    <div className="mt-1 flex flex-col gap-1.5">
+      <input
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        maxLength={80}
+        placeholder="Company or fund name"
+        aria-label={`Name for ${symbol}`}
+        className="min-h-11 w-48 rounded-md border border-rule px-2 text-sm outline-none focus:border-moss"
+      />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isPending}
+          className="min-h-11 rounded-md border border-rule px-3 text-xs"
+        >
+          {isPending ? "Saving…" : "Save name"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setEditing(false)
+            setError("")
+          }}
+          className="min-h-11 rounded-md border border-rule px-3 text-xs"
+        >
+          Cancel
+        </button>
+      </div>
+      {error && (
+        <p role="alert" className="text-xs text-loss">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
+export function HoldingRow({
+  holding,
+  symbolInfo,
+}: {
+  holding: Holding
+  symbolInfo: SymbolInfo | null
+}) {
   const [isEditing, setIsEditing] = useState(false)
   const [quantity, setQuantity] = useState(String(holding.quantity))
   const [avgCost, setAvgCost] = useState(
@@ -49,7 +137,15 @@ export function HoldingRow({ holding }: { holding: Holding }) {
   return (
     <>
       <tr className="border-t border-rule">
-        <td className="py-2 pr-3 font-medium">{holding.symbol}</td>
+        <td className="py-2 pr-3 align-top">
+          <SymbolBadge
+            symbol={holding.symbol}
+            companyName={symbolInfo?.name ?? null}
+            logoDomain={symbolInfo?.domain ?? null}
+            size={26}
+          />
+          <SymbolNameEditor symbol={holding.symbol} initialName={symbolInfo?.name ?? null} />
+        </td>
         <td className="py-2 pr-3 text-right tabular-nums">
           {isEditing ? (
             <input

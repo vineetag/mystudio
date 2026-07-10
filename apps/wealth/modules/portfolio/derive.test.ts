@@ -15,6 +15,7 @@ function account(
     userId: "user-1",
     name,
     broker: "Test",
+    brokerLogoUrl: null,
     accountType: "taxable",
     source: "manual",
     isDemo: false,

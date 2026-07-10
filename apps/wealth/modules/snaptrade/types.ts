@@ -4,6 +4,8 @@ export type ConnectionStatus = "connected" | "syncing" | "error" | "disabled"
 export interface SnapTradeConnection {
   id: string
   broker: string
+  /** Official broker logo URL from SnapTrade; null if not provided. */
+  logoUrl: string | null
   status: ConnectionStatus
   lastSyncedAt: string | null
   lastError: string | null

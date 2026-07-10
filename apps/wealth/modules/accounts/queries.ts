@@ -16,6 +16,7 @@ export function rowToAccount(row: any): Account {
     userId: row.user_id,
     name: row.name,
     broker: row.broker,
+    brokerLogoUrl: row.broker_logo_url ?? null,
     accountType: row.account_type as AccountType,
     source: row.source as AccountSource,
     isDemo: row.is_demo,

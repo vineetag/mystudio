@@ -103,6 +103,11 @@ export async function syncSnapTradeHoldings(
 
     const broker =
       connection.brokerage?.display_name ?? connection.name ?? "Unknown broker"
+    // SnapTrade ships an official brokerage logo — capture it for the UI.
+    const brokerLogoUrl: string | null =
+      connection.brokerage?.aws_s3_logo_url ??
+      connection.brokerage?.logo_url ??
+      null
     const markConnection = async (
       status: "connected" | "error" | "disabled",
       lastError: string | null,
@@ -112,6 +117,7 @@ export async function syncSnapTradeHoldings(
           id: connection.id,
           user_id: userId,
           broker,
+          logo_url: brokerLogoUrl,
           status,
           last_error: lastError,
           ...(status === "connected" ? { last_synced_at: new Date().toISOString() } : {}),
@@ -154,6 +160,7 @@ export async function syncSnapTradeHoldings(
               user_id: userId,
               name: stAccount.name ?? `${broker} ${stAccount.number ?? ""}`.trim(),
               broker: stAccount.institution_name ?? broker,
+              broker_logo_url: brokerLogoUrl,
               source: "snaptrade",
             },
             { onConflict: "snaptrade_account_id" },

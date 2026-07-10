@@ -3,6 +3,7 @@
 // unavailable; nothing is ever fabricated.
 
 import type { QuoteView } from "@/modules/quotes"
+import type { SymbolInfo } from "@/modules/symbols/types"
 
 /** Minimum account shape for quote derivation — works with full rows or SSR props. */
 export interface DeriveAccountInput {
@@ -22,6 +23,10 @@ export interface PositionRow {
   accountId: string
   accountName: string
   symbol: string
+  /** Official company/fund name for display; null when unresolved. */
+  companyName: string | null
+  /** Resolved company domain — drives the higher-quality logo image; may be null. */
+  logoDomain: string | null
   quantity: number
   avgCost: number | null
   /** True when the row has no cost basis (401k transfer) — badged, no gain/loss. */
@@ -42,6 +47,8 @@ export interface PositionRow {
 /** One row per ticker across all accounts. */
 export interface ConsolidatedRow {
   symbol: string
+  companyName: string | null
+  logoDomain: string | null
   quantity: number
   /** Weighted average over positions that have a cost basis; null if none do. */
   avgCost: number | null
@@ -69,12 +76,14 @@ export interface PortfolioTotal {
 export function derivePositions(
   accounts: DeriveAccountInput[],
   quotes: Map<string, QuoteView>,
+  symbols?: Map<string, SymbolInfo>,
 ): PositionRow[] {
   const rows: PositionRow[] = []
 
   for (const account of accounts) {
     for (const holding of account.holdings) {
       const quote = quotes.get(holding.symbol)
+      const symbolInfo = symbols?.get(holding.symbol)
       const price = quote?.price ?? null
       const hasBasis = holding.avgCost !== null
 
@@ -99,6 +108,8 @@ export function derivePositions(
         accountId: account.id,
         accountName: account.name,
         symbol: holding.symbol,
+        companyName: symbolInfo?.name ?? null,
+        logoDomain: symbolInfo?.domain ?? null,
         quantity: holding.quantity,
         avgCost: holding.avgCost,
         missingCostBasis: !hasBasis,
@@ -166,6 +177,8 @@ export function consolidate(positions: PositionRow[]): ConsolidatedRow[] {
 
     rows.push({
       symbol,
+      companyName: first.companyName,
+      logoDomain: first.logoDomain,
       quantity,
       avgCost,
       missingCostBasis: group.some((position) => position.missingCostBasis),

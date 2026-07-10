@@ -4,13 +4,13 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import type { AccountType } from "@/modules/accounts/types"
 import {
-  consolidate,
   derivePositions,
   portfolioTotal,
   type DeriveAccountInput,
 } from "@/modules/portfolio"
 import { QUOTE_POLL_MS } from "@/modules/quotes/cache"
 import type { QuoteView } from "@/modules/quotes/types"
+import type { SymbolInfo } from "@/modules/symbols/types"
 import { computeChangeChips } from "@/modules/snapshots/changes"
 import type { ChangeChip, Snapshot } from "@/modules/snapshots/types"
 import { DashboardTables, type AccountSection } from "@/components/holdings-table/dashboard-tables"
@@ -30,6 +30,7 @@ const INDEX_PROXIES = [
 
 export type DashboardAccount = DeriveAccountInput & {
   broker: string
+  brokerLogoUrl: string | null
   accountType: AccountType
 }
 
@@ -95,6 +96,7 @@ function ChangeChips({ chips }: { chips: ChangeChip[] }) {
 export function LiveDashboard({
   accounts,
   initialQuotes,
+  symbols,
   isOwner,
   accountCount,
   accountTypeLabels,
@@ -102,14 +104,17 @@ export function LiveDashboard({
 }: {
   accounts: DashboardAccount[]
   initialQuotes: Record<string, QuoteView>
+  symbols: Record<string, SymbolInfo>
   isOwner: boolean
   accountCount: number
   accountTypeLabels: Record<AccountType, string>
   snapshots: Snapshot[]
 }) {
   const [quotes, setQuotes] = useState(() => quotesFromRecord(initialQuotes))
+  // Names + logo domains are static across the quote poll — build the map once.
+  const symbolMap = useMemo(() => new Map(Object.entries(symbols)), [symbols])
 
-  const symbols = useMemo(() => {
+  const quoteSymbols = useMemo(() => {
     const unique = new Set<string>(INDEX_PROXIES.map((proxy) => proxy.symbol))
     for (const account of accounts) {
       for (const holding of account.holdings) {
@@ -119,7 +124,7 @@ export function LiveDashboard({
     return [...unique].sort()
   }, [accounts])
 
-  const symbolsKey = symbols.join(",")
+  const symbolsKey = quoteSymbols.join(",")
 
   useEffect(() => {
     let cancelled = false
@@ -148,8 +153,10 @@ export function LiveDashboard({
     }
   }, [symbolsKey])
 
-  const positions = useMemo(() => derivePositions(accounts, quotes), [accounts, quotes])
-  const consolidated = useMemo(() => consolidate(positions), [positions])
+  const positions = useMemo(
+    () => derivePositions(accounts, quotes, symbolMap),
+    [accounts, quotes, symbolMap],
+  )
   const total = useMemo(() => portfolioTotal(positions), [positions])
 
   const chips = useMemo(() => {
@@ -171,6 +178,7 @@ export function LiveDashboard({
     id: account.id,
     name: account.name,
     broker: account.broker,
+    brokerLogoUrl: account.brokerLogoUrl,
     typeLabel: accountTypeLabels[account.accountType],
   }))
 
@@ -246,7 +254,7 @@ export function LiveDashboard({
         </div>
       ) : (
         <>
-          <DashboardTables consolidated={consolidated} accounts={accountSections} />
+          <DashboardTables positions={positions} accounts={accountSections} />
           {isOwner && <PortfolioChart snapshots={snapshots} />}
         </>
       )}

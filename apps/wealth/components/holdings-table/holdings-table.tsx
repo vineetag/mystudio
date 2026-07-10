@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { ChevronRight } from "lucide-react"
+import { useMemo, useState } from "react"
+import { ChevronDown, ChevronRight, ChevronsUpDown, ChevronUp } from "lucide-react"
 import type { ConsolidatedRow, PositionRow } from "@/modules/portfolio"
 import {
   formatAsOf,
@@ -10,7 +10,16 @@ import {
   formatSignedMoney,
   formatSignedPct,
 } from "@/lib/format"
-import { GAIN_TEXT, HOLDINGS_COLUMNS, LOSS_TEXT, type HoldingDisplayRow } from "./columns"
+import {
+  GAIN_TEXT,
+  HOLDINGS_COLUMNS,
+  LOSS_TEXT,
+  sortRows,
+  type HoldingDisplayRow,
+  type SortDir,
+  type SortState,
+} from "./columns"
+import { SymbolBadge } from "./symbol-badge"
 
 const CELL = "px-3 py-2.5 tabular-nums"
 const HEADER_CELL = "px-3 py-2 text-xs font-medium uppercase tracking-wide text-ink/60"
@@ -23,16 +32,59 @@ function signedClass(value: number): string {
   return value === 0 ? "text-ink/60" : value > 0 ? GAIN_TEXT : LOSS_TEXT
 }
 
-function HeaderRow({ leadingCell }: { leadingCell?: boolean }) {
+function SortCaret({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) {
+    // Faint two-way caret marks the header as sortable without shouting.
+    return <ChevronsUpDown className="h-3 w-3 text-ink/25" aria-hidden />
+  }
+  return dir === "asc" ? (
+    <ChevronUp className="h-3.5 w-3.5 text-moss" aria-hidden />
+  ) : (
+    <ChevronDown className="h-3.5 w-3.5 text-moss" aria-hidden />
+  )
+}
+
+function HeaderRow({
+  leadingCell,
+  sort,
+  onSort,
+}: {
+  leadingCell?: boolean
+  sort: SortState
+  onSort: (key: string) => void
+}) {
   return (
     <thead>
       <tr className="border-b border-rule">
         {leadingCell && <th className="w-8" />}
-        {HOLDINGS_COLUMNS.map((column) => (
-          <th key={column.key} className={`${HEADER_CELL} ${alignClass(column.align)}`}>
-            {column.header}
-          </th>
-        ))}
+        {HOLDINGS_COLUMNS.map((column) => {
+          const sortable = Boolean(column.sortAccessor)
+          const active = sortable && sort.key === column.key
+          return (
+            <th
+              key={column.key}
+              aria-sort={
+                active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"
+              }
+              className={`${HEADER_CELL} ${alignClass(column.align)}`}
+            >
+              {sortable ? (
+                <button
+                  type="button"
+                  onClick={() => onSort(column.key)}
+                  className={`inline-flex min-h-8 cursor-pointer items-center gap-1 transition-colors ${
+                    column.align === "right" ? "flex-row-reverse" : ""
+                  } ${active ? "text-ink" : "hover:text-ink"}`}
+                >
+                  <span>{column.header}</span>
+                  <SortCaret active={active} dir={sort.dir} />
+                </button>
+              ) : (
+                column.header
+              )}
+            </th>
+          )
+        })}
       </tr>
     </thead>
   )
@@ -122,14 +174,23 @@ function CardHeader({ title, value }: { title: React.ReactNode; value: number | 
 /* Per-account view                                                    */
 /* ------------------------------------------------------------------ */
 
-export function PositionsTable({ positions }: { positions: PositionRow[] }) {
+export function PositionsTable({
+  positions,
+  sort,
+  onSort,
+}: {
+  positions: PositionRow[]
+  sort: SortState
+  onSort: (key: string) => void
+}) {
+  const sorted = useMemo(() => sortRows(positions, sort), [positions, sort])
   return (
     <>
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[50rem] text-sm">
-          <HeaderRow />
+          <HeaderRow sort={sort} onSort={onSort} />
           <tbody>
-            {positions.map((position) => (
+            {sorted.map((position) => (
               <tr key={position.holdingId} className="border-b border-rule/60">
                 {HOLDINGS_COLUMNS.map((column) => (
                   <td key={column.key} className={`${CELL} ${alignClass(column.align)}`}>
@@ -142,9 +203,18 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
         </table>
       </div>
       <ul className="flex flex-col gap-2 md:hidden">
-        {positions.map((position) => (
+        {sorted.map((position) => (
           <li key={position.holdingId} className="rounded-lg border border-rule bg-white/40 p-3">
-            <CardHeader title={position.symbol} value={position.value} />
+            <CardHeader
+              title={
+                <SymbolBadge
+                  symbol={position.symbol}
+                  companyName={position.companyName}
+                  logoDomain={position.logoDomain}
+                />
+              }
+              value={position.value}
+            />
             <HoldingCardBody row={position} />
           </li>
         ))}
@@ -157,8 +227,17 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
 /* Consolidated view — expandable per-account breakdown                */
 /* ------------------------------------------------------------------ */
 
-export function ConsolidatedTable({ rows }: { rows: ConsolidatedRow[] }) {
+export function ConsolidatedTable({
+  rows,
+  sort,
+  onSort,
+}: {
+  rows: ConsolidatedRow[]
+  sort: SortState
+  onSort: (key: string) => void
+}) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const sorted = useMemo(() => sortRows(rows, sort), [rows, sort])
 
   function toggle(symbol: string) {
     setExpanded((current) => {
@@ -176,9 +255,9 @@ export function ConsolidatedTable({ rows }: { rows: ConsolidatedRow[] }) {
     <>
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[52rem] text-sm">
-          <HeaderRow leadingCell />
+          <HeaderRow leadingCell sort={sort} onSort={onSort} />
           <tbody>
-            {rows.map((row) => (
+            {sorted.map((row) => (
               <DesktopRowGroup
                 key={row.symbol}
                 row={row}
@@ -190,7 +269,7 @@ export function ConsolidatedTable({ rows }: { rows: ConsolidatedRow[] }) {
         </table>
       </div>
       <ul className="flex flex-col gap-2 md:hidden">
-        {rows.map((row) => (
+        {sorted.map((row) => (
           <MobileRowGroup
             key={row.symbol}
             row={row}
@@ -272,12 +351,16 @@ function MobileRowGroup({
     <li className="rounded-lg border border-rule bg-white/40 p-3">
       <CardHeader
         title={
-          <>
-            {row.symbol}
-            <span className="ml-2 text-xs font-normal text-ink/50">
+          <span className="flex items-center gap-2">
+            <SymbolBadge
+              symbol={row.symbol}
+              companyName={row.companyName}
+              logoDomain={row.logoDomain}
+            />
+            <span className="text-xs font-normal text-ink/50">
               {row.positions.length} {row.positions.length === 1 ? "account" : "accounts"}
             </span>
-          </>
+          </span>
         }
         value={row.value}
       />

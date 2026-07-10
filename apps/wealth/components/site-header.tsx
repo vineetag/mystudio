@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { getViewer } from "@/modules/auth"
+import { OneFolioLogo } from "@/components/onefolio-logo"
 
 export async function SiteHeader() {
   const viewer = await getViewer()
@@ -7,11 +8,8 @@ export async function SiteHeader() {
   return (
     <header className="border-b border-rule">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
-        <Link href="/" className="group inline-flex flex-col">
-          <span className="font-display text-xl font-semibold tracking-tight text-ink">
-            OneFolio
-          </span>
-          <span className="ledger-sum -mt-0.5 w-full opacity-70 transition-opacity group-hover:opacity-100" aria-hidden />
+        <Link href="/" aria-label="OneFolio home" className="group inline-flex">
+          <OneFolioLogo />
         </Link>
         <nav className="flex items-center gap-4 text-sm">
           <Link href="/" className="flex min-h-12 items-center text-ink/70 hover:text-ink">

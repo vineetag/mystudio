@@ -1,8 +1,10 @@
+import { after } from "next/server"
 import { redirect } from "next/navigation"
 import { listOwnerAccountsWithHoldings } from "@/modules/accounts"
 import { requireOwner } from "@/modules/auth"
 import { isSnapTradeConfigured, listConnections } from "@/modules/snaptrade"
 import { getOrRegisterStUser, syncSnapTradeHoldings } from "@/modules/snaptrade"
+import { getSymbols } from "@/modules/symbols"
 import { AccountCard } from "./account-card"
 import { AccountForm } from "./account-form"
 import { ConnectedBrokerages } from "./connected-brokerages"
@@ -37,6 +39,21 @@ export default async function AccountsPage({
     snapTradeEnabled ? listConnections() : Promise.resolve([]),
   ])
 
+  // Names + logos for every held symbol, so each row shows the company and the
+  // owner can add a name to funds Finnhub can't resolve. Cache-only read here;
+  // resolution is rate-paced and warmed in the background below.
+  const symbolSymbols = accounts.flatMap((account) =>
+    account.holdings.map((holding) => holding.symbol),
+  )
+  const symbols = Object.fromEntries(
+    await getSymbols(symbolSymbols, { fetchMissing: false }),
+  )
+  if (symbolSymbols.length > 0) {
+    after(async () => {
+      await getSymbols(symbolSymbols)
+    })
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8">
       <div>
@@ -61,7 +78,9 @@ export default async function AccountsPage({
           import unlock once an account exists.
         </p>
       ) : (
-        accounts.map((account) => <AccountCard key={account.id} account={account} />)
+        accounts.map((account) => (
+          <AccountCard key={account.id} account={account} symbols={symbols} />
+        ))
       )}
     </main>
   )

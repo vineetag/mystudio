@@ -7,6 +7,7 @@ import {
   syncSnapTradeNow,
 } from "@/modules/snaptrade/actions"
 import type { SnapTradeConnection } from "@/modules/snaptrade/types"
+import { BrokerLogo } from "@/components/broker-logo"
 import { formatAsOf } from "@/lib/format"
 
 const STATUS_STYLES: Record<SnapTradeConnection["status"], string> = {
@@ -120,6 +121,7 @@ export function ConnectedBrokerages({
               className="flex flex-wrap items-center justify-between gap-2 py-3"
             >
               <div className="flex items-center gap-2.5">
+                <BrokerLogo broker={connection.broker} logoUrl={connection.logoUrl} size={24} />
                 <span className="font-medium text-ink">{connection.broker}</span>
                 <span
                   className={`rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_STYLES[connection.status]}`}
