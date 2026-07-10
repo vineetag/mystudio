@@ -46,6 +46,12 @@ async function mapWithConcurrency<T, R>(
 export interface GetQuotesOptions {
   /** Bypass the 15 min TTL; refetch symbols older than QUOTE_POLL_MS from Finnhub. */
   forceRefresh?: boolean
+  /**
+   * Never call Finnhub: fresh rows served as-is, stale rows served flagged
+   * isStale, missing symbols come back unavailable. For render paths that
+   * must not block on the rate-paced fetch (the dashboard SSR).
+   */
+  cacheOnly?: boolean
 }
 
 /**
@@ -90,6 +96,13 @@ export async function getQuotes(
   for (const view of fresh) views.set(view.symbol, view)
 
   if (toFetch.length === 0) return views
+
+  if (options.cacheOnly) {
+    for (const symbol of toFetch) {
+      views.set(symbol, fallback.get(symbol) ?? unavailableQuoteView(symbol))
+    }
+    return views
+  }
 
   // Fetching is allowed for all modes — callers gate WHICH symbols may spend
   // Finnhub budget (dashboard/API restrict to visible holdings + proxies).

@@ -23,11 +23,12 @@ export default async function DashboardPage() {
     account.holdings.map((holding) => holding.symbol),
   )
 
-  // SSR serves whatever the 15-min cache has — instantly. The client poll
-  // (LiveDashboard) force-refreshes within a minute; blocking first paint on
-  // a serialized Finnhub fan-out took 30+ seconds on a cold cache.
+  // SSR serves whatever the quote cache has — fresh or flagged stale — and
+  // never calls Finnhub. LiveDashboard polls /api/quotes on mount, so real
+  // prices land seconds later; blocking first paint on the serialized
+  // Finnhub fan-out took 30+ seconds on a cold cache.
   const [quotes, symbols, snapshots] = await Promise.all([
-    getQuotes([...holdingSymbols, ...INDEX_PROXIES]),
+    getQuotes([...holdingSymbols, ...INDEX_PROXIES], { cacheOnly: true }),
     // Cache-only for a fast first paint; name resolution is rate-paced and runs
     // in the background below (logos render immediately regardless of names).
     getSymbols(holdingSymbols, { fetchMissing: false }),
