@@ -15,11 +15,11 @@ describe("normalizeEmailForComparison", () => {
   })
 
   it("normalizes gmail dots and plus aliases", () => {
-    expect(normalizeEmailForComparison("vine.et140+test@gmail.com")).toBe(
-      "vineet140@gmail.com",
+    expect(normalizeEmailForComparison("ad.min140+test@gmail.com")).toBe(
+      "admin140@gmail.com",
     )
-    expect(normalizeEmailForComparison("vineet140@googlemail.com")).toBe(
-      "vineet140@gmail.com",
+    expect(normalizeEmailForComparison("admin140@googlemail.com")).toBe(
+      "admin140@gmail.com",
     )
   })
 })
@@ -31,14 +31,14 @@ describe("isAdminUser", () => {
   })
 
   it("matches allowlisted emails from env", () => {
-    process.env.ADMIN_EMAILS = "vineet140@gmail.com,other@example.com"
+    process.env.ADMIN_EMAILS = "admin140@gmail.com,other@example.com"
     expect(getAdminAllowlist()).toEqual([
-      "vineet140@gmail.com",
+      "admin140@gmail.com",
       "other@example.com",
     ])
 
     const user = {
-      email: "vine.et140@gmail.com",
+      email: "ad.min140@gmail.com",
       identities: [],
     } as unknown as User
 
@@ -46,27 +46,27 @@ describe("isAdminUser", () => {
   })
 
   it("falls back to identity email when primary email is missing", () => {
-    process.env.ADMIN_EMAILS = "vineet140@gmail.com"
+    process.env.ADMIN_EMAILS = "admin140@gmail.com"
 
     const user = {
       email: undefined,
       identities: [
         {
-          identity_data: { email: "vineet140@gmail.com" },
+          identity_data: { email: "admin140@gmail.com" },
         },
       ],
     } as unknown as User
 
-    expect(collectUserEmails(user)).toEqual(["vineet140@gmail.com"])
+    expect(collectUserEmails(user)).toEqual(["admin140@gmail.com"])
     expect(isAdminUser(user)).toBe(true)
   })
 
   it("does not trust pending email changes for admin access", () => {
-    process.env.ADMIN_EMAILS = "vineet140@gmail.com"
+    process.env.ADMIN_EMAILS = "admin140@gmail.com"
 
     const user = {
       email: "attacker@example.com",
-      new_email: "vine.et140+pending@gmail.com",
+      new_email: "ad.min140+pending@gmail.com",
       identities: [],
     } as unknown as User
 
