@@ -3,7 +3,7 @@
 // unavailable; nothing is ever fabricated.
 
 import type { QuoteView } from "@/modules/quotes"
-import type { SymbolInfo } from "@/modules/symbols/types"
+import type { SymbolInfo } from "@/modules/symbols"
 
 /** Minimum account shape for quote derivation — works with full rows or SSR props. */
 export interface DeriveAccountInput {
