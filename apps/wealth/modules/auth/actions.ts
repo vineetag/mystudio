@@ -19,8 +19,8 @@ async function siteOrigin(): Promise<string> {
 
 /**
  * Send a magic sign-in link — but only to the allowlisted owner email.
- * Anyone else gets a clear refusal and no email is sent, so the auth surface
- * stays closed to the public. Demo mode needs no account at all.
+ * Non-owners get the same neutral response and no email, so the form can't be
+ * used to confirm the owner's address. Demo mode needs no account at all.
  */
 export async function requestMagicLink(
   email: string,
@@ -34,12 +34,18 @@ export async function requestMagicLink(
     }
   }
 
+  // Neutral, identical response whether or not this email is the owner, so the
+  // form can't be used to confirm the owner's address (user enumeration). A
+  // link is only actually sent to the allowlisted owner; everyone else gets the
+  // same message and no email. Demo mode needs no account at all.
+  const neutralOk: RequestMagicLinkResult = {
+    ok: true,
+    message:
+      "If that email is authorized to sign in, a link is on its way — open it on this device to finish. Meanwhile you can explore everything in demo mode without an account.",
+  }
+
   if (!isOwnerEmail(trimmed)) {
-    return {
-      ok: false,
-      error:
-        "OneFolio is a single-owner app and this email isn't on the allowlist, so no sign-in link was sent. You can explore everything in demo mode without an account.",
-    }
+    return neutralOk
   }
 
   const supabase = await createClient()
@@ -57,10 +63,7 @@ export async function requestMagicLink(
     }
   }
 
-  return {
-    ok: true,
-    message: `Sign-in link sent to ${trimmed}. Open it on this device to finish signing in.`,
-  }
+  return neutralOk
 }
 
 export async function signOut(): Promise<void> {
