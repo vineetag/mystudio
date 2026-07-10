@@ -29,7 +29,16 @@
         "POSTGRES_USER",
         "POSTGRES_HOST",
         "POSTGRES_PASSWORD",
-        "POSTGRES_DATABASE"
+        "POSTGRES_DATABASE",
+        "FINNHUB_API_KEY",
+        "OWNER_EMAIL",
+        "CRON_SECRET",
+        "SNAPTRADE_CLIENT_ID",
+        "SNAPTRADE_CONSUMER_KEY",
+        "SNAPTRADE_USER_ID",
+        "SNAPTRADE_USER_SECRET",
+        "NEXT_PUBLIC_SITE_URL",
+        "NEXT_PUBLIC_LOGODEV_PUBLISHABLE_KEY"
       ]
     },
     "dev": {
