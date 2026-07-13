@@ -3,6 +3,7 @@ import {
   ACCOUNT_TYPE_LABELS,
   listViewerAccountsWithHoldings,
 } from "@/modules/accounts"
+import { assetClassMapFromAccounts } from "@/modules/holdings"
 import { getViewer } from "@/modules/auth"
 import { getQuotes } from "@/modules/quotes"
 import { getSymbols } from "@/modules/symbols"
@@ -22,13 +23,14 @@ export default async function DashboardPage() {
   const holdingSymbols = accounts.flatMap((account) =>
     account.holdings.map((holding) => holding.symbol),
   )
+  const assetClasses = assetClassMapFromAccounts(accounts)
 
   // SSR serves whatever the quote cache has — fresh or flagged stale — and
   // never calls Finnhub. LiveDashboard polls /api/quotes on mount, so real
   // prices land seconds later; blocking first paint on the serialized
   // Finnhub fan-out took 30+ seconds on a cold cache.
   const [quotes, symbols, snapshots] = await Promise.all([
-    getQuotes([...holdingSymbols, ...INDEX_PROXIES], { cacheOnly: true }),
+    getQuotes([...holdingSymbols, ...INDEX_PROXIES], { cacheOnly: true, assetClasses }),
     // Cache-only for a fast first paint; name resolution is rate-paced and runs
     // in the background below (logos render immediately regardless of names).
     getSymbols(holdingSymbols, { fetchMissing: false }),

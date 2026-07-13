@@ -25,6 +25,7 @@ function account(
       id: `${id}-h${index}`,
       accountId: id,
       symbol: holding.symbol,
+      assetClass: "equity" as const,
       quantity: holding.quantity,
       avgCost: holding.avgCost,
       createdAt: FETCHED_AT,

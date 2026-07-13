@@ -11,6 +11,7 @@ import {
   validateQuantity,
   validateSymbol,
 } from "./validate"
+import { inferAssetClass } from "./asset-class"
 
 export interface HoldingInput {
   symbol: string
@@ -42,6 +43,7 @@ export async function addHolding(
   const { error } = await supabase.from("pt_holdings").insert({
     account_id: accountId,
     symbol,
+    asset_class: inferAssetClass(symbol, "equity"),
     quantity: input.quantity,
     avg_cost: input.avgCost,
   })
@@ -203,6 +205,7 @@ export async function importHoldingsCsv(
     return {
       account_id: accountId,
       symbol: row.symbol,
+      asset_class: inferAssetClass(row.symbol, "equity"),
       quantity: row.quantity,
       avg_cost: row.avgCost,
     }

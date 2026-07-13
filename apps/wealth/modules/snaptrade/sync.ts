@@ -1,6 +1,7 @@
 import "server-only"
 
 import { createServiceClient } from "@/lib/db"
+import type { AssetClass } from "@/modules/holdings"
 import {
   getSnapTradeClient,
   snapTradeErrorMessage,
@@ -11,6 +12,7 @@ import type { SyncReport } from "./types"
 
 interface HoldingRow {
   symbol: string
+  asset_class: AssetClass
   quantity: number
   avg_cost: number | null
 }
@@ -21,6 +23,12 @@ interface HoldingRow {
  * Unusable rows are skipped with a reason, mirroring the CSV import report.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+function isCryptoPosition(position: any): boolean {
+  if (position?.instrument?.kind === "crypto") return true
+  const typeCode: unknown = position?.symbol?.symbol?.type?.code
+  return typeCode === "crypto"
+}
+
 export function mapPositions(positions: any[]): {
   rows: HoldingRow[]
   skipped: string[]
@@ -30,7 +38,9 @@ export function mapPositions(positions: any[]): {
 
   for (const position of positions ?? []) {
     const rawSymbol: unknown =
-      position?.symbol?.symbol?.raw_symbol ?? position?.symbol?.symbol?.symbol
+      position?.instrument?.raw_symbol ??
+      position?.symbol?.symbol?.raw_symbol ??
+      position?.symbol?.symbol?.symbol
     const units: unknown = position?.units
     const avgCost: unknown = position?.average_purchase_price
 
@@ -46,6 +56,7 @@ export function mapPositions(positions: any[]): {
 
     rows.push({
       symbol,
+      asset_class: isCryptoPosition(position) ? "crypto" : "equity",
       quantity: units,
       avg_cost: typeof avgCost === "number" && avgCost >= 0 ? avgCost : null,
     })
@@ -66,6 +77,7 @@ export function mapPositions(positions: any[]): {
         ? (existing.avg_cost * existing.quantity + row.avg_cost * row.quantity) / mergedQty
         : null
     existing.quantity = mergedQty
+    if (row.asset_class === "crypto") existing.asset_class = "crypto"
   }
 
   return { rows: [...bySymbol.values()], skipped }
