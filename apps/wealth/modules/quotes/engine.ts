@@ -1,7 +1,7 @@
 import "server-only"
 
 import { inferAssetClass, type AssetClass } from "@/modules/holdings"
-import { createClient, createServiceClient } from "@/lib/db"
+import { createServiceClient } from "@/lib/db"
 import {
   partitionByFreshness,
   partitionForPollRefresh,
@@ -77,7 +77,10 @@ export async function getQuotes(
   const views = new Map<string, QuoteView>()
   if (unique.length === 0) return views
 
-  const supabase = await createClient()
+  // Service client, not the cookie-bound one: pt_quotes is world-readable
+  // (RLS opens reads to everyone), and cookies() is forbidden inside after(),
+  // where this runs via captureSnapshot on dashboard loads.
+  const supabase = createServiceClient()
   const { data: rows, error } = await supabase
     .from("pt_quotes")
     .select("symbol, price, day_change_pct, dividend_yield, fetched_at, yield_fetched_at")
