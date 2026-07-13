@@ -1,7 +1,6 @@
 import "server-only"
 
-import type { AssetClass } from "@/modules/holdings/asset-class"
-import { inferAssetClass } from "@/modules/holdings/asset-class"
+import { inferAssetClass, type AssetClass } from "@/modules/holdings"
 import { createClient, createServiceClient } from "@/lib/db"
 import {
   partitionByFreshness,

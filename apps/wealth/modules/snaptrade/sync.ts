@@ -1,7 +1,7 @@
 import "server-only"
 
 import { createServiceClient } from "@/lib/db"
-import type { AssetClass } from "@/modules/holdings/asset-class"
+import type { AssetClass } from "@/modules/holdings"
 import {
   getSnapTradeClient,
   snapTradeErrorMessage,

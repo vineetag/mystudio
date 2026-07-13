@@ -2,7 +2,7 @@ import "server-only"
 
 import { createClient } from "@/lib/db"
 import { getViewer } from "@/modules/auth"
-import type { AssetClass } from "@/modules/holdings/asset-class"
+import type { AssetClass } from "@/modules/holdings"
 import type { Holding } from "@/modules/holdings"
 import type { Account, AccountSource, AccountType } from "./types"
 

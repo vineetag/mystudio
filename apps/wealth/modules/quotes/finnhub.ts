@@ -1,6 +1,6 @@
 import "server-only"
 
-import { normalizeCryptoSymbol } from "@/modules/holdings/asset-class"
+import { normalizeCryptoSymbol } from "@/modules/holdings"
 
 // Finnhub REST client. Free tier: 60 calls/min, no batch endpoint — the
 // engine fans out per symbol with a concurrency cap and relies on the retry
