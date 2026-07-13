@@ -2,6 +2,7 @@ import "server-only"
 
 import { createClient } from "@/lib/db"
 import { getViewer } from "@/modules/auth"
+import type { AssetClass } from "@/modules/holdings/asset-class"
 import type { Holding } from "@/modules/holdings"
 import type { Account, AccountSource, AccountType } from "./types"
 
@@ -30,6 +31,7 @@ export function rowToHolding(row: any): Holding {
     id: row.id,
     accountId: row.account_id,
     symbol: row.symbol,
+    assetClass: (row.asset_class ?? "equity") as AssetClass,
     // Postgres numeric arrives as string — normalize to number.
     quantity: Number(row.quantity),
     avgCost: row.avg_cost === null ? null : Number(row.avg_cost),

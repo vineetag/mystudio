@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed:demo": "tsx --env-file=.env.local scripts/seed-demo.ts",
+    "db:migrate": "node --env-file=.env.local scripts/run-migrations.mjs",
     "start": "next start --port 3003",
     "clean": "rm -rf .next"
   },
@@ -38,6 +39,7 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.3.0",
+    "pg": "^8.21.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",

@@ -1,5 +1,7 @@
 import "server-only"
 
+import type { AssetClass } from "@/modules/holdings/asset-class"
+import { inferAssetClass } from "@/modules/holdings/asset-class"
 import { createClient, createServiceClient } from "@/lib/db"
 import {
   partitionByFreshness,
@@ -10,6 +12,7 @@ import {
   type CachedQuoteRow,
 } from "./cache"
 import {
+  fetchFinnhubCryptoQuote,
   fetchFinnhubDividendYield,
   fetchFinnhubQuote,
   UnknownSymbolError,
@@ -52,6 +55,8 @@ export interface GetQuotesOptions {
    * must not block on the rate-paced fetch (the dashboard SSR).
    */
   cacheOnly?: boolean
+  /** Per-symbol routing for equity vs crypto Finnhub endpoints. */
+  assetClasses?: Map<string, AssetClass>
 }
 
 /**
@@ -116,14 +121,24 @@ export async function getQuotes(
     lastFetchAt = Date.now()
 
     try {
-      const quote = await fetchFinnhubQuote(symbol)
+      const assetClass = inferAssetClass(
+        symbol,
+        options.assetClasses?.get(symbol) ?? "equity",
+      )
+      const quote =
+        assetClass === "crypto"
+          ? await fetchFinnhubCryptoQuote(symbol)
+          : await fetchFinnhubQuote(symbol)
       const cached = cachedBySymbol.get(symbol)
-      const refreshYield = yieldNeedsRefresh(cached, now)
-      const dividendYield = refreshYield
-        ? await fetchFinnhubDividendYield(symbol)
-        : cached?.dividend_yield === null || cached?.dividend_yield === undefined
+      const refreshYield = assetClass !== "crypto" && yieldNeedsRefresh(cached, now)
+      const dividendYield =
+        assetClass === "crypto"
           ? null
-          : Number(cached.dividend_yield)
+          : refreshYield
+            ? await fetchFinnhubDividendYield(symbol)
+            : cached?.dividend_yield === null || cached?.dividend_yield === undefined
+              ? null
+              : Number(cached.dividend_yield)
       return { symbol, quote, dividendYield, refreshedYield: refreshYield }
     } catch (fetchError) {
       if (!(fetchError instanceof UnknownSymbolError)) {

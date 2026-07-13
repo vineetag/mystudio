@@ -278,6 +278,9 @@ importers:
       eslint-config-next:
         specifier: ^15.3.0
         version: 15.5.18(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3)
+      pg:
+        specifier: ^8.21.0
+        version: 8.21.0
       postcss:
         specifier: ^8.4.49
         version: 8.5.15
