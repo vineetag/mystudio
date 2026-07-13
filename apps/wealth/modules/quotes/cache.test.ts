@@ -79,13 +79,24 @@ describe("partitionForPollRefresh", () => {
     expect(toFetch).toEqual([])
   })
 
-  it("refetches rows at or past the poll interval", () => {
+  it("refetches rows at or past the poll interval without a stale badge", () => {
     const { fresh, toFetch, fallback } = partitionForPollRefresh(
       ["GOOG"],
       [row("GOOG", QUOTE_POLL_MS)],
       NOW,
     )
     expect(fresh).toEqual([])
+    expect(toFetch).toEqual(["GOOG"])
+    // A couple-minutes-old fallback is not alarming — only TTL-old rows are.
+    expect(fallback.get("GOOG")).toMatchObject({ isStale: false })
+  })
+
+  it("badges the fallback as stale once the row is past the cache TTL", () => {
+    const { toFetch, fallback } = partitionForPollRefresh(
+      ["GOOG"],
+      [row("GOOG", QUOTE_TTL_MS)],
+      NOW,
+    )
     expect(toFetch).toEqual(["GOOG"])
     expect(fallback.get("GOOG")).toMatchObject({ isStale: true })
   })

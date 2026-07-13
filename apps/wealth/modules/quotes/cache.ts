@@ -115,7 +115,9 @@ export function partitionForPollRefresh(
       fresh.push(rowToQuoteView(row, false))
     } else {
       toFetch.push(symbol)
-      fallback.set(symbol, rowToQuoteView(row, true))
+      // Only badge the fallback as stale past the cache TTL — a poll refresh
+      // that fails on a two-minute-old price shouldn't alarm the dashboard.
+      fallback.set(symbol, rowToQuoteView(row, age >= QUOTE_TTL_MS))
     }
   }
 

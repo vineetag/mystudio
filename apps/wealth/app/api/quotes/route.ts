@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { listViewerAccountsWithHoldings } from "@/modules/accounts"
 import { assetClassMapFromAccounts } from "@/modules/holdings"
-import { getQuotes, type QuoteView } from "@/modules/quotes"
+import { acquireQuoteRefreshLease, getQuotes, type QuoteView } from "@/modules/quotes"
 
 export const dynamic = "force-dynamic"
 
@@ -15,8 +15,9 @@ const INDEX_PROXIES = ["SPY", "QQQ"]
  * shared Finnhub budget (60 calls/min). Only symbols the viewer can actually
  * see — their visible portfolio's holdings plus the index proxies — are
  * accepted; anything else is dropped and reported back. Combined with the
- * 60-second poll partition in the engine, worst-case spend is bounded by the
- * portfolio size per minute regardless of how often the route is hit.
+ * global refresh lease (one paced fetch batch per poll interval, shared by
+ * all clients), worst-case spend is bounded by the portfolio size per minute
+ * regardless of how many dashboards are open or how often the route is hit.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -58,9 +59,16 @@ export async function GET(request: Request) {
     )
   }
 
-  const forceRefresh = searchParams.get("refresh") === "1"
+  // One paced Finnhub batch per minute globally: the poller that wins the
+  // lease force-refreshes; every other tab, device, or visitor reads the
+  // cache that batch keeps warm instead of spending the shared rate limit.
+  const refreshRequested = searchParams.get("refresh") === "1"
+  const forceRefresh = refreshRequested && (await acquireQuoteRefreshLease())
   const assetClasses = assetClassMapFromAccounts(accounts)
-  const quotes = await getQuotes(symbols, { forceRefresh, assetClasses })
+  const quotes = await getQuotes(
+    symbols,
+    forceRefresh ? { forceRefresh, assetClasses } : { cacheOnly: true, assetClasses },
+  )
 
   const body: Record<string, QuoteView> = Object.fromEntries(quotes)
   return NextResponse.json(
