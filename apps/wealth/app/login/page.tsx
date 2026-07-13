@@ -27,7 +27,8 @@ export default async function LoginPage({
       {viewer.isOwner ? (
         <div className="flex flex-col gap-3">
           <p className="rounded-md border border-rule bg-ink/[0.04] p-4 text-sm text-ink/80">
-            Signed in as {viewer.user?.email} (LIVE mode).
+            Signed in as {viewer.user?.email} (
+            {viewer.mode === "live" ? "LIVE mode" : "previewing DEMO mode"}).
           </p>
           <form action={signOut}>
             <button
