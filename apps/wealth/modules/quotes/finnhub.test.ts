@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
-  fetchFinnhubCryptoQuote,
   fetchFinnhubDividendYield,
   fetchFinnhubQuote,
   UnknownSymbolError,
@@ -134,58 +133,5 @@ describe("fetchFinnhubDividendYield", () => {
     await vi.advanceTimersByTimeAsync(1200)
     await expect(promise).resolves.toBe(2)
     expect(fetchMock).toHaveBeenCalledTimes(2)
-  })
-})
-
-describe("fetchFinnhubCryptoQuote", () => {
-  beforeEach(() => {
-    vi.stubEnv("FINNHUB_API_KEY", "test-key")
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.unstubAllEnvs()
-    vi.unstubAllGlobals()
-    vi.useRealTimers()
-  })
-
-  it("returns the latest intraday close and day change from daily candles", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse({ s: "ok", c: [90_000, 91_250.5] }))
-      .mockResolvedValueOnce(jsonResponse({ s: "ok", c: [88_000, 90_000] }))
-    vi.stubGlobal("fetch", fetchMock)
-
-    await expect(fetchFinnhubCryptoQuote("BTC")).resolves.toEqual({
-      price: 91_250.5,
-      dayChangePct: 1.3894444444444443,
-    })
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(fetchMock.mock.calls[0][0]).toContain("BINANCE%3ABTCUSDT")
-  })
-
-  it("normalizes Kraken-style aliases before lookup", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse({ s: "ok", c: [91_000] }))
-      .mockResolvedValueOnce(jsonResponse({ s: "ok", c: [90_000, 91_000] }))
-    vi.stubGlobal("fetch", fetchMock)
-
-    await expect(fetchFinnhubCryptoQuote("XBT")).resolves.toEqual({
-      price: 91_000,
-      dayChangePct: 0,
-    })
-    expect(fetchMock.mock.calls[0][0]).toContain("BINANCE%3ABTCUSDT")
-  })
-
-  it("throws UnknownSymbolError when Finnhub has no candle data", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse({ s: "no_data", c: [] }))
-      .mockResolvedValueOnce(jsonResponse({ s: "ok", c: [1, 2] }))
-    vi.stubGlobal("fetch", fetchMock)
-    await expect(fetchFinnhubCryptoQuote("FAKECOIN")).rejects.toBeInstanceOf(
-      UnknownSymbolError,
-    )
   })
 })
