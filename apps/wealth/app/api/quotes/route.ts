@@ -1,19 +1,21 @@
 import { NextResponse } from "next/server"
 import { listViewerAccountsWithHoldings } from "@/modules/accounts"
 import { assetClassMapFromAccounts } from "@/modules/holdings"
-import { acquireQuoteRefreshLease, getQuotes, type QuoteView } from "@/modules/quotes"
+import {
+  acquireQuoteRefreshLease,
+  getQuotes,
+  INDEX_SYMBOLS,
+  type QuoteView,
+} from "@/modules/quotes"
 
 export const dynamic = "force-dynamic"
-
-/** Same ETF proxies the dashboard shows — always refreshable. */
-const INDEX_PROXIES = ["SPY", "QQQ"]
 
 /**
  * Quote refresh for the dashboard's minute-poll.
  *
  * Quota guard: this route is reachable anonymously, and a refresh spends the
  * shared Finnhub budget (60 calls/min). Only symbols the viewer can actually
- * see — their visible portfolio's holdings plus the index proxies — are
+ * see — their visible portfolio's holdings plus the market indices — are
  * accepted; anything else is dropped and reported back. Combined with the
  * global refresh lease (one paced fetch batch per poll interval, shared by
  * all clients), worst-case spend is bounded by the portfolio size per minute
@@ -43,7 +45,7 @@ export async function GET(request: Request) {
   const accounts = await listViewerAccountsWithHoldings()
   const allowed = new Set([
     ...accounts.flatMap((account) => account.holdings.map((holding) => holding.symbol)),
-    ...INDEX_PROXIES,
+    ...INDEX_SYMBOLS,
   ])
 
   const symbols = requested.filter((symbol) => allowed.has(symbol))
@@ -53,7 +55,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         error:
-          "None of the requested symbols are in this portfolio — only visible holdings (plus SPY/QQQ) can be refreshed.",
+          "None of the requested symbols are in this portfolio — only visible holdings (plus the market indices) can be refreshed.",
       },
       { status: 400 },
     )

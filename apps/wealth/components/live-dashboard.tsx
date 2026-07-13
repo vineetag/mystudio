@@ -9,6 +9,7 @@ import {
   type DeriveAccountInput,
 } from "@/modules/portfolio"
 import { QUOTE_POLL_MS } from "@/modules/quotes/cache"
+import { MARKET_INDICES } from "@/modules/quotes/indices"
 import type { QuoteView } from "@/modules/quotes/types"
 import type { SymbolInfo } from "@/modules/symbols/types"
 import { computeChangeChips } from "@/modules/snapshots/changes"
@@ -18,15 +19,11 @@ import { PortfolioChart } from "@/components/portfolio-chart"
 import { GAIN_TEXT, LOSS_TEXT } from "@/components/holdings-table/columns"
 import {
   formatAsOf,
+  formatIndexPoints,
   formatMoney,
   formatSignedMoney,
   formatSignedPct,
 } from "@/lib/format"
-
-const INDEX_PROXIES = [
-  { symbol: "SPY", label: "S&P 500", sub: "SPY proxy" },
-  { symbol: "QQQ", label: "Nasdaq 100", sub: "QQQ proxy" },
-] as const
 
 export type DashboardAccount = DeriveAccountInput & {
   broker: string
@@ -40,24 +37,20 @@ function quotesFromRecord(record: Record<string, QuoteView>): Map<string, QuoteV
 
 function IndexFigure({
   label,
-  sub,
   quote,
 }: {
   label: string
-  sub: string
   quote: QuoteView | undefined
 }) {
   const change = quote?.dayChangePct ?? null
   return (
     <div className="flex items-baseline justify-between gap-4 sm:justify-end">
-      <span className="text-sm text-ink/60">
-        {label} <span className="text-ink/40">· {sub}</span>
-      </span>
+      <span className="text-sm text-ink/60">{label}</span>
       {!quote || quote.price === null ? (
         <span className="text-sm text-ink/40">unavailable</span>
       ) : (
         <span className="text-right tabular-nums">
-          <span className="font-medium">{formatMoney(quote.price)}</span>
+          <span className="font-medium">{formatIndexPoints(quote.price)}</span>
           {change !== null && (
             <span
               className={`ml-2 text-sm ${change === 0 ? "text-ink/60" : change > 0 ? GAIN_TEXT : LOSS_TEXT}`}
@@ -115,7 +108,7 @@ export function LiveDashboard({
   const symbolMap = useMemo(() => new Map(Object.entries(symbols)), [symbols])
 
   const quoteSymbols = useMemo(() => {
-    const unique = new Set<string>(INDEX_PROXIES.map((proxy) => proxy.symbol))
+    const unique = new Set<string>(MARKET_INDICES.map((index) => index.symbol))
     for (const account of accounts) {
       for (const holding of account.holdings) {
         unique.add(holding.symbol)
@@ -218,12 +211,11 @@ export function LiveDashboard({
           )}
         </div>
         <div className="flex flex-col gap-1.5 sm:min-w-64">
-          {INDEX_PROXIES.map((proxy) => (
+          {MARKET_INDICES.map((index) => (
             <IndexFigure
-              key={proxy.symbol}
-              label={proxy.label}
-              sub={proxy.sub}
-              quote={quotes.get(proxy.symbol)}
+              key={index.symbol}
+              label={index.label}
+              quote={quotes.get(index.symbol)}
             />
           ))}
         </div>

@@ -3,4 +3,5 @@
 export type { Quote, QuoteView } from "./types"
 export { getQuotes, type GetQuotesOptions } from "./engine"
 export { acquireQuoteRefreshLease } from "./lease"
+export { MARKET_INDICES, INDEX_SYMBOLS, isIndexSymbol } from "./indices"
 export { QUOTE_TTL_MS, QUOTE_POLL_MS } from "./cache"
