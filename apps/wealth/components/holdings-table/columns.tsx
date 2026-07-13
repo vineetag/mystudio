@@ -18,6 +18,7 @@ export type HoldingDisplayRow = Pick<
   | "symbol"
   | "companyName"
   | "logoDomain"
+  | "isCrypto"
   | "quantity"
   | "avgCost"
   | "missingCostBasis"
@@ -83,7 +84,7 @@ export const HOLDINGS_COLUMNS: HoldingsColumn[] = [
     key: "quantity",
     header: "Qty",
     align: "right",
-    render: (row) => formatQuantity(row.quantity),
+    render: (row) => formatQuantity(row.quantity, row.isCrypto),
     sortAccessor: (row) => row.quantity,
   },
   {

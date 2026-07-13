@@ -6,10 +6,11 @@ import { domainLogoUrl } from "@/modules/symbols/logo-url"
 /**
  * Brokerage logo tile. Resolution order, official-only — we never fabricate a
  * broker's mark:
- *   1. SnapTrade's own logo URL (live connected accounts).
- *   2. logo.dev image for the broker's known website domain — covers the big
- *      brokerages (Fidelity, Schwab, Vanguard, E*Trade, …) whose brands don't
- *      license a redistributable icon.
+ *   1. logo.dev image for the broker's known website domain — covers the big
+ *      brokerages (Fidelity, Schwab, Vanguard, E*Trade, …) and is our preferred
+ *      source in both live and demo modes.
+ *   2. SnapTrade's own logo URL (live connected accounts), for brokers not in
+ *      the domain map.
  *   3. A bundled official brand mark (Simple Icons) for brokers that publish one.
  *   4. A clean initials tile on moss — the never-wrong fallback.
  *
@@ -105,15 +106,15 @@ export function BrokerLogo({
   // Image sources in preference order; onError advances to the next one.
   const domain = BROKER_DOMAINS[brokerKey(broker)]
   const candidates = [
-    logoUrl ?? null,
     domain ? domainLogoUrl(domain, Math.max(size, 64)) : null,
+    logoUrl ?? null,
   ].filter((url): url is string => url !== null)
 
   const [failedCount, setFailedCount] = useState(0)
   const currentUrl = candidates[failedCount]
   const box = { width: size, height: size }
 
-  // 1–2. SnapTrade logo, then logo.dev by broker domain.
+  // 1–2. logo.dev by broker domain, then SnapTrade logo.
   if (currentUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- broker CDN, plain <img> avoids remotePatterns config

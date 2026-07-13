@@ -4,6 +4,7 @@
 
 import type { QuoteView } from "@/modules/quotes"
 import type { SymbolInfo } from "@/modules/symbols"
+import { inferAssetClass, type AssetClass } from "@/modules/holdings"
 
 /** Minimum account shape for quote derivation — works with full rows or SSR props. */
 export interface DeriveAccountInput {
@@ -14,6 +15,8 @@ export interface DeriveAccountInput {
     symbol: string
     quantity: number
     avgCost: number | null
+    /** Priced/displayed as crypto when "crypto"; defaults to equity. */
+    assetClass?: AssetClass
   }[]
 }
 
@@ -27,6 +30,8 @@ export interface PositionRow {
   companyName: string | null
   /** Resolved company domain — drives the higher-quality logo image; may be null. */
   logoDomain: string | null
+  /** Crypto positions display finer quantity precision than equities. */
+  isCrypto: boolean
   quantity: number
   avgCost: number | null
   /** True when the row has no cost basis (401k transfer) — badged, no gain/loss. */
@@ -49,6 +54,7 @@ export interface ConsolidatedRow {
   symbol: string
   companyName: string | null
   logoDomain: string | null
+  isCrypto: boolean
   quantity: number
   /** Weighted average over positions that have a cost basis; null if none do. */
   avgCost: number | null
@@ -110,6 +116,7 @@ export function derivePositions(
         symbol: holding.symbol,
         companyName: symbolInfo?.name ?? null,
         logoDomain: symbolInfo?.domain ?? null,
+        isCrypto: inferAssetClass(holding.symbol, holding.assetClass ?? "equity") === "crypto",
         quantity: holding.quantity,
         avgCost: holding.avgCost,
         missingCostBasis: !hasBasis,
@@ -179,6 +186,7 @@ export function consolidate(positions: PositionRow[]): ConsolidatedRow[] {
       symbol,
       companyName: first.companyName,
       logoDomain: first.logoDomain,
+      isCrypto: first.isCrypto,
       quantity,
       avgCost,
       missingCostBasis: group.some((position) => position.missingCostBasis),
