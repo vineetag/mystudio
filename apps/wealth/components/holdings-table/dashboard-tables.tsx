@@ -5,7 +5,11 @@ import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight } from "lucide-rea
 import { consolidate, type PositionRow } from "@/modules/portfolio"
 import { BrokerLogo } from "@/components/broker-logo"
 import { formatMoney } from "@/lib/format"
-import { ConsolidatedTable, PositionsTable } from "./holdings-table"
+import {
+  ConsolidatedTable,
+  PositionsTable,
+  type AccountBrokerMeta,
+} from "./holdings-table"
 import {
   DEFAULT_SORT,
   SORTABLE_COLUMNS,
@@ -122,6 +126,19 @@ export function DashboardTables({
   )
 
   const consolidated = useMemo(() => consolidate(activePositions), [activePositions])
+
+  // Broker identity per account id — lets the consolidated breakdown show each
+  // account's logo without threading broker fields through PositionRow.
+  const accountMeta = useMemo(() => {
+    const map = new Map<string, AccountBrokerMeta>()
+    for (const account of accounts) {
+      map.set(account.id, {
+        broker: account.broker,
+        brokerLogoUrl: account.brokerLogoUrl,
+      })
+    }
+    return map
+  }, [accounts])
 
   const filteredConsolidated = useMemo(() => {
     if (!needle) return consolidated
@@ -266,7 +283,12 @@ export function DashboardTables({
                 : "No holdings match this filter."}
             </p>
           ) : (
-            <ConsolidatedTable rows={filteredConsolidated} sort={sort} onSort={handleSort} />
+            <ConsolidatedTable
+              rows={filteredConsolidated}
+              accountMeta={accountMeta}
+              sort={sort}
+              onSort={handleSort}
+            />
           )}
           <p className="mt-2 text-xs text-ink/40 md:hidden">
             Sorted by {activeSortColumn?.header ?? "Value"} ({sort.dir === "asc" ? "ascending" : "descending"}).
