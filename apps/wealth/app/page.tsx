@@ -29,12 +29,16 @@ export default async function DashboardPage() {
   // never calls Finnhub. LiveDashboard polls /api/quotes on mount, so real
   // prices land seconds later; blocking first paint on the serialized
   // Finnhub fan-out took 30+ seconds on a cold cache.
+  // Snapshots chart and capture are live-portfolio features: skipped for demo
+  // viewers and for the owner while they preview demo mode.
+  const isLive = viewer.mode === "live"
+
   const [quotes, symbols, snapshots] = await Promise.all([
     getQuotes([...holdingSymbols, ...INDEX_PROXIES], { cacheOnly: true, assetClasses }),
     // Cache-only for a fast first paint; name resolution is rate-paced and runs
     // in the background below (logos render immediately regardless of names).
     getSymbols(holdingSymbols, { fetchMissing: false, assetClasses }),
-    viewer.isOwner ? listSnapshots(370) : Promise.resolve([]),
+    isLive ? listSnapshots(370) : Promise.resolve([]),
   ])
 
   // Warm the shared symbol-name cache without blocking the response.
@@ -44,7 +48,7 @@ export default async function DashboardPage() {
     })
   }
 
-  if (viewer.isOwner && accounts.length > 0) {
+  if (isLive && accounts.length > 0) {
     after(async () => {
       const result = await captureSnapshot()
       if (!result.ok) console.error(result.error)
@@ -56,7 +60,7 @@ export default async function DashboardPage() {
       accounts={accounts}
       initialQuotes={Object.fromEntries(quotes)}
       symbols={Object.fromEntries(symbols)}
-      isOwner={viewer.isOwner}
+      isOwner={isLive}
       accountCount={accounts.length}
       accountTypeLabels={ACCOUNT_TYPE_LABELS}
       snapshots={snapshots}

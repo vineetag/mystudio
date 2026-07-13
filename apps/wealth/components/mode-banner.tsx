@@ -1,10 +1,13 @@
 import Link from "next/link"
-import { getViewer } from "@/modules/auth"
+import { getViewer, setViewMode } from "@/modules/auth"
 
 /**
  * Persistent mode indicator — the two states must be impossible to confuse:
  * DEMO is a striped amber caution band; LIVE is a solid ink band with a
  * breathing emerald dot. Different color, texture, and copy.
+ *
+ * The signed-in owner also gets a toggle here to flip between their live
+ * portfolio and the demo preview without signing out.
  */
 export async function ModeBanner() {
   const viewer = await getViewer()
@@ -16,9 +19,23 @@ export async function ModeBanner() {
           DEMO
         </span>{" "}
         Sample portfolio — nothing here is real.{" "}
-        <Link href="/login" className="underline underline-offset-2 hover:no-underline">
-          Owner sign-in
-        </Link>
+        {viewer.isOwner ? (
+          <form action={setViewMode.bind(null, "live")} className="inline">
+            <button
+              type="submit"
+              className="-my-2 inline-flex min-h-12 items-center underline underline-offset-2 hover:no-underline"
+            >
+              Switch back to live
+            </button>
+          </form>
+        ) : (
+          <Link
+            href="/login"
+            className="-my-2 inline-flex min-h-12 items-center underline underline-offset-2 hover:no-underline"
+          >
+            Owner sign-in
+          </Link>
+        )}
       </div>
     )
   }
@@ -31,6 +48,14 @@ export async function ModeBanner() {
       </span>
       <span className="text-xs font-bold tracking-widest text-emerald-300">LIVE</span>
       Real portfolio · {viewer.user?.email}
+      <form action={setViewMode.bind(null, "demo")} className="inline">
+        <button
+          type="submit"
+          className="-my-2 inline-flex min-h-12 items-center text-paper/70 underline underline-offset-2 hover:text-paper hover:no-underline"
+        >
+          View demo
+        </button>
+      </form>
     </div>
   )
 }

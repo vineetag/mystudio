@@ -55,14 +55,15 @@ export async function listOwnerAccountsWithHoldings(): Promise<
 }
 
 /**
- * What the current viewer sees on the dashboard: the owner gets live
- * accounts, everyone else gets the demo portfolio.
+ * What the current viewer sees on the dashboard: live accounts in LIVE mode,
+ * the demo portfolio otherwise (anonymous visitors, non-owners, or the owner
+ * previewing demo mode).
  */
 export async function listViewerAccountsWithHoldings(): Promise<
   AccountWithHoldings[]
 > {
   const viewer = await getViewer()
-  return listAccountsWithHoldings(!viewer.isOwner)
+  return listAccountsWithHoldings(viewer.mode === "demo")
 }
 
 async function listAccountsWithHoldings(

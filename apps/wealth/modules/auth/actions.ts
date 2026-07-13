@@ -1,9 +1,9 @@
 "use server"
 
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/db"
-import { isOwnerEmail } from "./session"
+import { isOwnerEmail, VIEW_MODE_COOKIE, type ViewerMode } from "./session"
 
 export type RequestMagicLinkResult =
   | { ok: true; message: string }
@@ -78,8 +78,32 @@ export async function requestMagicLink(
   return neutralOk
 }
 
+/**
+ * Let the signed-in owner flip between their live portfolio and the demo
+ * preview without signing out. The cookie only ever *downgrades* the view
+ * (owner → demo); non-owners are always in demo mode regardless, so this is
+ * safe to expose as a plain action.
+ */
+export async function setViewMode(mode: ViewerMode): Promise<void> {
+  const cookieStore = await cookies()
+  if (mode === "demo") {
+    cookieStore.set(VIEW_MODE_COOKIE, "demo", {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    })
+  } else {
+    cookieStore.delete(VIEW_MODE_COOKIE)
+  }
+  redirect("/")
+}
+
 export async function signOut(): Promise<void> {
   const supabase = await createClient()
   await supabase.auth.signOut()
+  // Drop any demo-preview override so the next sign-in starts in LIVE mode.
+  const cookieStore = await cookies()
+  cookieStore.delete(VIEW_MODE_COOKIE)
   redirect("/")
 }
