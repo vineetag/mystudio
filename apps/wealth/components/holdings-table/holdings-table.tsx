@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { ChevronDown, ChevronRight, ChevronsUpDown, ChevronUp } from "lucide-react"
 import type { ConsolidatedRow, PositionRow } from "@/modules/portfolio"
+import { BrokerLogo } from "@/components/broker-logo"
 import {
   formatAsOf,
   formatMoney,
@@ -20,6 +21,13 @@ import {
   type SortState,
 } from "./columns"
 import { SymbolBadge } from "./symbol-badge"
+
+/** Broker identity for one account — shown next to the account name in the
+ * consolidated per-account breakdown. Keyed by account id. */
+export interface AccountBrokerMeta {
+  broker: string
+  brokerLogoUrl: string | null
+}
 
 const CELL = "px-3 py-2.5 tabular-nums"
 const HEADER_CELL = "px-3 py-2 text-xs font-medium uppercase tracking-wide text-ink/60"
@@ -229,10 +237,12 @@ export function PositionsTable({
 
 export function ConsolidatedTable({
   rows,
+  accountMeta,
   sort,
   onSort,
 }: {
   rows: ConsolidatedRow[]
+  accountMeta: Map<string, AccountBrokerMeta>
   sort: SortState
   onSort: (key: string) => void
 }) {
@@ -261,6 +271,7 @@ export function ConsolidatedTable({
               <DesktopRowGroup
                 key={row.symbol}
                 row={row}
+                accountMeta={accountMeta}
                 isExpanded={expanded.has(row.symbol)}
                 onToggle={() => toggle(row.symbol)}
               />
@@ -273,6 +284,7 @@ export function ConsolidatedTable({
           <MobileRowGroup
             key={row.symbol}
             row={row}
+            accountMeta={accountMeta}
             isExpanded={expanded.has(row.symbol)}
             onToggle={() => toggle(row.symbol)}
           />
@@ -284,10 +296,12 @@ export function ConsolidatedTable({
 
 function DesktopRowGroup({
   row,
+  accountMeta,
   isExpanded,
   onToggle,
 }: {
   row: ConsolidatedRow
+  accountMeta: Map<string, AccountBrokerMeta>
   isExpanded: boolean
   onToggle: () => void
 }) {
@@ -315,35 +329,49 @@ function DesktopRowGroup({
         ))}
       </tr>
       {isExpanded &&
-        row.positions.map((position, index) => (
-          <tr
-            key={position.holdingId}
-            className={`bg-ink/[0.03] ${
-              // The breakdown closes like a ledger entry: a double rule.
-              index === row.positions.length - 1
-                ? "border-b-[3px] border-double border-ink/30"
-                : "border-b border-rule/60"
-            }`}
-          >
-            <td />
-            <td className={`${CELL} pl-6 text-left text-ink/70`}>{position.accountName}</td>
-            {HOLDINGS_COLUMNS.slice(1).map((column) => (
-              <td key={column.key} className={`${CELL} ${alignClass(column.align)}`}>
-                {column.render(position)}
+        row.positions.map((position, index) => {
+          const meta = accountMeta.get(position.accountId)
+          return (
+            <tr
+              key={position.holdingId}
+              className={`bg-ink/[0.03] ${
+                // The breakdown closes like a ledger entry: a double rule.
+                index === row.positions.length - 1
+                  ? "border-b-[3px] border-double border-ink/30"
+                  : "border-b border-rule/60"
+              }`}
+            >
+              <td />
+              <td className={`${CELL} pl-6 text-left text-ink/70`}>
+                {/* Smaller than the 28px holding logo so the breakdown reads
+                    as subordinate detail, not another holding row. */}
+                <span className="flex items-center gap-2">
+                  {meta && (
+                    <BrokerLogo broker={meta.broker} logoUrl={meta.brokerLogoUrl} size={20} />
+                  )}
+                  <span className="min-w-0 truncate">{position.accountName}</span>
+                </span>
               </td>
-            ))}
-          </tr>
-        ))}
+              {HOLDINGS_COLUMNS.slice(1).map((column) => (
+                <td key={column.key} className={`${CELL} ${alignClass(column.align)}`}>
+                  {column.render(position)}
+                </td>
+              ))}
+            </tr>
+          )
+        })}
     </>
   )
 }
 
 function MobileRowGroup({
   row,
+  accountMeta,
   isExpanded,
   onToggle,
 }: {
   row: ConsolidatedRow
+  accountMeta: Map<string, AccountBrokerMeta>
   isExpanded: boolean
   onToggle: () => void
 }) {
@@ -377,18 +405,26 @@ function MobileRowGroup({
       </button>
       {isExpanded && (
         <ul className="mt-2 flex flex-col divide-y divide-rule/60 border-b-[3px] border-double border-ink/30">
-          {row.positions.map((position) => (
-            <li
-              key={position.holdingId}
-              className="flex items-baseline justify-between gap-3 py-2 text-sm"
-            >
-              <span className="text-ink/70">{position.accountName}</span>
-              <span className="tabular-nums">
-                {formatQuantity(position.quantity)} ·{" "}
-                {position.value === null ? "—" : formatMoney(position.value)}
-              </span>
-            </li>
-          ))}
+          {row.positions.map((position) => {
+            const meta = accountMeta.get(position.accountId)
+            return (
+              <li
+                key={position.holdingId}
+                className="flex items-center justify-between gap-3 py-2 text-sm"
+              >
+                <span className="flex min-w-0 items-center gap-2 text-ink/70">
+                  {meta && (
+                    <BrokerLogo broker={meta.broker} logoUrl={meta.brokerLogoUrl} size={20} />
+                  )}
+                  <span className="min-w-0 truncate">{position.accountName}</span>
+                </span>
+                <span className="shrink-0 tabular-nums">
+                  {formatQuantity(position.quantity)} ·{" "}
+                  {position.value === null ? "—" : formatMoney(position.value)}
+                </span>
+              </li>
+            )
+          })}
         </ul>
       )}
     </li>
