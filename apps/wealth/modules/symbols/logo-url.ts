@@ -23,3 +23,12 @@ export function symbolLogoUrl(
     : `https://img.logo.dev/ticker/${encodeURIComponent(symbol)}`
   return `${base}?${query}`
 }
+
+/**
+ * A logo.dev image URL for a known company domain (e.g. a brokerage's own
+ * website). Returns null when no publishable key is configured.
+ */
+export function domainLogoUrl(domain: string, size = 64): string | null {
+  if (!PUBLISHABLE_KEY) return null
+  return `https://img.logo.dev/${encodeURIComponent(domain)}?token=${PUBLISHABLE_KEY}&size=${size}&format=webp&retina=true`
+}
