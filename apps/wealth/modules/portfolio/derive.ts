@@ -17,6 +17,10 @@ export interface DeriveAccountInput {
     avgCost: number | null
     /** Priced/displayed as crypto when "crypto"; defaults to equity. */
     assetClass?: AssetClass
+    /** Broker-reported price/NAV — fallback when there's no live quote. */
+    brokerPrice?: number | null
+    /** When the broker reported brokerPrice; used as the "as of" timestamp. */
+    brokerPriceAsOf?: string | null
   }[]
 }
 
@@ -40,6 +44,8 @@ export interface PositionRow {
   dayChangePct: number | null
   fetchedAt: string | null
   isStaleQuote: boolean
+  /** True when price came from the broker's NAV, not a live market quote. */
+  priceIsBrokerNav: boolean
   value: number | null
   gainLoss: number | null
   gainLossPct: number | null
@@ -63,6 +69,7 @@ export interface ConsolidatedRow {
   dayChangePct: number | null
   fetchedAt: string | null
   isStaleQuote: boolean
+  priceIsBrokerNav: boolean
   value: number | null
   gainLoss: number | null
   gainLossPct: number | null
@@ -90,7 +97,12 @@ export function derivePositions(
     for (const holding of account.holdings) {
       const quote = quotes.get(holding.symbol)
       const symbolInfo = symbols?.get(holding.symbol)
-      const price = quote?.price ?? null
+      // Live quote wins; fall back to the broker's NAV for symbols Finnhub
+      // can't price (401k mutual funds, opaque collective-trust fund IDs).
+      const brokerPrice = holding.brokerPrice ?? null
+      const quotePrice = quote?.price ?? null
+      const priceIsBrokerNav = quotePrice === null && brokerPrice !== null
+      const price = quotePrice ?? brokerPrice
       const hasBasis = holding.avgCost !== null
 
       const value = price === null ? null : price * holding.quantity
@@ -121,9 +133,12 @@ export function derivePositions(
         avgCost: holding.avgCost,
         missingCostBasis: !hasBasis,
         price,
-        dayChangePct: quote?.dayChangePct ?? null,
-        fetchedAt: quote?.fetchedAt ?? null,
-        isStaleQuote: quote?.isStale ?? false,
+        dayChangePct: priceIsBrokerNav ? null : quote?.dayChangePct ?? null,
+        fetchedAt: priceIsBrokerNav
+          ? holding.brokerPriceAsOf ?? null
+          : quote?.fetchedAt ?? null,
+        isStaleQuote: priceIsBrokerNav ? false : quote?.isStale ?? false,
+        priceIsBrokerNav,
         value,
         gainLoss,
         gainLossPct,
@@ -194,6 +209,7 @@ export function consolidate(positions: PositionRow[]): ConsolidatedRow[] {
       dayChangePct: first.dayChangePct,
       fetchedAt: first.fetchedAt,
       isStaleQuote: first.isStaleQuote,
+      priceIsBrokerNav: first.priceIsBrokerNav,
       value,
       gainLoss,
       gainLossPct,

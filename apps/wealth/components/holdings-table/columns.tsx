@@ -25,6 +25,7 @@ export type HoldingDisplayRow = Pick<
   | "price"
   | "fetchedAt"
   | "isStaleQuote"
+  | "priceIsBrokerNav"
   | "value"
   | "gainLoss"
   | "gainLossPct"
@@ -114,6 +115,14 @@ export const HOLDINGS_COLUMNS: HoldingsColumn[] = [
           <span>{formatMoney(row.price)}</span>
           <span className="whitespace-nowrap text-xs text-ink/40">
             {row.fetchedAt && formatAsOf(row.fetchedAt)}
+            {row.priceIsBrokerNav && (
+              <span
+                className="ml-1 rounded bg-sky-100 px-1 py-px font-medium text-sky-800"
+                title="Broker-reported NAV from the last sync — this fund has no live market quote."
+              >
+                NAV
+              </span>
+            )}
             {row.isStaleQuote && (
               <span className="ml-1 rounded bg-amber-100 px-1 py-px font-medium text-amber-800">
                 stale

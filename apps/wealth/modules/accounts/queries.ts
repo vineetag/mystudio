@@ -35,6 +35,8 @@ export function rowToHolding(row: any): Holding {
     // Postgres numeric arrives as string — normalize to number.
     quantity: Number(row.quantity),
     avgCost: row.avg_cost === null ? null : Number(row.avg_cost),
+    brokerPrice: row.price === null || row.price === undefined ? null : Number(row.price),
+    brokerPriceAsOf: row.price_as_of ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

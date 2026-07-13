@@ -12,6 +12,14 @@ export interface Holding {
    * are badged in the UI and excluded from gain/loss math.
    */
   avgCost: number | null
+  /**
+   * Broker-reported price/NAV from the last sync. The quote engine falls back
+   * to this when Finnhub can't price the symbol (401k mutual funds, opaque
+   * collective-trust fund IDs). Null for manually entered holdings.
+   */
+  brokerPrice: number | null
+  /** When the broker reported brokerPrice; null when there is none. */
+  brokerPriceAsOf: string | null
   createdAt: string
   updatedAt: string
 }
