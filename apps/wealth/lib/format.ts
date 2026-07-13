@@ -15,8 +15,18 @@ const cryptoQuantityFormat = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 6,
 })
 
+// Index levels are points, not dollars (S&P 500 at 7,515.34 — no $ sign).
+const indexPoints = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
 export function formatMoney(value: number): string {
   return money.format(value)
+}
+
+export function formatIndexPoints(value: number): string {
+  return indexPoints.format(value)
 }
 
 /** Signed money for gain/loss: +$1,234.56 / −$1,234.56 */

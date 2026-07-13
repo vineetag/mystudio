@@ -5,14 +5,12 @@ import {
 } from "@/modules/accounts"
 import { assetClassMapFromAccounts } from "@/modules/holdings"
 import { getViewer } from "@/modules/auth"
-import { getQuotes } from "@/modules/quotes"
+import { getQuotes, INDEX_SYMBOLS } from "@/modules/quotes"
 import { getSymbols } from "@/modules/symbols"
 import { captureSnapshot, listSnapshots } from "@/modules/snapshots"
 import { LiveDashboard } from "@/components/live-dashboard"
 
 export const dynamic = "force-dynamic"
-
-const INDEX_PROXIES = ["SPY", "QQQ"] as const
 
 export default async function DashboardPage() {
   const [viewer, accounts] = await Promise.all([
@@ -34,7 +32,7 @@ export default async function DashboardPage() {
   const isLive = viewer.mode === "live"
 
   const [quotes, symbols, snapshots] = await Promise.all([
-    getQuotes([...holdingSymbols, ...INDEX_PROXIES], { cacheOnly: true, assetClasses }),
+    getQuotes([...holdingSymbols, ...INDEX_SYMBOLS], { cacheOnly: true, assetClasses }),
     // Cache-only for a fast first paint; name resolution is rate-paced and runs
     // in the background below (logos render immediately regardless of names).
     getSymbols(holdingSymbols, { fetchMissing: false, assetClasses }),

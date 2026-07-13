@@ -181,6 +181,40 @@ async function fetchCoinbasePrice(
   }
 }
 
+// Mirrors modules/quotes/yahoo.ts — Finnhub's free tier rejects indices, so
+// the dashboard's ^GSPC/^IXIC widgets are priced via Yahoo Finance.
+async function fetchYahooIndexPrice(
+  symbol: string,
+): Promise<{ price: number; dayChangePct: number | null } | null> {
+  try {
+    const response = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`,
+      { headers: { "User-Agent": "Mozilla/5.0 (onefolio-seed)" } },
+    )
+    if (!response.ok) return null
+    const body = (await response.json()) as {
+      chart?: {
+        result?: Array<{
+          meta?: { regularMarketPrice?: number; chartPreviousClose?: number }
+        }> | null
+      }
+    }
+    const meta = body.chart?.result?.[0]?.meta
+    const price = meta?.regularMarketPrice
+    if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) return null
+    const previousClose = meta?.chartPreviousClose
+    return {
+      price,
+      dayChangePct:
+        typeof previousClose === "number" && previousClose > 0
+          ? ((price - previousClose) / previousClose) * 100
+          : null,
+    }
+  } catch {
+    return null
+  }
+}
+
 async function fetchFinnhubPrice(
   symbol: string,
   apiKey: string,
@@ -239,9 +273,10 @@ async function main() {
     .insert(holdingRows)
   if (holdingsError) throw new Error(`Holdings insert failed: ${holdingsError.message}`)
 
-  // Quotes: SPY/QQQ included so the demo dashboard widgets have data.
+  // Quotes: ^GSPC/^IXIC included so the demo dashboard index widgets have data.
+  const INDEX_SYMBOLS = ["^GSPC", "^IXIC"]
   const symbols = [
-    ...new Set([...holdingRows.map((row) => row.symbol), "SPY", "QQQ"]),
+    ...new Set([...holdingRows.map((row) => row.symbol), ...INDEX_SYMBOLS]),
   ]
   const apiKey = process.env.FINNHUB_API_KEY
   const fetchedAt = new Date().toISOString()
@@ -261,11 +296,13 @@ async function main() {
   )
 
   if (apiKey) {
-    console.log(`Fetching ${symbols.length} live quotes (Finnhub + Coinbase)…`)
+    console.log(`Fetching ${symbols.length} live quotes (Finnhub + Coinbase + Yahoo)…`)
     for (const symbol of symbols) {
-      const quote = cryptoSymbols.has(symbol)
-        ? await fetchCoinbasePrice(symbol)
-        : await fetchFinnhubPrice(symbol, apiKey)
+      const quote = symbol.startsWith("^")
+        ? await fetchYahooIndexPrice(symbol)
+        : cryptoSymbols.has(symbol)
+          ? await fetchCoinbasePrice(symbol)
+          : await fetchFinnhubPrice(symbol, apiKey)
       if (quote) {
         quoteRows.push({
           symbol,
@@ -293,8 +330,8 @@ async function main() {
     console.log("No FINNHUB_API_KEY — writing baked demo prices instead.")
     const baked: Record<string, number> = {
       ...REFERENCE_PRICES,
-      SPY: 618,
-      QQQ: 552,
+      "^GSPC": 6200,
+      "^IXIC": 20500,
     }
     for (const symbol of symbols) {
       const price = baked[symbol]

@@ -16,6 +16,8 @@ import {
   fetchFinnhubQuote,
   UnknownSymbolError,
 } from "./finnhub"
+import { isIndexSymbol } from "./indices"
+import { fetchYahooIndexQuote } from "./yahoo"
 import type { QuoteView } from "./types"
 
 function sleep(ms: number): Promise<void> {
@@ -133,14 +135,19 @@ export async function getQuotes(
         symbol,
         options.assetClasses?.get(symbol) ?? "equity",
       )
-      const quote =
-        assetClass === "crypto"
+      // Indices and crypto skip Finnhub entirely (separate APIs, no shared
+      // rate budget) and never carry a dividend yield.
+      const isIndex = isIndexSymbol(symbol)
+      const quote = isIndex
+        ? await fetchYahooIndexQuote(symbol)
+        : assetClass === "crypto"
           ? await fetchCoinbaseCryptoQuote(symbol)
           : await pacedFinnhub(() => fetchFinnhubQuote(symbol))
       const cached = cachedBySymbol.get(symbol)
-      const refreshYield = assetClass !== "crypto" && yieldNeedsRefresh(cached, now)
+      const skipYield = isIndex || assetClass === "crypto"
+      const refreshYield = !skipYield && yieldNeedsRefresh(cached, now)
       const dividendYield =
-        assetClass === "crypto"
+        skipYield
           ? null
           : refreshYield
             ? await pacedFinnhub(() => fetchFinnhubDividendYield(symbol))
