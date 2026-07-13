@@ -1,7 +1,7 @@
 import "server-only"
 
 import { inferAssetClass, type AssetClass } from "@/modules/holdings"
-import { createClient, createServiceClient } from "@/lib/db"
+import { createServiceClient } from "@/lib/db"
 import { cryptoSymbolProfile } from "./crypto-metadata"
 import { fetchSymbolProfile } from "./profile"
 import type { SymbolInfo } from "./types"
@@ -61,7 +61,11 @@ export async function getSymbols(
   const infos = new Map<string, SymbolInfo>()
   if (unique.length === 0) return infos
 
-  const supabase = await createClient()
+  // Service client, not the cookie-bound one: pt_symbols is world-readable
+  // (RLS opens reads to everyone), and the cookie-bound client breaks inside
+  // after() — Next.js forbids cookies() there, which silently killed the
+  // background name warm on every page load.
+  const supabase = createServiceClient()
   const { data: rows, error } = await supabase
     .from("pt_symbols")
     .select("symbol, name, domain, name_source")
