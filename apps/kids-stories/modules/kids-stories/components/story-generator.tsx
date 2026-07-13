@@ -87,6 +87,7 @@ export function StoryGenerator() {
               ? "Session setup failed — please disable Captcha in Supabase Auth settings."
               : "Unable to start a session. Please refresh and try again."
           )
+          setLoading(false)
           return
         }
       }
@@ -124,6 +125,7 @@ export function StoryGenerator() {
       if (res.status === 429) {
         setLimitReached(true)
         track(Events.FEATURE_USED, { feature: "story_limit_reached" })
+        setLoading(false)
         return
       }
 
@@ -133,6 +135,7 @@ export function StoryGenerator() {
           status: res.status,
         })
         toast.error(data.error ?? "Something went wrong. Please try again.")
+        setLoading(false)
         return
       }
 
@@ -144,19 +147,25 @@ export function StoryGenerator() {
         theme_count: themes.length,
       })
       toast.success("Your story is ready!")
+      // Deliberately keep `loading` true here: router.push resolves before the
+      // story page mounts, and resetting it would flash the homepage form in
+      // between. The loading screen stays up until navigation completes.
       router.push(`/story/${data.id}`)
     } catch {
       track(Events.ERROR_OCCURRED, { context: "story_generation", status: 0 })
       toast.error("Network error. Please try again.")
-    } finally {
       setLoading(false)
     }
   }
 
   if (loading) {
+    // Full-screen overlay so the loading animation is the only thing visible —
+    // it covers the marketing sections below the form and pins focus on it.
     return (
-      <div className="w-full max-w-xl">
-        <LoadingScreen />
+      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-parchment px-6 py-10">
+        <div className="w-full max-w-xl">
+          <LoadingScreen />
+        </div>
       </div>
     )
   }
