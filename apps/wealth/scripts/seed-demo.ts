@@ -1,8 +1,9 @@
 /**
  * Seeds (or re-seeds) the demo portfolio: ~9 accounts, ~29 tickers, mixed
  * gains/losses, several no-cost-basis 401k lots, one Finnhub-unsupported
- * symbol (FXAIX) so the "price unavailable" path is visible, and a Coinbase
- * account so crypto pricing/metadata are exercised in demo mode.
+ * symbol (FXAIX, priced via the baked fallback so the demo total stays
+ * complete), and a Coinbase account so crypto pricing/metadata are
+ * exercised in demo mode.
  *
  * Run (owner-initiated, so quote fetches respect the demo guardrail):
  *   pnpm --filter @studio/wealth seed:demo
@@ -48,7 +49,7 @@ const REFERENCE_PRICES: Record<string, number> = {
   TSLA: 262, "BRK.B": 486, JPM: 288, V: 344, UNH: 306, COST: 988,
   AVGO: 268, AMD: 136, CRM: 268, NFLX: 1284, DIS: 122, XOM: 112,
   JNJ: 156, KO: 70, PG: 158, HD: 366, VTI: 302, VOO: 562, SCHD: 27,
-  FXAIX: 208, // Finnhub free tier has no data for this mutual fund
+  FXAIX: 208, // Finnhub free tier has no data — always seeded from here
   BTC: 62700, ETH: 3400, SOL: 76, DOGE: 0.11,
 }
 
@@ -272,6 +273,16 @@ async function main() {
           day_change_pct: quote.dayChangePct,
           fetched_at: fetchedAt,
         })
+      } else if (REFERENCE_PRICES[symbol] !== undefined) {
+        // Finnhub has no data (e.g. FXAIX mutual fund) — fall back to the
+        // baked reference price so the demo total includes every holding.
+        console.log(`  ${symbol}: no Finnhub data (using baked demo price)`)
+        quoteRows.push({
+          symbol,
+          price: REFERENCE_PRICES[symbol],
+          day_change_pct: null,
+          fetched_at: fetchedAt,
+        })
       } else {
         console.log(`  ${symbol}: no Finnhub data (left unpriced)`)
       }
@@ -285,8 +296,6 @@ async function main() {
       SPY: 618,
       QQQ: 552,
     }
-    // FXAIX stays unpriced on purpose: it demos the "unavailable" path.
-    delete baked.FXAIX
     for (const symbol of symbols) {
       const price = baked[symbol]
       if (price !== undefined) {
