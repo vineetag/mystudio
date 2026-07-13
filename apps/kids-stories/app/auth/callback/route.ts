@@ -25,6 +25,12 @@ export async function GET(request: Request) {
     }
   }
 
-  // No code, or the exchange failed — send them back to log in.
-  return NextResponse.redirect(`${origin}/auth/login?error=auth_callback`)
+  // No code, or the exchange failed — send them back to log in. Preserve the
+  // intended destination, and note that any Supabase error details arrive in
+  // the URL hash, which browsers carry across this redirect for the login
+  // page's client-side fallback (e.g. identity_already_exists) to inspect.
+  const loginUrl = new URL("/auth/login", origin)
+  loginUrl.searchParams.set("error", "auth_callback")
+  loginUrl.searchParams.set("redirectTo", next)
+  return NextResponse.redirect(loginUrl)
 }

@@ -92,6 +92,41 @@ export function AuthForm({ mode }: { mode: Mode }) {
     })
   }, [])
 
+  // If a linkIdentity attempt bounced back because the Google identity already
+  // belongs to an existing account, Supabase reports it only in the URL hash
+  // (the server callback route never sees hashes). Retry as a plain sign-in;
+  // the staged claim grant then lets /api/claim-stories move the stories.
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.slice(1))
+    if (hashParams.get("error_code") !== "identity_already_exists") return
+
+    // Strip the hash so a refresh doesn't re-trigger the redirect.
+    window.history.replaceState(
+      null,
+      "",
+      window.location.pathname + window.location.search,
+    )
+
+    setOauthLoading("google")
+    setNotice(
+      "That Google account already has a ZippyTales account — signing you in…",
+    )
+    const supabase = createClient()
+    void supabase.auth
+      .signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: buildCallbackUrl(redirectTo) },
+      })
+      .then(({ error: authError }) => {
+        if (authError) {
+          setNotice(null)
+          setError(authError.message)
+          setOauthLoading(null)
+        }
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   async function handleOAuth(provider: "google") {
     setOauthLoading(provider)
     setError(null)
@@ -102,22 +137,22 @@ export function AuthForm({ mode }: { mode: Mode }) {
     const { data: { user: currentUser } } = await supabase.auth.getUser()
     const currentIsAnonymous = currentUser?.is_anonymous ?? false
 
-    // In production, pin the callback to the canonical domain so OAuth always
-    // returns to zippytales.app — even if the user opened a raw *.vercel.app
-    // deployment URL. In preview/dev, use the live origin so OAuth returns to
-    // the same deployment being tested.
-    const baseUrl =
-      process.env.NEXT_PUBLIC_VERCEL_ENV === "production"
-        ? (process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin)
-        : window.location.origin
-    const callbackUrl = `${baseUrl}/auth/callback?next=${encodeURIComponent(redirectTo)}`
+    const callbackUrl = buildCallbackUrl(redirectTo)
 
     // Explicit OAuth upgrade from an anonymous session. linkIdentity preserves
     // the Supabase user id for new identities, so stories stay with the user
-    // without any service-role cross-account transfer. If the provider identity
-    // already exists, fall back to normal sign-in; old claim state is cleanup-only.
+    // without any cross-account transfer. Before redirecting, stage a signed
+    // claim grant (server reads the anon id from this session) so that if the
+    // identity already belongs to another account — which Supabase only reports
+    // after the redirect — the fallback sign-in can still claim the stories.
     if (currentIsAnonymous && currentUser) {
       safeStoreAnonClaimMarker(currentUser.id)
+      try {
+        await fetch("/api/claim-stories/stage", { method: "POST" })
+      } catch {
+        // Best-effort: without a grant the stories stay behind, but sign-in
+        // itself must not be blocked.
+      }
       const { error: linkError } = await supabase.auth.linkIdentity({
         provider,
         options: { redirectTo: callbackUrl },
@@ -351,6 +386,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
       </p>
     </div>
   )
+}
+
+// In production, pin the callback to the canonical domain so OAuth always
+// returns to zippytales.app — even if the user opened a raw *.vercel.app
+// deployment URL. In preview/dev, use the live origin so OAuth returns to
+// the same deployment being tested.
+function buildCallbackUrl(redirectTo: string) {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_VERCEL_ENV === "production"
+      ? (process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin)
+      : window.location.origin
+  return `${baseUrl}/auth/callback?next=${encodeURIComponent(redirectTo)}`
 }
 
 function safeStoreAnonClaimMarker(anonId: string) {
