@@ -114,14 +114,20 @@ export async function getQuotes(
   // Fetching is allowed for all modes — callers gate WHICH symbols may spend
   // Finnhub budget (dashboard/API restrict to visible holdings + proxies).
   const fetchedAt = new Date().toISOString()
-  let lastFetchAt = 0
-  const results = await mapWithConcurrency(toFetch, FETCH_CONCURRENCY, async (symbol) => {
-    const elapsed = Date.now() - lastFetchAt
+  // Every Finnhub call — quote or yield — takes its own paced slot, so a day
+  // when many yields expire together can't double the call rate past the
+  // 60/min cap. Coinbase calls are not paced: separate API, no shared budget.
+  let lastFinnhubAt = 0
+  async function pacedFinnhub<T>(fn: () => Promise<T>): Promise<T> {
+    const elapsed = Date.now() - lastFinnhubAt
     if (elapsed < FINNHUB_MIN_INTERVAL_MS) {
       await sleep(FINNHUB_MIN_INTERVAL_MS - elapsed)
     }
-    lastFetchAt = Date.now()
+    lastFinnhubAt = Date.now()
+    return fn()
+  }
 
+  const results = await mapWithConcurrency(toFetch, FETCH_CONCURRENCY, async (symbol) => {
     try {
       const assetClass = inferAssetClass(
         symbol,
@@ -130,14 +136,14 @@ export async function getQuotes(
       const quote =
         assetClass === "crypto"
           ? await fetchCoinbaseCryptoQuote(symbol)
-          : await fetchFinnhubQuote(symbol)
+          : await pacedFinnhub(() => fetchFinnhubQuote(symbol))
       const cached = cachedBySymbol.get(symbol)
       const refreshYield = assetClass !== "crypto" && yieldNeedsRefresh(cached, now)
       const dividendYield =
         assetClass === "crypto"
           ? null
           : refreshYield
-            ? await fetchFinnhubDividendYield(symbol)
+            ? await pacedFinnhub(() => fetchFinnhubDividendYield(symbol))
             : cached?.dividend_yield === null || cached?.dividend_yield === undefined
               ? null
               : Number(cached.dividend_yield)
