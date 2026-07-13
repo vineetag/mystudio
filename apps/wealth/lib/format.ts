@@ -6,6 +6,12 @@ const money = new Intl.NumberFormat("en-US", {
 })
 
 const quantityFormat = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+})
+
+// Crypto positions are commonly fractional (0.85 BTC, 0.0042 ETH), so they keep
+// finer precision than equities, which only ever hold whole/2-dp share counts.
+const cryptoQuantityFormat = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 6,
 })
 
@@ -24,8 +30,8 @@ export function formatSignedPct(value: number): string {
   return value < 0 ? `−${formatted}` : `+${formatted}`
 }
 
-export function formatQuantity(value: number): string {
-  return quantityFormat.format(value)
+export function formatQuantity(value: number, isCrypto = false): string {
+  return (isCrypto ? cryptoQuantityFormat : quantityFormat).format(value)
 }
 
 /** "as of 12:42 PM" for today, "as of Jul 3, 12:42 PM" otherwise. */
