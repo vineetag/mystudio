@@ -1,7 +1,8 @@
 /**
- * Seeds (or re-seeds) the demo portfolio: ~8 accounts, ~25 tickers, mixed
- * gains/losses, several no-cost-basis 401k lots, and one Finnhub-unsupported
- * symbol (FXAIX) so the "price unavailable" path is visible.
+ * Seeds (or re-seeds) the demo portfolio: ~9 accounts, ~29 tickers, mixed
+ * gains/losses, several no-cost-basis 401k lots, one Finnhub-unsupported
+ * symbol (FXAIX) so the "price unavailable" path is visible, and a Coinbase
+ * account so crypto pricing/metadata are exercised in demo mode.
  *
  * Run (owner-initiated, so quote fetches respect the demo guardrail):
  *   pnpm --filter @studio/wealth seed:demo
@@ -26,7 +27,12 @@ const supabase = createClient(url, serviceKey, {
   auth: { persistSession: false },
 })
 
-type DemoHolding = { symbol: string; quantity: number; avgCost: number | null }
+type DemoHolding = {
+  symbol: string
+  quantity: number
+  avgCost: number | null
+  assetClass?: "equity" | "crypto"
+}
 type DemoAccount = {
   name: string
   broker: string
@@ -43,6 +49,7 @@ const REFERENCE_PRICES: Record<string, number> = {
   AVGO: 268, AMD: 136, CRM: 268, NFLX: 1284, DIS: 122, XOM: 112,
   JNJ: 156, KO: 70, PG: 158, HD: 366, VTI: 302, VOO: 562, SCHD: 27,
   FXAIX: 208, // Finnhub free tier has no data for this mutual fund
+  BTC: 62700, ETH: 3400, SOL: 76, DOGE: 0.11,
 }
 
 const DEMO_ACCOUNTS: DemoAccount[] = [
@@ -133,7 +140,45 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
       { symbol: "GOOG", quantity: 25, avgCost: 208.4 },
     ],
   },
+  {
+    name: "Coinbase",
+    broker: "Coinbase",
+    accountType: "taxable",
+    holdings: [
+      // ETH exercises the explicit asset_class path (it collides with an
+      // equity ticker, so inference alone would price it as a stock).
+      { symbol: "BTC", quantity: 0.85, avgCost: 38500, assetClass: "crypto" },
+      { symbol: "ETH", quantity: 6.2, avgCost: 2210, assetClass: "crypto" },
+      { symbol: "SOL", quantity: 45, avgCost: 98.4, assetClass: "crypto" },
+      { symbol: "DOGE", quantity: 12000, avgCost: 0.081, assetClass: "crypto" },
+    ],
+  },
 ]
+
+// Mirrors modules/quotes/coinbase.ts, which can't be imported here (it is
+// server-only Next.js code). Finnhub's crypto endpoints are premium-only.
+async function fetchCoinbasePrice(
+  symbol: string,
+): Promise<{ price: number; dayChangePct: number | null } | null> {
+  try {
+    const response = await fetch(
+      `https://api.exchange.coinbase.com/products/${encodeURIComponent(symbol)}-USD/stats`,
+      { headers: { "User-Agent": "onefolio-seed" } },
+    )
+    if (!response.ok) return null
+    const body = (await response.json()) as { open?: string; last?: string }
+    const price = Number(body.last)
+    if (!Number.isFinite(price) || price <= 0) return null
+    const open = Number(body.open)
+    return {
+      price,
+      dayChangePct:
+        Number.isFinite(open) && open > 0 ? ((price - open) / open) * 100 : null,
+    }
+  } catch {
+    return null
+  }
+}
 
 async function fetchFinnhubPrice(
   symbol: string,
@@ -183,6 +228,7 @@ async function main() {
       symbol: holding.symbol,
       quantity: holding.quantity,
       avg_cost: holding.avgCost,
+      asset_class: holding.assetClass ?? "equity",
     })),
   )
 
@@ -205,10 +251,20 @@ async function main() {
     fetched_at: string
   }> = []
 
+  const cryptoSymbols = new Set(
+    DEMO_ACCOUNTS.flatMap((account) =>
+      account.holdings
+        .filter((holding) => holding.assetClass === "crypto")
+        .map((holding) => holding.symbol),
+    ),
+  )
+
   if (apiKey) {
-    console.log(`Fetching ${symbols.length} live quotes from Finnhub…`)
+    console.log(`Fetching ${symbols.length} live quotes (Finnhub + Coinbase)…`)
     for (const symbol of symbols) {
-      const quote = await fetchFinnhubPrice(symbol, apiKey)
+      const quote = cryptoSymbols.has(symbol)
+        ? await fetchCoinbasePrice(symbol)
+        : await fetchFinnhubPrice(symbol, apiKey)
       if (quote) {
         quoteRows.push({
           symbol,
