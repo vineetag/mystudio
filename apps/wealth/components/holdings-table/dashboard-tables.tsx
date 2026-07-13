@@ -161,6 +161,18 @@ export function DashboardTables({
     ? new Set(accountSections.map((section) => section.account.id))
     : expanded
 
+  const allExpanded =
+    accountSections.length > 0 &&
+    accountSections.every((section) => effectiveExpanded.has(section.account.id))
+
+  function toggleExpandAll() {
+    setExpanded(
+      allExpanded
+        ? new Set<string>()
+        : new Set(accountSections.map((section) => section.account.id)),
+    )
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -263,7 +275,30 @@ export function DashboardTables({
       )}
 
       {activeView === "accounts" && (
-        <section role="tabpanel" id="panel-accounts" aria-labelledby="tab-accounts" className="flex flex-col gap-3">
+        <section role="tabpanel" id="panel-accounts" aria-labelledby="tab-accounts" className="flex flex-col gap-4">
+          {accountSections.length > 0 && (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-ink/60">
+                {accountSections.length}{" "}
+                {accountSections.length === 1 ? "account" : "accounts"}
+              </p>
+              {/* Hidden while searching — a live search already expands every match. */}
+              {!needle && (
+                <button
+                  type="button"
+                  onClick={toggleExpandAll}
+                  className="flex min-h-12 cursor-pointer items-center gap-1.5 rounded-md border border-rule px-4 text-sm font-medium text-ink/70 transition-colors hover:border-ink/30 hover:text-ink"
+                >
+                  {allExpanded ? (
+                    <ChevronRight className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" aria-hidden />
+                  )}
+                  {allExpanded ? "Collapse all" : "Expand all"}
+                </button>
+              )}
+            </div>
+          )}
           {accountSections.length === 0 ? (
             <p className="rounded-md border border-dashed border-rule p-6 text-sm text-ink/70">
               {needle ? `Nothing matches "${query}".` : "No holdings match this filter."}
@@ -274,13 +309,22 @@ export function DashboardTables({
               const isOpen = effectiveExpanded.has(account.id)
               const panelId = `account-panel-${account.id}`
               return (
-                <div key={account.id} className="rounded-lg border border-rule">
+                <div
+                  key={account.id}
+                  className={`overflow-hidden rounded-lg border ${
+                    isOpen ? "border-ink/25 shadow-sm" : "border-rule"
+                  }`}
+                >
+                  {/* Tinted header keeps each account identifiable when every
+                      section is open and the page gets long. */}
                   <button
                     type="button"
                     onClick={() => toggleExpanded(account.id)}
                     aria-expanded={isOpen}
                     aria-controls={panelId}
-                    className="flex min-h-12 w-full cursor-pointer items-center gap-3 px-3 py-3 text-left sm:px-4"
+                    className={`flex min-h-12 w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition-colors sm:px-4 ${
+                      isOpen ? "bg-ink/[0.05]" : "bg-ink/[0.02] hover:bg-ink/[0.05]"
+                    }`}
                   >
                     {isOpen ? (
                       <ChevronDown className="h-4 w-4 shrink-0 text-ink/50" aria-hidden />
