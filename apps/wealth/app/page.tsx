@@ -33,14 +33,14 @@ export default async function DashboardPage() {
     getQuotes([...holdingSymbols, ...INDEX_PROXIES], { cacheOnly: true, assetClasses }),
     // Cache-only for a fast first paint; name resolution is rate-paced and runs
     // in the background below (logos render immediately regardless of names).
-    getSymbols(holdingSymbols, { fetchMissing: false }),
+    getSymbols(holdingSymbols, { fetchMissing: false, assetClasses }),
     viewer.isOwner ? listSnapshots(370) : Promise.resolve([]),
   ])
 
   // Warm the shared symbol-name cache without blocking the response.
   if (holdingSymbols.length > 0) {
     after(async () => {
-      await getSymbols(holdingSymbols)
+      await getSymbols(holdingSymbols, { assetClasses })
     })
   }
 

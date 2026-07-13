@@ -1,6 +1,7 @@
 import { after } from "next/server"
 import { redirect } from "next/navigation"
 import { listOwnerAccountsWithHoldings } from "@/modules/accounts"
+import { assetClassMapFromAccounts } from "@/modules/holdings"
 import { requireOwner } from "@/modules/auth"
 import { isSnapTradeConfigured, listConnections } from "@/modules/snaptrade"
 import { getOrRegisterStUser, syncSnapTradeHoldings } from "@/modules/snaptrade"
@@ -45,12 +46,13 @@ export default async function AccountsPage({
   const symbolSymbols = accounts.flatMap((account) =>
     account.holdings.map((holding) => holding.symbol),
   )
+  const assetClasses = assetClassMapFromAccounts(accounts)
   const symbols = Object.fromEntries(
-    await getSymbols(symbolSymbols, { fetchMissing: false }),
+    await getSymbols(symbolSymbols, { fetchMissing: false, assetClasses }),
   )
   if (symbolSymbols.length > 0) {
     after(async () => {
-      await getSymbols(symbolSymbols)
+      await getSymbols(symbolSymbols, { assetClasses })
     })
   }
 

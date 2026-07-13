@@ -6,6 +6,7 @@ export type { Holding } from "./types"
 export {
   assetClassMapFromAccounts,
   assetClassMapFromHoldings,
+  CRYPTO_ONLY_SYMBOLS,
   inferAssetClass,
   normalizeCryptoSymbol,
 } from "./asset-class"
