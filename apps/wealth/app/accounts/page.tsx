@@ -1,8 +1,11 @@
 import { after } from "next/server"
 import { redirect } from "next/navigation"
-import { listOwnerAccountsWithHoldings } from "@/modules/accounts"
+import {
+  listOwnerAccountsWithHoldings,
+  listViewerAccountsWithHoldings,
+} from "@/modules/accounts"
 import { assetClassMapFromAccounts } from "@/modules/holdings"
-import { requireOwner } from "@/modules/auth"
+import { getViewer, requireOwner } from "@/modules/auth"
 import { isSnapTradeConfigured, listConnections } from "@/modules/snaptrade"
 import { getOrRegisterStUser, syncSnapTradeHoldings } from "@/modules/snaptrade"
 import { getSymbols } from "@/modules/symbols"
@@ -10,6 +13,7 @@ import { AccountCard } from "./account-card"
 import { AccountForm } from "./account-form"
 import { ConnectedBrokerages } from "./connected-brokerages"
 import { CsvImport } from "./csv-import"
+import { DemoAccountCard } from "./demo-account-card"
 
 // Owner-only (enforced in middleware). Minimal M2 page — design pass is M5.
 export default async function AccountsPage({
@@ -34,9 +38,16 @@ export default async function AccountsPage({
     redirect("/accounts")
   }
 
-  const snapTradeEnabled = isSnapTradeConfigured()
+  // Demo preview (owner toggled the demo view) must never show live data —
+  // load the demo portfolio read-only and skip live-only sections entirely.
+  const viewer = await getViewer()
+  const demoPreview = viewer.mode === "demo"
+
+  const snapTradeEnabled = isSnapTradeConfigured() && !demoPreview
   const [accounts, connections] = await Promise.all([
-    listOwnerAccountsWithHoldings(),
+    demoPreview
+      ? listViewerAccountsWithHoldings()
+      : listOwnerAccountsWithHoldings(),
     snapTradeEnabled ? listConnections() : Promise.resolve([]),
   ])
 
@@ -61,28 +72,51 @@ export default async function AccountsPage({
       <div>
         <h1 className="font-display text-3xl font-medium text-ink">Accounts</h1>
         <p className="mt-1 text-sm text-ink/70">
-          Manage brokerage accounts and their holdings. LIVE data.
+          {demoPreview
+            ? "Demo preview — sample accounts with dummy data."
+            : "Manage brokerage accounts and their holdings. LIVE data."}
         </p>
       </div>
 
+      {demoPreview && (
+        <p className="rounded-md border border-rule bg-moss/5 p-3 text-sm text-ink/70">
+          You&apos;re previewing demo mode, so this page shows the read-only
+          demo portfolio. Switch back to LIVE mode to manage your real
+          accounts, holdings, and brokerage connections.
+        </p>
+      )}
+
       {snapTradeEnabled && <ConnectedBrokerages connections={connections} />}
 
-      <section className="rounded-lg border border-rule p-4">
-        <h2 className="mb-3 text-lg font-semibold text-ink">New account</h2>
-        <AccountForm />
-      </section>
+      {!demoPreview && (
+        <>
+          <section className="rounded-lg border border-rule p-4">
+            <h2 className="mb-3 text-lg font-semibold text-ink">New account</h2>
+            <AccountForm />
+          </section>
 
-      <CsvImport />
+          <CsvImport />
+        </>
+      )}
 
       {accounts.length === 0 ? (
         <p className="rounded-md border border-dashed border-rule p-6 text-sm text-ink/70">
-          No accounts yet. Add your first account above — holdings and CSV
-          import unlock once an account exists.
+          {demoPreview
+            ? "The demo portfolio has no accounts yet."
+            : "No accounts yet. Add your first account above — holdings and CSV import unlock once an account exists."}
         </p>
       ) : (
-        accounts.map((account) => (
-          <AccountCard key={account.id} account={account} symbols={symbols} />
-        ))
+        accounts.map((account) =>
+          demoPreview ? (
+            <DemoAccountCard
+              key={account.id}
+              account={account}
+              symbols={symbols}
+            />
+          ) : (
+            <AccountCard key={account.id} account={account} symbols={symbols} />
+          ),
+        )
       )}
     </main>
   )
