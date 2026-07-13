@@ -1,6 +1,8 @@
 import "server-only"
 
+import { inferAssetClass, type AssetClass } from "@/modules/holdings"
 import { createClient, createServiceClient } from "@/lib/db"
+import { cryptoSymbolProfile } from "./crypto-metadata"
 import { fetchSymbolProfile } from "./profile"
 import type { SymbolInfo } from "./types"
 
@@ -31,6 +33,12 @@ export interface GetSymbolsOptions {
    * separately (e.g. in `after()`), since resolution is rate-paced.
    */
   fetchMissing?: boolean
+  /**
+   * Per-symbol routing: crypto symbols resolve from the static crypto map
+   * (Finnhub profile2 is equity-only and returns whatever company shares the
+   * ticker — SOL → Emeren Group), equities from Finnhub.
+   */
+  assetClasses?: Map<string, AssetClass>
 }
 
 /**
@@ -83,11 +91,22 @@ export async function getSymbols(
 
   // Resolve serially with pacing to respect the Finnhub rate limit, upserting
   // each row as we go so partial progress persists if the run is interrupted.
+  // Crypto symbols come from the static map — no Finnhub call, no pacing.
   const service = createServiceClient()
-  for (let i = 0; i < missing.length; i++) {
-    if (i > 0) await sleep(FINNHUB_MIN_INTERVAL_MS)
-    const symbol = missing[i]
-    const profile = await fetchSymbolProfile(symbol)
+  let finnhubCalls = 0
+  for (const symbol of missing) {
+    const isCrypto =
+      inferAssetClass(symbol, options.assetClasses?.get(symbol) ?? "equity") ===
+      "crypto"
+
+    let profile
+    if (isCrypto) {
+      profile = cryptoSymbolProfile(symbol)
+    } else {
+      if (finnhubCalls > 0) await sleep(FINNHUB_MIN_INTERVAL_MS)
+      finnhubCalls++
+      profile = await fetchSymbolProfile(symbol)
+    }
     if (profile) {
       infos.set(symbol, {
         symbol,

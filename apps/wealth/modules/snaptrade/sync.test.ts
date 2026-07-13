@@ -16,7 +16,9 @@ function position(
 describe("mapPositions", () => {
   it("maps symbol, units, and per-share cost basis", () => {
     const { rows, skipped } = mapPositions([position("goog", 10, 150.5)])
-    expect(rows).toEqual([{ symbol: "GOOG", quantity: 10, avg_cost: 150.5 }])
+    expect(rows).toEqual([
+      { symbol: "GOOG", quantity: 10, avg_cost: 150.5, asset_class: "equity" },
+    ])
     expect(skipped).toEqual([])
   })
 
@@ -42,7 +44,9 @@ describe("mapPositions", () => {
       position("GOOG", 10, 100),
       position("GOOG", 10, 200),
     ])
-    expect(rows).toEqual([{ symbol: "GOOG", quantity: 20, avg_cost: 150 }])
+    expect(rows).toEqual([
+      { symbol: "GOOG", quantity: 20, avg_cost: 150, asset_class: "equity" },
+    ])
   })
 
   it("merged basis is null when either side lacks one", () => {
