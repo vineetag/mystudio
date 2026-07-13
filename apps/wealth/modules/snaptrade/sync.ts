@@ -15,6 +15,9 @@ interface HoldingRow {
   asset_class: AssetClass
   quantity: number
   avg_cost: number | null
+  /** Broker-reported price/NAV — the only price source for 401k funds. */
+  price: number | null
+  price_as_of: string | null
 }
 
 /**
@@ -29,7 +32,10 @@ function isCryptoPosition(position: any): boolean {
   return typeCode === "crypto"
 }
 
-export function mapPositions(positions: any[]): {
+export function mapPositions(
+  positions: any[],
+  syncedAt: string = new Date().toISOString(),
+): {
   rows: HoldingRow[]
   skipped: string[]
 } {
@@ -43,6 +49,7 @@ export function mapPositions(positions: any[]): {
       position?.symbol?.symbol?.symbol
     const units: unknown = position?.units
     const avgCost: unknown = position?.average_purchase_price
+    const price: unknown = position?.price
 
     const symbol = typeof rawSymbol === "string" ? rawSymbol.trim().toUpperCase() : ""
     if (!symbol || symbol.length > 12 || !/^[A-Z0-9.\-]+$/.test(symbol)) {
@@ -54,11 +61,15 @@ export function mapPositions(positions: any[]): {
       continue
     }
 
+    const brokerPrice = typeof price === "number" && price >= 0 ? price : null
+
     rows.push({
       symbol,
       asset_class: isCryptoPosition(position) ? "crypto" : "equity",
       quantity: units,
       avg_cost: typeof avgCost === "number" && avgCost >= 0 ? avgCost : null,
+      price: brokerPrice,
+      price_as_of: brokerPrice === null ? null : syncedAt,
     })
   }
 
@@ -78,6 +89,11 @@ export function mapPositions(positions: any[]): {
         : null
     existing.quantity = mergedQty
     if (row.asset_class === "crypto") existing.asset_class = "crypto"
+    // Same symbol shares one NAV; keep whichever lot actually carried a price.
+    if (existing.price === null && row.price !== null) {
+      existing.price = row.price
+      existing.price_as_of = row.price_as_of
+    }
   }
 
   return { rows: [...bySymbol.values()], skipped }
@@ -99,6 +115,7 @@ export async function syncSnapTradeHoldings(
   const snaptrade = getSnapTradeClient()
   const service = createServiceClient()
   const auth = { userId: stUser.stUserId, userSecret: stUser.stUserSecret }
+  const syncedAt = new Date().toISOString()
 
   const [connectionsResponse, accountsResponse] = await Promise.all([
     withSnapTradeRetry(() => snaptrade.connections.listBrokerageAuthorizations(auth)),
@@ -158,7 +175,7 @@ export async function syncSnapTradeHoldings(
             accountId: stAccount.id,
           }),
         )
-        const { rows, skipped } = mapPositions(positionsResponse.data ?? [])
+        const { rows, skipped } = mapPositions(positionsResponse.data ?? [], syncedAt)
         report.skipped.push(...skipped)
 
         // Upsert the account by its stable SnapTrade id. account_type stays

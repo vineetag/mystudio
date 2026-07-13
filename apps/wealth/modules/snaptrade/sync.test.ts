@@ -1,25 +1,45 @@
 import { describe, expect, it } from "vitest"
 import { mapPositions } from "./sync"
 
+const SYNCED_AT = "2026-07-13T12:00:00Z"
+
 function position(
   rawSymbol: string | null,
   units: number | null,
   avgCost: number | null = null,
+  price: number | null = null,
 ) {
   return {
     symbol: { symbol: rawSymbol === null ? {} : { raw_symbol: rawSymbol } },
     units,
     average_purchase_price: avgCost,
+    price,
   }
 }
 
 describe("mapPositions", () => {
   it("maps symbol, units, and per-share cost basis", () => {
-    const { rows, skipped } = mapPositions([position("goog", 10, 150.5)])
+    const { rows, skipped } = mapPositions([position("goog", 10, 150.5)], SYNCED_AT)
     expect(rows).toEqual([
-      { symbol: "GOOG", quantity: 10, avg_cost: 150.5, asset_class: "equity" },
+      {
+        symbol: "GOOG",
+        quantity: 10,
+        avg_cost: 150.5,
+        asset_class: "equity",
+        price: null,
+        price_as_of: null,
+      },
     ])
     expect(skipped).toEqual([])
+  })
+
+  it("captures the broker-reported price (NAV) for funds Finnhub can't quote", () => {
+    const { rows } = mapPositions([position("FBGRX", 148.081, null, 210.42)], SYNCED_AT)
+    expect(rows[0]).toMatchObject({
+      symbol: "FBGRX",
+      price: 210.42,
+      price_as_of: SYNCED_AT,
+    })
   })
 
   it("skips short positions, zero units, and missing symbols with reasons", () => {
@@ -45,7 +65,14 @@ describe("mapPositions", () => {
       position("GOOG", 10, 200),
     ])
     expect(rows).toEqual([
-      { symbol: "GOOG", quantity: 20, avg_cost: 150, asset_class: "equity" },
+      {
+        symbol: "GOOG",
+        quantity: 20,
+        avg_cost: 150,
+        asset_class: "equity",
+        price: null,
+        price_as_of: null,
+      },
     ])
   })
 

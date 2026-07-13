@@ -8,7 +8,12 @@ const FETCHED_AT = "2026-07-06T12:00:00Z"
 function account(
   id: string,
   name: string,
-  holdings: Array<{ symbol: string; quantity: number; avgCost: number | null }>,
+  holdings: Array<{
+    symbol: string
+    quantity: number
+    avgCost: number | null
+    brokerPrice?: number | null
+  }>,
 ): AccountWithHoldings {
   return {
     id,
@@ -28,6 +33,8 @@ function account(
       assetClass: "equity" as const,
       quantity: holding.quantity,
       avgCost: holding.avgCost,
+      brokerPrice: holding.brokerPrice ?? null,
+      brokerPriceAsOf: holding.brokerPrice == null ? null : FETCHED_AT,
       createdAt: FETCHED_AT,
       updatedAt: FETCHED_AT,
     })),
@@ -86,6 +93,36 @@ describe("derivePositions", () => {
       new Map([quote("FXAIX", null)]),
     )
     expect(rows[0]).toMatchObject({ value: null, gainLoss: null, gainLossPct: null })
+  })
+
+  it("falls back to the broker NAV when Finnhub has no quote", () => {
+    const rows = derivePositions(
+      [
+        account("a1", "Meta 401k", [
+          { symbol: "O5L6", quantity: 100, avgCost: null, brokerPrice: 25 },
+        ]),
+      ],
+      new Map([quote("O5L6", null)]),
+    )
+    expect(rows[0]).toMatchObject({
+      price: 25,
+      value: 2500,
+      priceIsBrokerNav: true,
+      fetchedAt: FETCHED_AT,
+      isStaleQuote: false,
+    })
+  })
+
+  it("prefers the live quote over the broker NAV when both exist", () => {
+    const rows = derivePositions(
+      [
+        account("a1", "Roth", [
+          { symbol: "GOOG", quantity: 10, avgCost: 100, brokerPrice: 140 },
+        ]),
+      ],
+      new Map([quote("GOOG", 150)]),
+    )
+    expect(rows[0]).toMatchObject({ price: 150, value: 1500, priceIsBrokerNav: false })
   })
 
   it("avoids divide-by-zero on a zero cost basis", () => {
