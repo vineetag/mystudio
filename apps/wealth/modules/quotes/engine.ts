@@ -10,8 +10,8 @@ import {
   yieldNeedsRefresh,
   type CachedQuoteRow,
 } from "./cache"
+import { fetchCoinbaseCryptoQuote } from "./coinbase"
 import {
-  fetchFinnhubCryptoQuote,
   fetchFinnhubDividendYield,
   fetchFinnhubQuote,
   UnknownSymbolError,
@@ -126,7 +126,7 @@ export async function getQuotes(
       )
       const quote =
         assetClass === "crypto"
-          ? await fetchFinnhubCryptoQuote(symbol)
+          ? await fetchCoinbaseCryptoQuote(symbol)
           : await fetchFinnhubQuote(symbol)
       const cached = cachedBySymbol.get(symbol)
       const refreshYield = assetClass !== "crypto" && yieldNeedsRefresh(cached, now)
