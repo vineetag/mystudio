@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowDown, ArrowUp, Check, ChevronDown } from "lucide-react"
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight } from "lucide-react"
 import { consolidate, type PositionRow } from "@/modules/portfolio"
 import { BrokerLogo } from "@/components/broker-logo"
 import { formatMoney } from "@/lib/format"
@@ -53,6 +53,12 @@ export function DashboardTables({
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT)
   // Empty = all accounts (the default). A non-empty set is an explicit filter.
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  // Which view is showing. Consolidated ("all") is the landing view; "By
+  // account" is a tab so the two data renderings never stack and double scroll.
+  const [view, setView] = useState<"all" | "accounts">("all")
+  // Accounts expanded in the "By account" view — collapsed by default so the
+  // page opens as a scannable account list, not N full tables.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const needle = query.trim().toLowerCase()
 
@@ -75,6 +81,15 @@ export function DashboardTables({
 
   function handleSort(key: string) {
     setSort((current) => nextSort(current, key))
+  }
+
+  function toggleExpanded(id: string) {
+    setExpanded((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   const isAllAccounts = selected.size === 0
@@ -138,6 +153,14 @@ export function DashboardTables({
 
   const activeSortColumn = SORTABLE_COLUMNS.find((column) => column.key === sort.key)
 
+  // "By account" only earns a tab when there's more than one account.
+  const showAccountsTab = accounts.length > 1
+  const activeView = showAccountsTab ? view : "all"
+  // A live search reveals matches under every collapsed header automatically.
+  const effectiveExpanded = needle
+    ? new Set(accountSections.map((section) => section.account.id))
+    : expanded
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -199,69 +222,139 @@ export function DashboardTables({
         </div>
       </div>
 
-      <section>
-        <h2 className="mb-2 font-display text-xl font-medium text-ink">All holdings</h2>
-        <p className="mb-3 text-sm text-ink/70">
-          One row per ticker
-          {isAllAccounts ? " across every account" : " across the selected accounts"} —
-          expand a row for the per-account breakdown.
-        </p>
-        {filteredConsolidated.length === 0 ? (
-          <p className="rounded-md border border-dashed border-rule p-6 text-sm text-ink/70">
-            {needle
-              ? `Nothing matches "${query}".`
-              : "No holdings match this filter."}
-          </p>
-        ) : (
-          <ConsolidatedTable rows={filteredConsolidated} sort={sort} onSort={handleSort} />
-        )}
-        <p className="mt-2 text-xs text-ink/40 md:hidden">
-          Sorted by {activeSortColumn?.header ?? "Value"} ({sort.dir === "asc" ? "ascending" : "descending"}).
-        </p>
-      </section>
+      {showAccountsTab && (
+        <div role="tablist" aria-label="Holdings view" className="flex gap-1 border-b border-rule">
+          <ViewTab
+            id="all"
+            label="All holdings"
+            active={activeView === "all"}
+            onSelect={() => setView("all")}
+          />
+          <ViewTab
+            id="accounts"
+            label="By account"
+            active={activeView === "accounts"}
+            onSelect={() => setView("accounts")}
+          />
+        </div>
+      )}
 
-      {accountSections.length > 0 && (
-        <section className="flex flex-col gap-6">
-          <h2 className="font-display text-xl font-medium text-ink">By account</h2>
-          {accountSections.map(({ account, positions: accountPositions }) => {
-            const total = accountTotals.get(account.id)
-            return (
-              <div key={account.id}>
-                <div className="mb-2 flex items-end justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
+      {activeView === "all" && (
+        <section role="tabpanel" id="panel-all" aria-labelledby="tab-all">
+          <h2 className="mb-2 font-display text-xl font-medium text-ink">All holdings</h2>
+          <p className="mb-3 text-sm text-ink/70">
+            One row per ticker
+            {isAllAccounts ? " across every account" : " across the selected accounts"} —
+            expand a row for the per-account breakdown.
+          </p>
+          {filteredConsolidated.length === 0 ? (
+            <p className="rounded-md border border-dashed border-rule p-6 text-sm text-ink/70">
+              {needle
+                ? `Nothing matches "${query}".`
+                : "No holdings match this filter."}
+            </p>
+          ) : (
+            <ConsolidatedTable rows={filteredConsolidated} sort={sort} onSort={handleSort} />
+          )}
+          <p className="mt-2 text-xs text-ink/40 md:hidden">
+            Sorted by {activeSortColumn?.header ?? "Value"} ({sort.dir === "asc" ? "ascending" : "descending"}).
+          </p>
+        </section>
+      )}
+
+      {activeView === "accounts" && (
+        <section role="tabpanel" id="panel-accounts" aria-labelledby="tab-accounts" className="flex flex-col gap-3">
+          {accountSections.length === 0 ? (
+            <p className="rounded-md border border-dashed border-rule p-6 text-sm text-ink/70">
+              {needle ? `Nothing matches "${query}".` : "No holdings match this filter."}
+            </p>
+          ) : (
+            accountSections.map(({ account, positions: accountPositions }) => {
+              const total = accountTotals.get(account.id)
+              const isOpen = effectiveExpanded.has(account.id)
+              const panelId = `account-panel-${account.id}`
+              return (
+                <div key={account.id} className="rounded-lg border border-rule">
+                  <button
+                    type="button"
+                    onClick={() => toggleExpanded(account.id)}
+                    aria-expanded={isOpen}
+                    aria-controls={panelId}
+                    className="flex min-h-12 w-full cursor-pointer items-center gap-3 px-3 py-3 text-left sm:px-4"
+                  >
+                    {isOpen ? (
+                      <ChevronDown className="h-4 w-4 shrink-0 text-ink/50" aria-hidden />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 shrink-0 text-ink/50" aria-hidden />
+                    )}
                     <BrokerLogo broker={account.broker} logoUrl={account.brokerLogoUrl} size={28} />
-                    <div>
-                      <h3 className="font-medium leading-tight text-ink">{account.name}</h3>
-                      <p className="text-sm text-ink/60">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate font-medium leading-tight text-ink">{account.name}</h3>
+                      <p className="truncate text-sm text-ink/60">
                         {account.broker} · {account.typeLabel}
                       </p>
                     </div>
-                  </div>
-                  {total && (
-                    <div className="text-right">
-                      <p className="font-medium tabular-nums text-ink">
-                        {formatMoney(total.value)}
-                      </p>
-                      <p className="text-xs text-ink/50">
-                        {total.holdingCount}{" "}
-                        {total.holdingCount === 1 ? "holding" : "holdings"}
-                        {total.unpricedCount > 0 && (
-                          <span className="text-amber-700">
-                            {" "}
-                            · {total.unpricedCount} unpriced
-                          </span>
-                        )}
-                      </p>
+                    {total && (
+                      <div className="shrink-0 text-right">
+                        <p className="font-medium tabular-nums text-ink">
+                          {formatMoney(total.value)}
+                        </p>
+                        <p className="text-xs text-ink/50">
+                          {total.holdingCount}{" "}
+                          {total.holdingCount === 1 ? "holding" : "holdings"}
+                          {total.unpricedCount > 0 && (
+                            <span className="text-amber-700">
+                              {" "}
+                              · {total.unpricedCount} unpriced
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </button>
+                  {isOpen && (
+                    <div id={panelId} className="border-t border-rule px-3 pb-3 pt-1 sm:px-4">
+                      <PositionsTable positions={accountPositions} sort={sort} onSort={handleSort} />
                     </div>
                   )}
                 </div>
-                <PositionsTable positions={accountPositions} sort={sort} onSort={handleSort} />
-              </div>
-            )
-          })}
+              )
+            })
+          )}
         </section>
       )}
     </div>
+  )
+}
+
+/** One tab in the view switcher — moss underline marks the active panel. */
+function ViewTab({
+  id,
+  label,
+  active,
+  onSelect,
+}: {
+  id: string
+  label: string
+  active: boolean
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      id={`tab-${id}`}
+      aria-selected={active}
+      aria-controls={`panel-${id}`}
+      onClick={onSelect}
+      className={`-mb-px flex min-h-12 cursor-pointer items-center border-b-2 px-3 text-sm font-medium transition-colors sm:px-4 ${
+        active
+          ? "border-moss text-moss"
+          : "border-transparent text-ink/60 hover:text-ink"
+      }`}
+    >
+      {label}
+    </button>
   )
 }
 
