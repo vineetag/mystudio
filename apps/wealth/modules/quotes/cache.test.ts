@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  mergeQuoteViews,
   partitionByFreshness,
   partitionForPollRefresh,
   QUOTE_POLL_MS,
@@ -10,6 +11,7 @@ import {
   yieldNeedsRefresh,
   type CachedQuoteRow,
 } from "./cache"
+import type { QuoteView } from "./types"
 
 const NOW = new Date("2026-07-06T12:00:00Z")
 
@@ -136,6 +138,66 @@ describe("unavailableQuoteView", () => {
       fetchedAt: null,
       isStale: false,
     })
+  })
+})
+
+describe("mergeQuoteViews", () => {
+  function view(symbol: string, fetchedAt: string | null, isStale = false): QuoteView {
+    return {
+      symbol,
+      price: 100,
+      dayChangePct: 1.5,
+      dividendYield: null,
+      fetchedAt,
+      isStale,
+    }
+  }
+
+  it("adds new symbols and updates existing ones with newer quotes", () => {
+    const current = new Map([["^GSPC", view("^GSPC", "2026-07-06T11:00:00Z", true)]])
+    const next = mergeQuoteViews(current, {
+      "^GSPC": view("^GSPC", "2026-07-06T12:00:00Z"),
+      "^IXIC": view("^IXIC", "2026-07-06T12:00:00Z"),
+    })
+    expect(next.get("^GSPC")).toMatchObject({ fetchedAt: "2026-07-06T12:00:00Z", isStale: false })
+    expect(next.has("^IXIC")).toBe(true)
+    expect(next).not.toBe(current)
+  })
+
+  it("keeps the newer existing quote when a late response carries an older one", () => {
+    const current = new Map([["AAPL", view("AAPL", "2026-07-06T12:00:00Z")]])
+    const next = mergeQuoteViews(current, {
+      AAPL: view("AAPL", "2026-07-06T11:30:00Z", true),
+    })
+    expect(next.get("AAPL")).toMatchObject({ fetchedAt: "2026-07-06T12:00:00Z", isStale: false })
+  })
+
+  it("compares timestamps as dates across offset formats", () => {
+    // Cache rows carry +00:00, fresh fetches carry Z — lexical compare would
+    // wrongly treat every Z timestamp as newer than every +00:00 one.
+    const current = new Map([["AAPL", view("AAPL", "2026-07-06T12:00:00+00:00")]])
+    const next = mergeQuoteViews(current, {
+      AAPL: view("AAPL", "2026-07-06T11:00:00Z", true),
+    })
+    expect(next.get("AAPL")).toMatchObject({ fetchedAt: "2026-07-06T12:00:00+00:00" })
+  })
+
+  it("lets a quote with a timestamp replace an unavailable one and not vice versa", () => {
+    const unavailable = view("TSM", null)
+    unavailable.price = null
+
+    const gainedPrice = mergeQuoteViews(new Map([["TSM", unavailable]]), {
+      TSM: view("TSM", "2026-07-06T12:00:00Z"),
+    })
+    expect(gainedPrice.get("TSM")).toMatchObject({ price: 100 })
+
+    // An incoming null-timestamp view still replaces — the server said the
+    // symbol became unavailable, which the dashboard must reflect.
+    const wentUnavailable = mergeQuoteViews(
+      new Map([["TSM", view("TSM", "2026-07-06T12:00:00Z")]]),
+      { TSM: unavailable },
+    )
+    expect(wentUnavailable.get("TSM")).toMatchObject({ price: null })
   })
 })
 

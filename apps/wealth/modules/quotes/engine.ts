@@ -129,7 +129,7 @@ export async function getQuotes(
     return fn()
   }
 
-  const results = await mapWithConcurrency(toFetch, FETCH_CONCURRENCY, async (symbol) => {
+  async function fetchOne(symbol: string) {
     try {
       const assetClass = inferAssetClass(
         symbol,
@@ -161,7 +161,22 @@ export async function getQuotes(
       }
       return { symbol, quote: null, dividendYield: null, refreshedYield: false }
     }
-  })
+  }
+
+  // Symbols priced off Finnhub (indices via Yahoo, crypto via Coinbase) fetch
+  // concurrently — queueing them behind the paced Finnhub batch would make
+  // two instant index calls wait out a minute of rate-limited equity fetches.
+  const isUnpaced = (symbol: string) =>
+    isIndexSymbol(symbol) ||
+    inferAssetClass(symbol, options.assetClasses?.get(symbol) ?? "equity") === "crypto"
+  const unpacedSymbols = toFetch.filter(isUnpaced)
+  const pacedSymbols = toFetch.filter((symbol) => !isUnpaced(symbol))
+
+  const [unpacedResults, pacedResults] = await Promise.all([
+    Promise.all(unpacedSymbols.map(fetchOne)),
+    mapWithConcurrency(pacedSymbols, FETCH_CONCURRENCY, fetchOne),
+  ])
+  const results = [...unpacedResults, ...pacedResults]
 
   const upsertRows = []
   for (const { symbol, quote, dividendYield, refreshedYield } of results) {

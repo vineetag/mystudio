@@ -8,7 +8,7 @@ import {
   portfolioTotal,
   type DeriveAccountInput,
 } from "@/modules/portfolio"
-import { QUOTE_POLL_MS } from "@/modules/quotes/cache"
+import { mergeQuoteViews, QUOTE_POLL_MS } from "@/modules/quotes/cache"
 import { MARKET_INDICES } from "@/modules/quotes/indices"
 import type { QuoteView } from "@/modules/quotes/types"
 import type { SymbolInfo } from "@/modules/symbols/types"
@@ -113,8 +113,8 @@ export function LiveDashboard({
   // Names + logo domains are static across the quote poll — build the map once.
   const symbolMap = useMemo(() => new Map(Object.entries(symbols)), [symbols])
 
-  const quoteSymbols = useMemo(() => {
-    const unique = new Set<string>(MARKET_INDICES.map((index) => index.symbol))
+  const holdingSymbols = useMemo(() => {
+    const unique = new Set<string>()
     for (const account of accounts) {
       for (const holding of account.holdings) {
         unique.add(holding.symbol)
@@ -123,34 +123,44 @@ export function LiveDashboard({
     return [...unique].sort()
   }, [accounts])
 
-  const symbolsKey = quoteSymbols.join(",")
+  const holdingSymbolsKey = holdingSymbols.join(",")
+  const indexSymbolsKey = MARKET_INDICES.map((index) => index.symbol).join(",")
 
   useEffect(() => {
     let cancelled = false
 
-    async function refreshQuotes() {
-      if (document.hidden) return
-
-      const params = new URLSearchParams({ symbols: symbolsKey, refresh: "1" })
+    async function pollQuotes(symbolsParam: string) {
+      const params = new URLSearchParams({ symbols: symbolsParam, refresh: "1" })
       try {
         const response = await fetch(`/api/quotes?${params.toString()}`, {
           cache: "no-store",
         })
         if (!response.ok) return
         const payload = (await response.json()) as { quotes: Record<string, QuoteView> }
-        if (!cancelled) setQuotes(quotesFromRecord(payload.quotes))
+        if (!cancelled) {
+          setQuotes((current) => mergeQuoteViews(current, payload.quotes))
+        }
       } catch {
         // Keep showing the last good prices on transient network errors.
       }
     }
 
-    void refreshQuotes()
+    function refreshQuotes() {
+      if (document.hidden) return
+      // Two separate requests: indices refresh via Yahoo in under a second,
+      // while the holdings batch waits out the rate-paced Finnhub queue —
+      // one combined request would pin the index figures to the slow batch.
+      void pollQuotes(indexSymbolsKey)
+      if (holdingSymbolsKey.length > 0) void pollQuotes(holdingSymbolsKey)
+    }
+
+    refreshQuotes()
     const intervalId = window.setInterval(refreshQuotes, QUOTE_POLL_MS)
     return () => {
       cancelled = true
       window.clearInterval(intervalId)
     }
-  }, [symbolsKey])
+  }, [indexSymbolsKey, holdingSymbolsKey])
 
   const positions = useMemo(
     () => derivePositions(accounts, quotes, symbolMap),
