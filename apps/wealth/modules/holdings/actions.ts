@@ -59,6 +59,7 @@ export async function addHolding(
   }
 
   revalidatePath("/accounts")
+  revalidatePath("/")
   return { ok: true }
 }
 
@@ -87,6 +88,7 @@ export async function updateHolding(
   }
 
   revalidatePath("/accounts")
+  revalidatePath("/")
   return { ok: true }
 }
 
@@ -109,6 +111,7 @@ export async function deleteHolding(id: string): Promise<ActionResult> {
   }
 
   revalidatePath("/accounts")
+  revalidatePath("/")
   return { ok: true }
 }
 
@@ -220,5 +223,6 @@ export async function importHoldingsCsv(
   }
 
   revalidatePath("/accounts")
+  revalidatePath("/")
   return { ok: true, data: { imported, updated, rejects } }
 }

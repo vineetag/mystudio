@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight } from "lucide-react"
 import { consolidate, type PositionRow } from "@/modules/portfolio"
 import { BrokerLogo } from "@/components/broker-logo"
+import { AddHoldingForm } from "@/components/manage-holdings/add-holding-form"
 import { formatMoney } from "@/lib/format"
 import {
   ConsolidatedTable,
@@ -49,20 +50,35 @@ function nextSort(current: SortState, key: string): SortState {
 export function DashboardTables({
   positions,
   accounts,
+  canManage = false,
+  initialAccountId = null,
 }: {
   positions: PositionRow[]
   accounts: AccountSection[]
+  /** Owner in LIVE mode — per-account panels gain edit/delete/add controls. */
+  canManage?: boolean
+  /** Deep link (/?account=id): land on "By account" with this section open. */
+  initialAccountId?: string | null
 }) {
+  // Only honor a deep link that names a real account.
+  const linkedAccountId =
+    initialAccountId && accounts.some((account) => account.id === initialAccountId)
+      ? initialAccountId
+      : null
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT)
   // Empty = all accounts (the default). A non-empty set is an explicit filter.
   const [selected, setSelected] = useState<Set<string>>(new Set())
   // Which view is showing. Consolidated ("all") is the landing view; "By
   // account" is a tab so the two data renderings never stack and double scroll.
-  const [view, setView] = useState<"all" | "accounts">("all")
+  const [view, setView] = useState<"all" | "accounts">(
+    linkedAccountId ? "accounts" : "all",
+  )
   // Accounts expanded in the "By account" view — collapsed by default so the
   // page opens as a scannable account list, not N full tables.
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () => new Set(linkedAccountId ? [linkedAccountId] : []),
+  )
 
   const needle = query.trim().toLowerCase()
 
@@ -165,13 +181,18 @@ export function DashboardTables({
           )
         return { account, positions: accountPositions }
       })
-      .filter((section) => section.positions.length > 0)
-  }, [accounts, activePositions, needle, selected])
+      // In manage mode a holding-less account must stay visible so its first
+      // holding can be added — but not while a search is narrowing the view.
+      .filter(
+        (section) => section.positions.length > 0 || (canManage && !needle),
+      )
+  }, [accounts, activePositions, canManage, needle, selected])
 
   const activeSortColumn = SORTABLE_COLUMNS.find((column) => column.key === sort.key)
 
-  // "By account" only earns a tab when there's more than one account.
-  const showAccountsTab = accounts.length > 1
+  // "By account" only earns a tab when there's more than one account — except
+  // in manage mode, where it's the only surface with edit/add controls.
+  const showAccountsTab = accounts.length > 1 || canManage
   const activeView = showAccountsTab ? view : "all"
   // A live search reveals matches under every collapsed header automatically.
   const effectiveExpanded = needle
@@ -327,7 +348,11 @@ export function DashboardTables({
             </p>
           ) : (
             accountSections.map(({ account, positions: accountPositions }) => {
-              const total = accountTotals.get(account.id)
+              const total = accountTotals.get(account.id) ?? {
+                value: 0,
+                holdingCount: 0,
+                unpricedCount: 0,
+              }
               const isOpen = effectiveExpanded.has(account.id)
               const panelId = `account-panel-${account.id}`
               return (
@@ -360,27 +385,42 @@ export function DashboardTables({
                         {account.broker} · {account.typeLabel}
                       </p>
                     </div>
-                    {total && (
-                      <div className="shrink-0 text-right">
-                        <p className="font-medium tabular-nums text-ink">
-                          {formatMoney(total.value)}
-                        </p>
-                        <p className="text-xs text-ink/50">
-                          {total.holdingCount}{" "}
-                          {total.holdingCount === 1 ? "holding" : "holdings"}
-                          {total.unpricedCount > 0 && (
-                            <span className="text-amber-700">
-                              {" "}
-                              · {total.unpricedCount} unpriced
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    )}
+                    <div className="shrink-0 text-right">
+                      <p className="font-medium tabular-nums text-ink">
+                        {formatMoney(total.value)}
+                      </p>
+                      <p className="text-xs text-ink/50">
+                        {total.holdingCount}{" "}
+                        {total.holdingCount === 1 ? "holding" : "holdings"}
+                        {total.unpricedCount > 0 && (
+                          <span className="text-amber-700">
+                            {" "}
+                            · {total.unpricedCount} unpriced
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   </button>
                   {isOpen && (
                     <div id={panelId} className="border-t border-rule px-3 pb-3 pt-1 sm:px-4">
-                      <PositionsTable positions={accountPositions} sort={sort} onSort={handleSort} />
+                      {accountPositions.length > 0 ? (
+                        <PositionsTable
+                          positions={accountPositions}
+                          sort={sort}
+                          onSort={handleSort}
+                          canManage={canManage}
+                        />
+                      ) : (
+                        <p className="mt-2 rounded-md border border-dashed border-rule p-4 text-sm text-ink/70">
+                          No holdings yet — add the first one below or import a
+                          CSV from the accounts page.
+                        </p>
+                      )}
+                      {canManage && (
+                        <div className="mt-3">
+                          <AddHoldingForm accountId={account.id} />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
