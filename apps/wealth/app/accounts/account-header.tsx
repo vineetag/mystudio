@@ -14,39 +14,32 @@ export interface AccountTotal {
 }
 
 /**
- * Collapsible account header — same visual language as the dashboard's
- * "By account" tab so the two pages read as one system: chevron, broker
- * logo, name, broker · type on the left; priced total + holding count on
- * the right.
+ * Account header — same visual language as the dashboard's "By account"
+ * tab so the two pages read as one system: chevron, broker logo, name,
+ * broker · type on the left; priced total + holding count on the right.
+ * Without onToggle it renders as a static row (demo preview cards).
  */
 export function AccountHeader({
   account,
   total,
-  open,
+  open = false,
   onToggle,
   panelId,
 }: {
   account: Account
   total: AccountTotal
-  open: boolean
-  onToggle: () => void
-  panelId: string
+  open?: boolean
+  onToggle?: () => void
+  panelId?: string
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-expanded={open}
-      aria-controls={panelId}
-      className={`flex min-h-12 w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition-colors sm:px-4 ${
-        open ? "bg-ink/[0.05]" : "bg-ink/[0.02] hover:bg-ink/[0.05]"
-      }`}
-    >
-      {open ? (
-        <ChevronDown className="h-4 w-4 shrink-0 text-ink/50" aria-hidden />
-      ) : (
-        <ChevronRight className="h-4 w-4 shrink-0 text-ink/50" aria-hidden />
-      )}
+  const content = (
+    <>
+      {onToggle &&
+        (open ? (
+          <ChevronDown className="h-4 w-4 shrink-0 text-ink/50" aria-hidden />
+        ) : (
+          <ChevronRight className="h-4 w-4 shrink-0 text-ink/50" aria-hidden />
+        ))}
       <BrokerLogo broker={account.broker} logoUrl={account.brokerLogoUrl} size={28} />
       <div className="min-w-0 flex-1">
         <h2 className="truncate font-medium leading-tight text-ink">
@@ -72,6 +65,28 @@ export function AccountHeader({
           )}
         </p>
       </div>
+    </>
+  )
+
+  if (!onToggle) {
+    return (
+      <div className="flex min-h-12 w-full items-center gap-3 bg-ink/[0.02] px-3 py-3 text-left sm:px-4">
+        {content}
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-controls={panelId}
+      className={`flex min-h-12 w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition-colors sm:px-4 ${
+        open ? "bg-ink/[0.05]" : "bg-ink/[0.02] hover:bg-ink/[0.05]"
+      }`}
+    >
+      {content}
     </button>
   )
 }

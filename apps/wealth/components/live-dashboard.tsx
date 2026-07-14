@@ -94,6 +94,7 @@ export function LiveDashboard({
   accountCount,
   accountTypeLabels,
   snapshots,
+  initialAccountId = null,
 }: {
   accounts: DashboardAccount[]
   initialQuotes: Record<string, QuoteView>
@@ -102,6 +103,8 @@ export function LiveDashboard({
   accountCount: number
   accountTypeLabels: Record<AccountType, string>
   snapshots: Snapshot[]
+  /** Deep link from /accounts — opens "By account" with this section expanded. */
+  initialAccountId?: string | null
 }) {
   const [quotes, setQuotes] = useState(() => quotesFromRecord(initialQuotes))
   // Names + logo domains are static across the quote poll — build the map once.
@@ -246,7 +249,12 @@ export function LiveDashboard({
         </div>
       ) : (
         <>
-          <DashboardTables positions={positions} accounts={accountSections} />
+          <DashboardTables
+            positions={positions}
+            accounts={accountSections}
+            canManage={isOwner}
+            initialAccountId={initialAccountId}
+          />
           {isOwner && <PortfolioChart snapshots={snapshots} />}
         </>
       )}

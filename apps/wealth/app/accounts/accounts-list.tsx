@@ -3,24 +3,21 @@
 import { useState } from "react"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import type { AccountWithHoldings } from "@/modules/accounts"
-import type { SymbolInfo } from "@/modules/symbols/types"
 import { AccountCard } from "./account-card"
 import { DemoAccountCard } from "./demo-account-card"
 import type { AccountTotal } from "./account-header"
 
 /**
- * Collapsible account list — mirrors the dashboard's "By account" tab so the
- * page opens as a scannable account summary, not N full holdings tables.
- * A single account starts expanded; with more, everything starts collapsed.
+ * Scannable account summary — mirrors the dashboard's "By account" tab.
+ * Live cards expand to account-level management; demo preview renders
+ * read-only header rows. A single account starts expanded.
  */
 export function AccountsList({
   accounts,
-  symbols,
   totals,
   readOnly,
 }: {
   accounts: AccountWithHoldings[]
-  symbols: Record<string, SymbolInfo>
   totals: Record<string, AccountTotal>
   readOnly: boolean
 }) {
@@ -56,7 +53,7 @@ export function AccountsList({
         <p className="text-sm text-ink/60">
           {accounts.length} {accounts.length === 1 ? "account" : "accounts"}
         </p>
-        {accounts.length > 1 && (
+        {!readOnly && accounts.length > 1 && (
           <button
             type="button"
             onClick={toggleExpandAll}
@@ -73,17 +70,17 @@ export function AccountsList({
       </div>
 
       {accounts.map((account) => {
-        const shared = {
-          account,
-          symbols,
-          total: totals[account.id] ?? fallbackTotal,
-          open: expanded.has(account.id),
-          onToggle: () => toggleExpanded(account.id),
-        }
+        const total = totals[account.id] ?? fallbackTotal
         return readOnly ? (
-          <DemoAccountCard key={account.id} {...shared} />
+          <DemoAccountCard key={account.id} account={account} total={total} />
         ) : (
-          <AccountCard key={account.id} {...shared} />
+          <AccountCard
+            key={account.id}
+            account={account}
+            total={total}
+            open={expanded.has(account.id)}
+            onToggle={() => toggleExpanded(account.id)}
+          />
         )
       })}
     </section>

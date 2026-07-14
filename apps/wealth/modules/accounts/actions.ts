@@ -55,6 +55,7 @@ export async function createAccount(input: AccountInput): Promise<ActionResult> 
   }
 
   revalidatePath("/accounts")
+  revalidatePath("/")
   return { ok: true }
 }
 
@@ -87,6 +88,7 @@ export async function updateAccount(
   }
 
   revalidatePath("/accounts")
+  revalidatePath("/")
   return { ok: true }
 }
 
@@ -110,5 +112,6 @@ export async function deleteAccount(id: string): Promise<ActionResult> {
   }
 
   revalidatePath("/accounts")
+  revalidatePath("/")
   return { ok: true }
 }

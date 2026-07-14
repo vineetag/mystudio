@@ -1,4 +1,3 @@
-import { after } from "next/server"
 import { redirect } from "next/navigation"
 import {
   listOwnerAccountsWithHoldings,
@@ -10,7 +9,6 @@ import { derivePositions } from "@/modules/portfolio"
 import { getQuotes } from "@/modules/quotes"
 import { isSnapTradeConfigured, listConnections } from "@/modules/snaptrade"
 import { getOrRegisterStUser, syncSnapTradeHoldings } from "@/modules/snaptrade"
-import { getSymbols } from "@/modules/symbols"
 import { AccountForm } from "./account-form"
 import { AccountsList } from "./accounts-list"
 import type { AccountTotal } from "./account-header"
@@ -53,25 +51,13 @@ export default async function AccountsPage({
     snapTradeEnabled ? listConnections() : Promise.resolve([]),
   ])
 
-  // Names + logos for every held symbol, so each row shows the company and the
-  // owner can add a name to funds Finnhub can't resolve. Cache-only read here;
-  // resolution is rate-paced and warmed in the background below.
-  const symbolSymbols = accounts.flatMap((account) =>
+  // Cached quotes (never a Finnhub call) price each account's header total so
+  // the list scans like the dashboard's "By account" tab.
+  const heldSymbols = accounts.flatMap((account) =>
     account.holdings.map((holding) => holding.symbol),
   )
   const assetClasses = assetClassMapFromAccounts(accounts)
-  // Cached quotes (never a Finnhub call) price each account's header total so
-  // the list scans like the dashboard's "By account" tab.
-  const [symbolMap, quotes] = await Promise.all([
-    getSymbols(symbolSymbols, { fetchMissing: false, assetClasses }),
-    getQuotes(symbolSymbols, { cacheOnly: true, assetClasses }),
-  ])
-  const symbols = Object.fromEntries(symbolMap)
-  if (symbolSymbols.length > 0) {
-    after(async () => {
-      await getSymbols(symbolSymbols, { assetClasses })
-    })
-  }
+  const quotes = await getQuotes(heldSymbols, { cacheOnly: true, assetClasses })
 
   const totals: Record<string, AccountTotal> = {}
   for (const account of accounts) {
@@ -125,7 +111,6 @@ export default async function AccountsPage({
       ) : (
         <AccountsList
           accounts={accounts}
-          symbols={symbols}
           totals={totals}
           readOnly={demoPreview}
         />

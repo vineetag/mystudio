@@ -1,9 +1,10 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { Fragment, useMemo, useState } from "react"
 import { ChevronDown, ChevronRight, ChevronsUpDown, ChevronUp } from "lucide-react"
 import type { ConsolidatedRow, PositionRow } from "@/modules/portfolio"
 import { BrokerLogo } from "@/components/broker-logo"
+import { HoldingEditor } from "@/components/manage-holdings/holding-editor"
 import {
   formatAsOf,
   formatMoney,
@@ -54,10 +55,12 @@ function SortCaret({ active, dir }: { active: boolean; dir: SortDir }) {
 
 function HeaderRow({
   leadingCell,
+  trailingCell,
   sort,
   onSort,
 }: {
   leadingCell?: boolean
+  trailingCell?: boolean
   sort: SortState
   onSort: (key: string) => void
 }) {
@@ -93,6 +96,7 @@ function HeaderRow({
             </th>
           )
         })}
+        {trailingCell && <th className="w-16" />}
       </tr>
     </thead>
   )
@@ -186,26 +190,58 @@ export function PositionsTable({
   positions,
   sort,
   onSort,
+  canManage = false,
 }: {
   positions: PositionRow[]
   sort: SortState
   onSort: (key: string) => void
+  /** Owner in LIVE mode — adds an Edit action that opens an inline editor. */
+  canManage?: boolean
 }) {
   const sorted = useMemo(() => sortRows(positions, sort), [positions, sort])
+  const [editingId, setEditingId] = useState<string | null>(null)
   return (
     <>
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[50rem] text-sm">
-          <HeaderRow sort={sort} onSort={onSort} />
+          <HeaderRow trailingCell={canManage} sort={sort} onSort={onSort} />
           <tbody>
             {sorted.map((position) => (
-              <tr key={position.holdingId} className="border-b border-rule/60">
-                {HOLDINGS_COLUMNS.map((column) => (
-                  <td key={column.key} className={`${CELL} ${alignClass(column.align)}`}>
-                    {column.render(position)}
-                  </td>
-                ))}
-              </tr>
+              <Fragment key={position.holdingId}>
+                <tr className="border-b border-rule/60">
+                  {HOLDINGS_COLUMNS.map((column) => (
+                    <td key={column.key} className={`${CELL} ${alignClass(column.align)}`}>
+                      {column.render(position)}
+                    </td>
+                  ))}
+                  {canManage && (
+                    <td className={`${CELL} text-right`}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditingId((current) =>
+                            current === position.holdingId ? null : position.holdingId,
+                          )
+                        }
+                        aria-expanded={editingId === position.holdingId}
+                        className="min-h-10 cursor-pointer rounded-md border border-rule px-3 text-xs font-medium text-ink/70 transition-colors hover:border-ink/30 hover:text-ink"
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  )}
+                </tr>
+                {editingId === position.holdingId && (
+                  <tr className="border-b border-rule/60">
+                    <td colSpan={HOLDINGS_COLUMNS.length + 1} className="px-3 py-2">
+                      <HoldingEditor
+                        position={position}
+                        onClose={() => setEditingId(null)}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -224,6 +260,20 @@ export function PositionsTable({
               value={position.value}
             />
             <HoldingCardBody row={position} />
+            {canManage &&
+              (editingId === position.holdingId ? (
+                <div className="mt-3">
+                  <HoldingEditor position={position} onClose={() => setEditingId(null)} />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditingId(position.holdingId)}
+                  className="mt-3 flex min-h-12 w-full items-center justify-center rounded-md border border-rule text-sm text-ink/70"
+                >
+                  Edit holding
+                </button>
+              ))}
           </li>
         ))}
       </ul>

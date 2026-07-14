@@ -12,10 +12,15 @@ import { LiveDashboard } from "@/components/live-dashboard"
 
 export const dynamic = "force-dynamic"
 
-export default async function DashboardPage() {
-  const [viewer, accounts] = await Promise.all([
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ account?: string }>
+}) {
+  const [viewer, accounts, params] = await Promise.all([
     getViewer(),
     listViewerAccountsWithHoldings(),
+    searchParams,
   ])
 
   const holdingSymbols = accounts.flatMap((account) =>
@@ -62,6 +67,7 @@ export default async function DashboardPage() {
       accountCount={accounts.length}
       accountTypeLabels={ACCOUNT_TYPE_LABELS}
       snapshots={snapshots}
+      initialAccountId={params.account ?? null}
     />
   )
 }
