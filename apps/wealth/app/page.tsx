@@ -17,11 +17,16 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ account?: string }>
 }) {
-  const [viewer, accounts, params] = await Promise.all([
+  const [viewer, allAccounts, params] = await Promise.all([
     getViewer(),
     listViewerAccountsWithHoldings(),
     searchParams,
   ])
+
+  // Hidden accounts never reach the dashboard: they're out of the total,
+  // the tables, and the quote poll. Manage/unhide them on /accounts.
+  const accounts = allAccounts.filter((account) => !account.hidden)
+  const hiddenCount = allAccounts.length - accounts.length
 
   const holdingSymbols = accounts.flatMap((account) =>
     account.holdings.map((holding) => holding.symbol),
@@ -65,6 +70,7 @@ export default async function DashboardPage({
       symbols={Object.fromEntries(symbols)}
       isOwner={isLive}
       accountCount={accounts.length}
+      hiddenAccountCount={hiddenCount}
       accountTypeLabels={ACCOUNT_TYPE_LABELS}
       snapshots={snapshots}
       initialAccountId={params.account ?? null}

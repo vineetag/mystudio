@@ -12,6 +12,8 @@ export interface Account {
   accountType: AccountType
   source: AccountSource
   isDemo: boolean
+  /** Hidden accounts stay manageable on /accounts but are excluded from the dashboard and portfolio total. */
+  hidden: boolean
   createdAt: string
   updatedAt: string
 }

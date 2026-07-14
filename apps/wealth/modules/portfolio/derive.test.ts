@@ -24,6 +24,7 @@ function account(
     accountType: "taxable",
     source: "manual",
     isDemo: false,
+    hidden: false,
     createdAt: FETCHED_AT,
     updatedAt: FETCHED_AT,
     holdings: holdings.map((holding, index) => ({

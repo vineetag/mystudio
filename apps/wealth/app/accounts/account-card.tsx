@@ -2,8 +2,8 @@
 
 import Link from "next/link"
 import { useState, useTransition } from "react"
-import { ArrowUpRight } from "lucide-react"
-import { deleteAccount } from "@/modules/accounts/actions"
+import { ArrowUpRight, Eye, EyeOff } from "lucide-react"
+import { deleteAccount, setAccountHidden } from "@/modules/accounts/actions"
 import type { AccountWithHoldings } from "@/modules/accounts"
 import { AccountForm } from "./account-form"
 import { AccountHeader, type AccountTotal } from "./account-header"
@@ -43,6 +43,14 @@ export function AccountCard({
     })
   }
 
+  function handleToggleHidden() {
+    setError("")
+    startTransition(async () => {
+      const result = await setAccountHidden(account.id, !account.hidden)
+      if (!result.ok) setError(result.error)
+    })
+  }
+
   return (
     <div
       className={`overflow-hidden rounded-lg border ${
@@ -65,19 +73,42 @@ export function AccountCard({
             </div>
           ) : (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-              <Link
-                href={`/?account=${account.id}`}
-                className="flex min-h-12 items-center gap-1 text-sm font-medium text-moss underline-offset-2 hover:underline"
-              >
-                View &amp; manage holdings on the dashboard
-                <ArrowUpRight className="h-4 w-4" aria-hidden />
-              </Link>
-              <div className="flex gap-2">
+              {account.hidden ? (
+                <p className="flex min-h-12 items-center text-sm text-ink/60">
+                  Hidden — excluded from the dashboard and portfolio total.
+                </p>
+              ) : (
+                <Link
+                  href={`/?account=${account.id}`}
+                  className="flex min-h-12 items-center gap-1 text-sm font-medium text-moss underline-offset-2 hover:underline"
+                >
+                  View &amp; manage holdings on the dashboard
+                  <ArrowUpRight className="h-4 w-4" aria-hidden />
+                </Link>
+              )}
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setIsEditing(true)}
                   className="min-h-12 rounded-md border border-rule px-3 text-sm"
                 >
                   Edit account
+                </button>
+                <button
+                  onClick={handleToggleHidden}
+                  disabled={isPending}
+                  title={
+                    account.hidden
+                      ? "Include this account in the dashboard and portfolio total again"
+                      : "Exclude this account from the dashboard and portfolio total"
+                  }
+                  className="flex min-h-12 items-center gap-1.5 rounded-md border border-rule px-3 text-sm"
+                >
+                  {account.hidden ? (
+                    <Eye className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <EyeOff className="h-4 w-4" aria-hidden />
+                  )}
+                  {account.hidden ? "Unhide" : "Hide"}
                 </button>
                 <button
                   onClick={handleDelete}

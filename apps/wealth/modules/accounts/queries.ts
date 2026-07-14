@@ -21,6 +21,7 @@ export function rowToAccount(row: any): Account {
     accountType: row.account_type as AccountType,
     source: row.source as AccountSource,
     isDemo: row.is_demo,
+    hidden: row.hidden ?? false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
