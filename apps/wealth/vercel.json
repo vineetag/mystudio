@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "npx turbo-ignore @studio/wealth",
   "crons": [
     {
       "path": "/api/cron/snapshot",
