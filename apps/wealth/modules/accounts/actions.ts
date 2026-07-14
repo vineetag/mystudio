@@ -92,6 +92,39 @@ export async function updateAccount(
   return { ok: true }
 }
 
+/**
+ * Hides or unhides an account. Hidden accounts drop out of the dashboard,
+ * the portfolio total, and daily snapshots, but stay editable on /accounts.
+ */
+export async function setAccountHidden(
+  id: string,
+  hidden: boolean,
+): Promise<ActionResult> {
+  const owner = await requireOwner()
+  if (!owner.ok) return owner
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("pt_accounts")
+    .update({ hidden })
+    .eq("id", id)
+    .select("id")
+
+  if (error) {
+    return {
+      ok: false,
+      error: `Couldn't ${hidden ? "hide" : "unhide"} the account: ${error.message}`,
+    }
+  }
+  if (!data || data.length === 0) {
+    return { ok: false, error: "Account not found — it may have been deleted." }
+  }
+
+  revalidatePath("/accounts")
+  revalidatePath("/")
+  return { ok: true }
+}
+
 /** Deletes the account and, via FK cascade, all its holdings. */
 export async function deleteAccount(id: string): Promise<ActionResult> {
   const owner = await requireOwner()

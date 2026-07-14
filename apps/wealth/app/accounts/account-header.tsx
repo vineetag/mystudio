@@ -41,7 +41,7 @@ export function AccountHeader({
           <ChevronRight className="h-4 w-4 shrink-0 text-ink/50" aria-hidden />
         ))}
       <BrokerLogo broker={account.broker} logoUrl={account.brokerLogoUrl} size={28} />
-      <div className="min-w-0 flex-1">
+      <div className={`min-w-0 flex-1 ${account.hidden ? "opacity-60" : ""}`}>
         <h2 className="truncate font-medium leading-tight text-ink">
           {account.name}
           {account.source === "snaptrade" && (
@@ -49,12 +49,17 @@ export function AccountHeader({
               via SnapTrade
             </span>
           )}
+          {account.hidden && (
+            <span className="ml-2 rounded bg-ink/10 px-1.5 py-0.5 align-middle text-xs font-medium text-ink/60">
+              Hidden
+            </span>
+          )}
         </h2>
         <p className="truncate text-sm text-ink/60">
           {account.broker} · {ACCOUNT_TYPE_LABELS[account.accountType]}
         </p>
       </div>
-      <div className="shrink-0 text-right">
+      <div className={`shrink-0 text-right ${account.hidden ? "opacity-60" : ""}`}>
         <p className="font-medium tabular-nums text-ink">
           {formatMoney(total.value)}
         </p>

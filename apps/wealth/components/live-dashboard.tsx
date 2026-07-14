@@ -92,6 +92,7 @@ export function LiveDashboard({
   symbols,
   isOwner,
   accountCount,
+  hiddenAccountCount = 0,
   accountTypeLabels,
   snapshots,
   initialAccountId = null,
@@ -101,6 +102,8 @@ export function LiveDashboard({
   symbols: Record<string, SymbolInfo>
   isOwner: boolean
   accountCount: number
+  /** Accounts hidden on /accounts — excluded from every figure here. */
+  hiddenAccountCount?: number
   accountTypeLabels: Record<AccountType, string>
   snapshots: Snapshot[]
   /** Deep link from /accounts — opens "By account" with this section expanded. */
@@ -185,6 +188,12 @@ export function LiveDashboard({
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">
             One view of {accountCount} {accountCount === 1 ? "account" : "accounts"} ·{" "}
             {positions.length} positions
+            {hiddenAccountCount > 0 && (
+              <span className="normal-case tracking-normal text-ink/40">
+                {" "}
+                · {hiddenAccountCount} hidden
+              </span>
+            )}
           </p>
           <p className="ledger-sum mt-2 inline-block pb-1 pr-8 font-display text-5xl font-medium tabular-nums tracking-tight">
             {formatMoney(total.value)}
@@ -227,15 +236,24 @@ export function LiveDashboard({
       {accounts.length === 0 ? (
         <div className="rounded-lg border border-dashed border-rule p-10 text-center">
           <h2 className="font-display text-xl font-medium text-ink">
-            {isOwner ? "Open the ledger" : "Demo portfolio is empty"}
+            {!isOwner
+              ? "Demo portfolio is empty"
+              : hiddenAccountCount > 0
+                ? "All accounts are hidden"
+                : "Open the ledger"}
           </h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-ink/70">
-            {isOwner ? (
+            {!isOwner ? (
+              "The demo data hasn't been seeded yet — check back soon."
+            ) : hiddenAccountCount > 0 ? (
+              <>
+                Every account is currently hidden, so nothing counts toward the
+                total. Unhide accounts to bring them back.
+              </>
+            ) : (
               <>
                 Add your first brokerage account, then enter holdings by hand or import a CSV.
               </>
-            ) : (
-              "The demo data hasn't been seeded yet — check back soon."
             )}
           </p>
           {isOwner && (
@@ -243,7 +261,7 @@ export function LiveDashboard({
               href="/accounts"
               className="mt-4 inline-flex min-h-12 items-center rounded-md bg-ink px-5 text-sm font-medium text-paper"
             >
-              Add first account
+              {hiddenAccountCount > 0 ? "Manage accounts" : "Add first account"}
             </Link>
           )}
         </div>

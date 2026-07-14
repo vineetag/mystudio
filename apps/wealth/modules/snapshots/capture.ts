@@ -28,10 +28,12 @@ export async function captureSnapshot(): Promise<
 > {
   const service = createServiceClient()
 
+  // Hidden accounts are excluded so the snapshot matches the dashboard total.
   const { data, error } = await service
     .from("pt_accounts")
     .select("*, pt_holdings(*)")
     .eq("is_demo", false)
+    .eq("hidden", false)
 
   if (error) return { ok: false, error: `Snapshot account read failed: ${error.message}` }
 
