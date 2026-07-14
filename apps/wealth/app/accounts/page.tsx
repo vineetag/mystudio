@@ -6,14 +6,16 @@ import {
 } from "@/modules/accounts"
 import { assetClassMapFromAccounts } from "@/modules/holdings"
 import { getViewer, requireOwner } from "@/modules/auth"
+import { derivePositions } from "@/modules/portfolio"
+import { getQuotes } from "@/modules/quotes"
 import { isSnapTradeConfigured, listConnections } from "@/modules/snaptrade"
 import { getOrRegisterStUser, syncSnapTradeHoldings } from "@/modules/snaptrade"
 import { getSymbols } from "@/modules/symbols"
-import { AccountCard } from "./account-card"
 import { AccountForm } from "./account-form"
+import { AccountsList } from "./accounts-list"
+import type { AccountTotal } from "./account-header"
 import { ConnectedBrokerages } from "./connected-brokerages"
 import { CsvImport } from "./csv-import"
-import { DemoAccountCard } from "./demo-account-card"
 
 // Owner-only (enforced in middleware). Minimal M2 page — design pass is M5.
 export default async function AccountsPage({
@@ -58,13 +60,28 @@ export default async function AccountsPage({
     account.holdings.map((holding) => holding.symbol),
   )
   const assetClasses = assetClassMapFromAccounts(accounts)
-  const symbols = Object.fromEntries(
-    await getSymbols(symbolSymbols, { fetchMissing: false, assetClasses }),
-  )
+  // Cached quotes (never a Finnhub call) price each account's header total so
+  // the list scans like the dashboard's "By account" tab.
+  const [symbolMap, quotes] = await Promise.all([
+    getSymbols(symbolSymbols, { fetchMissing: false, assetClasses }),
+    getQuotes(symbolSymbols, { cacheOnly: true, assetClasses }),
+  ])
+  const symbols = Object.fromEntries(symbolMap)
   if (symbolSymbols.length > 0) {
     after(async () => {
       await getSymbols(symbolSymbols, { assetClasses })
     })
+  }
+
+  const totals: Record<string, AccountTotal> = {}
+  for (const account of accounts) {
+    totals[account.id] = { value: 0, holdingCount: 0, unpricedCount: 0 }
+  }
+  for (const position of derivePositions(accounts, quotes)) {
+    const entry = totals[position.accountId]
+    entry.holdingCount += 1
+    if (position.value === null) entry.unpricedCount += 1
+    else entry.value += position.value
   }
 
   return (
@@ -106,17 +123,12 @@ export default async function AccountsPage({
             : "No accounts yet. Add your first account above — holdings and CSV import unlock once an account exists."}
         </p>
       ) : (
-        accounts.map((account) =>
-          demoPreview ? (
-            <DemoAccountCard
-              key={account.id}
-              account={account}
-              symbols={symbols}
-            />
-          ) : (
-            <AccountCard key={account.id} account={account} symbols={symbols} />
-          ),
-        )
+        <AccountsList
+          accounts={accounts}
+          symbols={symbols}
+          totals={totals}
+          readOnly={demoPreview}
+        />
       )}
     </main>
   )
