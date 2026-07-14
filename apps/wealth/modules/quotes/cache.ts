@@ -56,6 +56,34 @@ export function yieldNeedsRefresh(
   return now.getTime() - new Date(row.yield_fetched_at).getTime() >= YIELD_TTL_MS
 }
 
+/**
+ * Merge a poll response into the current quote map, never letting an older
+ * quote overwrite a newer one. The dashboard polls indices and holdings as
+ * separate requests, and a slow force-refresh batch can land after a faster
+ * cache-only response — without the timestamp guard the late arrival would
+ * re-stale symbols the fast response already refreshed. Timestamps are
+ * compared as dates, not strings: rows read from the cache carry `+00:00`
+ * offsets while freshly fetched quotes carry `Z`.
+ */
+export function mergeQuoteViews(
+  current: Map<string, QuoteView>,
+  incoming: Record<string, QuoteView>,
+): Map<string, QuoteView> {
+  const next = new Map(current)
+  for (const [symbol, quote] of Object.entries(incoming)) {
+    const existing = next.get(symbol)
+    if (
+      existing?.fetchedAt &&
+      quote.fetchedAt &&
+      new Date(quote.fetchedAt).getTime() < new Date(existing.fetchedAt).getTime()
+    ) {
+      continue
+    }
+    next.set(symbol, quote)
+  }
+  return next
+}
+
 export interface CachePartition {
   /** Views servable as-is (fetched within the TTL). */
   fresh: QuoteView[]

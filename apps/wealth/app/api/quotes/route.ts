@@ -5,6 +5,7 @@ import {
   acquireQuoteRefreshLease,
   getQuotes,
   INDEX_SYMBOLS,
+  isIndexSymbol,
   type QuoteView,
 } from "@/modules/quotes"
 
@@ -64,8 +65,16 @@ export async function GET(request: Request) {
   // One paced Finnhub batch per minute globally: the poller that wins the
   // lease force-refreshes; every other tab, device, or visitor reads the
   // cache that batch keeps warm instead of spending the shared rate limit.
+  //
+  // Index-only requests bypass the lease: indices are priced via Yahoo (no
+  // shared Finnhub budget) and the dashboard polls them as a separate fast
+  // request so the badge clears without waiting out the paced equity batch.
+  // Spend stays bounded — the engine only refetches rows older than the poll
+  // interval, so hammering this path serves the shared cache, not Yahoo.
   const refreshRequested = searchParams.get("refresh") === "1"
-  const forceRefresh = refreshRequested && (await acquireQuoteRefreshLease())
+  const indexOnly = symbols.every((symbol) => isIndexSymbol(symbol))
+  const forceRefresh =
+    refreshRequested && (indexOnly || (await acquireQuoteRefreshLease()))
   const assetClasses = assetClassMapFromAccounts(accounts)
   const quotes = await getQuotes(
     symbols,
