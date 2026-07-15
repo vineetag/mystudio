@@ -85,22 +85,21 @@ export const HOLDINGS_COLUMNS: HoldingsColumn[] = [
     key: "quantity",
     header: "Qty",
     align: "right",
-    render: (row) => formatQuantity(row.quantity, row.isCrypto),
     sortAccessor: (row) => row.quantity,
-  },
-  {
-    key: "avgCost",
-    header: "Avg cost",
-    align: "right",
-    sortAccessor: (row) => row.avgCost,
-    render: (row) =>
-      row.avgCost === null ? (
-        <span className="whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
-          no cost basis
-        </span>
-      ) : (
-        formatMoney(row.avgCost)
-      ),
+    render: (row) => (
+      <span className="inline-flex flex-col items-end">
+        <span>{formatQuantity(row.quantity, row.isCrypto)}</span>
+        {row.avgCost === null ? (
+          <span className="whitespace-nowrap rounded bg-amber-100 px-1 py-px text-xs font-medium text-amber-800">
+            no cost basis
+          </span>
+        ) : (
+          <span className="whitespace-nowrap text-xs text-ink/40">
+            {formatMoney(row.avgCost)} avg
+          </span>
+        )}
+      </span>
+    ),
   },
   {
     key: "price",
@@ -141,27 +140,20 @@ export const HOLDINGS_COLUMNS: HoldingsColumn[] = [
   },
   {
     key: "gainLoss",
-    header: "Gain/loss $",
+    header: "Gain/loss",
     align: "right",
     sortAccessor: (row) => row.gainLoss,
     render: (row) =>
       row.gainLoss === null ? (
         <Muted>—</Muted>
       ) : (
-        <span className={signedClass(row.gainLoss)}>{formatSignedMoney(row.gainLoss)}</span>
-      ),
-  },
-  {
-    key: "gainLossPct",
-    header: "Gain/loss %",
-    align: "right",
-    sortAccessor: (row) => row.gainLossPct,
-    render: (row) =>
-      row.gainLossPct === null ? (
-        <Muted>—</Muted>
-      ) : (
-        <span className={signedClass(row.gainLossPct)}>
-          {formatSignedPct(row.gainLossPct)}
+        <span
+          className={`inline-flex flex-col items-end ${signedClass(row.gainLoss)}`}
+        >
+          <span>{formatSignedMoney(row.gainLoss)}</span>
+          {row.gainLossPct !== null && (
+            <span className="text-xs">{formatSignedPct(row.gainLossPct)}</span>
+          )}
         </span>
       ),
   },
