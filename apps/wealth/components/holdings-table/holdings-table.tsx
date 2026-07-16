@@ -203,7 +203,7 @@ export function PositionsTable({
   return (
     <>
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[50rem] text-sm">
+        <table className="w-full min-w-[40rem] text-sm">
           <HeaderRow trailingCell={canManage} sort={sort} onSort={onSort} />
           <tbody>
             {sorted.map((position) => (
@@ -314,7 +314,7 @@ export function ConsolidatedTable({
   return (
     <>
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[52rem] text-sm">
+        <table className="w-full min-w-[42rem] text-sm">
           <HeaderRow leadingCell sort={sort} onSort={onSort} />
           <tbody>
             {sorted.map((row) => (
