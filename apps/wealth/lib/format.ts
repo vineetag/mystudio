@@ -21,8 +21,19 @@ const indexPoints = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 })
 
+const wholeMoney = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+})
+
 export function formatMoney(value: number): string {
   return money.format(value)
+}
+
+/** Whole dollars, rounded up — for the headline portfolio total. */
+export function formatWholeMoney(value: number): string {
+  return wholeMoney.format(Math.ceil(value))
 }
 
 export function formatIndexPoints(value: number): string {

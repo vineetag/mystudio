@@ -24,6 +24,7 @@ import {
   formatMoney,
   formatSignedMoney,
   formatSignedPct,
+  formatWholeMoney,
 } from "@/lib/format"
 
 export type DashboardAccount = DeriveAccountInput & {
@@ -230,7 +231,7 @@ export function LiveDashboard({
             )}
           </p>
           <p className="ledger-sum mt-2 inline-block pb-1 pr-8 font-display text-5xl font-medium tabular-nums tracking-tight">
-            {formatMoney(total.value)}
+            {formatWholeMoney(total.value)}
           </p>
           <p className="mt-2 text-sm text-ink/60">
             {newestQuote ? formatAsOf(newestQuote) : "no prices yet"}
