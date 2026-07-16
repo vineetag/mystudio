@@ -42,3 +42,6 @@ yarn-error.log*
 playwright/.auth
 playwright-report
 test-results
+
+# local MCP server config
+.mcp.json
