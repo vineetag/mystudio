@@ -49,9 +49,12 @@ export function ConnectedBrokerages({
         setError(result.error)
         return
       }
-      const { accounts, holdings, skipped } = result.data
+      const { accounts, holdings, pendingBuys, skipped } = result.data
       setNotice(
         `Synced ${holdings} holdings across ${accounts} accounts.` +
+          (pendingBuys > 0
+            ? ` Includes ${pendingBuys} share${pendingBuys === 1 ? "" : "s"} from pending buy orders.`
+            : "") +
           (skipped.length > 0 ? ` Skipped ${skipped.length}: ${skipped.join("; ")}` : ""),
       )
     })

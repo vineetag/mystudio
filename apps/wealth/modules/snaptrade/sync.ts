@@ -7,7 +7,7 @@ import {
   snapTradeErrorMessage,
   withSnapTradeRetry,
 } from "./client"
-import type { StUser } from "./users"
+import { getOrRegisterStUser, type StUser } from "./users"
 import type { SyncReport } from "./types"
 
 interface HoldingRow {
@@ -73,13 +73,19 @@ export function mapPositions(
     })
   }
 
-  // One row per symbol (DB unique constraint): merge duplicates by summing
-  // quantity and cost-weighting the basis where both sides have one.
+  return { rows: mergeRows(rows), skipped }
+}
+
+/**
+ * One row per symbol (DB unique constraint): merge duplicates by summing
+ * quantity and cost-weighting the basis where both sides have one.
+ */
+export function mergeRows(rows: HoldingRow[]): HoldingRow[] {
   const bySymbol = new Map<string, HoldingRow>()
   for (const row of rows) {
     const existing = bySymbol.get(row.symbol)
     if (!existing) {
-      bySymbol.set(row.symbol, row)
+      bySymbol.set(row.symbol, { ...row })
       continue
     }
     const mergedQty = existing.quantity + row.quantity
@@ -95,8 +101,83 @@ export function mapPositions(
       existing.price_as_of = row.price_as_of
     }
   }
+  return [...bySymbol.values()]
+}
 
-  return { rows: [...bySymbol.values()], skipped }
+/** SnapTrade order quantities arrive as decimal strings. */
+function toQuantity(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null
+  if (typeof value !== "string" || value.trim() === "") return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+/**
+ * Map still-open BUY orders to holding rows so purchases show up in the
+ * portfolio immediately, before the broker reports them as positions.
+ * Uses open_quantity (the unfilled remainder), so partially filled orders
+ * never double-count shares that already appear in positions. Sell orders
+ * are ignored — those shares remain in positions until they actually fill.
+ */
+export function mapOpenBuyOrders(orders: any[]): {
+  rows: HoldingRow[]
+  skipped: string[]
+} {
+  const rows: HoldingRow[] = []
+  const skipped: string[] = []
+
+  for (const order of orders ?? []) {
+    const action = typeof order?.action === "string" ? order.action.toUpperCase() : ""
+    if (!action.startsWith("BUY")) continue
+    // Options aren't tracked as holdings — only equity/crypto buys.
+    if (order?.option_symbol) {
+      skipped.push(
+        `${order.option_symbol?.ticker ?? "option order"}: pending option orders aren't tracked`,
+      )
+      continue
+    }
+
+    const rawSymbol: unknown =
+      order?.universal_symbol?.raw_symbol ?? order?.universal_symbol?.symbol
+    const symbol = typeof rawSymbol === "string" ? rawSymbol.trim().toUpperCase() : ""
+    if (!symbol || symbol.length > 12 || !/^[A-Z0-9.\-]+$/.test(symbol)) {
+      skipped.push(`${symbol || "unknown symbol"}: pending buy has no usable ticker symbol`)
+      continue
+    }
+
+    const openQty =
+      toQuantity(order?.open_quantity) ??
+      (() => {
+        const total = toQuantity(order?.total_quantity)
+        if (total === null) return null
+        return (
+          total -
+          (toQuantity(order?.filled_quantity) ?? 0) -
+          (toQuantity(order?.canceled_quantity) ?? 0)
+        )
+      })()
+    if (openQty === null || !(openQty > 0)) {
+      if (openQty === null) skipped.push(`${symbol}: pending buy has no readable quantity`)
+      continue
+    }
+
+    // Best cost estimate for unfilled shares: the limit price, else whatever
+    // partially executed at. Market orders carry neither — basis stays null.
+    const costEstimate =
+      toQuantity(order?.limit_price) ?? toQuantity(order?.execution_price)
+
+    rows.push({
+      symbol,
+      asset_class:
+        order?.universal_symbol?.type?.code === "crypto" ? "crypto" : "equity",
+      quantity: openQty,
+      avg_cost: costEstimate !== null && costEstimate >= 0 ? costEstimate : null,
+      price: null,
+      price_as_of: null,
+    })
+  }
+
+  return { rows: mergeRows(rows), skipped }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -124,7 +205,13 @@ export async function syncSnapTradeHoldings(
   const connections = connectionsResponse.data ?? []
   const stAccounts = accountsResponse.data ?? []
 
-  const report: SyncReport = { connections: 0, accounts: 0, holdings: 0, skipped: [] }
+  const report: SyncReport = {
+    connections: 0,
+    accounts: 0,
+    holdings: 0,
+    pendingBuys: 0,
+    skipped: [],
+  }
 
   for (const connection of connections) {
     if (!connection.id) continue
@@ -169,14 +256,37 @@ export async function syncSnapTradeHoldings(
       )
 
       for (const stAccount of connectionAccounts) {
-        const positionsResponse = await withSnapTradeRetry(() =>
-          snaptrade.accountInformation.getUserAccountPositions({
-            ...auth,
-            accountId: stAccount.id,
+        const [positionsResponse, ordersResult] = await Promise.all([
+          withSnapTradeRetry(() =>
+            snaptrade.accountInformation.getUserAccountPositions({
+              ...auth,
+              accountId: stAccount.id,
+            }),
+          ),
+          // Open orders are best-effort: some brokers don't support the
+          // orders endpoint, and a failure here shouldn't block the position
+          // sync that carries the real holdings.
+          withSnapTradeRetry(() =>
+            snaptrade.accountInformation.getUserAccountOrders({
+              ...auth,
+              accountId: stAccount.id,
+              state: "open",
+            }),
+          ).catch((error: unknown) => {
+            report.skipped.push(
+              `${stAccount.name ?? stAccount.id}: couldn't read pending orders — ${snapTradeErrorMessage(error)}`,
+            )
+            return null
           }),
-        )
-        const { rows, skipped } = mapPositions(positionsResponse.data ?? [], syncedAt)
-        report.skipped.push(...skipped)
+        ])
+        const positions = mapPositions(positionsResponse.data ?? [], syncedAt)
+        const pending = mapOpenBuyOrders(ordersResult?.data ?? [])
+        report.skipped.push(...positions.skipped, ...pending.skipped)
+        report.pendingBuys += pending.rows.reduce((sum, row) => sum + row.quantity, 0)
+
+        // Pending buys merge into the same symbol rows as settled positions,
+        // so a purchase shows up in the portfolio the moment it's placed.
+        const rows = mergeRows([...positions.rows, ...pending.rows])
 
         // Upsert the account by its stable SnapTrade id. account_type stays
         // whatever the owner set (default taxable on first sync) — SnapTrade
@@ -229,4 +339,39 @@ export async function syncSnapTradeHoldings(
   }
 
   return report
+}
+
+/**
+ * Cron entry point: sync every user who has at least one SnapTrade
+ * connection. There is no session in a cron run, so users are discovered
+ * from pt_snaptrade_connections via the service client. Per-user failures
+ * are reported without aborting the remaining users.
+ */
+export async function syncAllSnapTradeUsers(): Promise<{
+  users: number
+  reports: SyncReport[]
+  errors: string[]
+}> {
+  const service = createServiceClient()
+  const { data, error } = await service
+    .from("pt_snaptrade_connections")
+    .select("user_id")
+  if (error) {
+    throw new Error(`Couldn't list SnapTrade connections: ${error.message}`)
+  }
+
+  const userIds = [...new Set((data ?? []).map((row) => row.user_id as string))]
+  const reports: SyncReport[] = []
+  const errors: string[] = []
+
+  for (const userId of userIds) {
+    try {
+      const stUser = await getOrRegisterStUser(userId)
+      reports.push(await syncSnapTradeHoldings(userId, stUser))
+    } catch (error) {
+      errors.push(snapTradeErrorMessage(error))
+    }
+  }
+
+  return { users: userIds.length, reports, errors }
 }

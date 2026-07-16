@@ -15,6 +15,8 @@ export interface SyncReport {
   connections: number
   accounts: number
   holdings: number
+  /** Shares from still-open buy orders folded into holdings quantities. */
+  pendingBuys: number
   /** Rows skipped with the reason (short positions, unusable symbols, …). */
   skipped: string[]
 }
