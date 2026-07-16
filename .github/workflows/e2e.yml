@@ -1,9 +1,23 @@
 name: E2E Tests
 
+# The suite tests the kids-stories preview only, and turbo-ignore (PR #76)
+# skips the kids-stories Vercel build on PRs that don't affect it — so only
+# run when something that reaches kids-stories changes, otherwise the
+# wait-for-preview step times out against a deployment that never happens.
+# (The workflow file itself is deliberately not in the filter: a PR that only
+# edits it can't produce a kids-stories preview, so running would always fail.)
 on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
+    paths:
+      - "apps/kids-stories/**"
+      - "packages/**"
+      - "e2e/**"
+      - "playwright.config.ts"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
 
 concurrency:
   group: e2e-${{ github.head_ref }}
