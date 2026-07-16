@@ -5,6 +5,6 @@
 
 export { isSnapTradeConfigured } from "./client"
 export { listConnections } from "./queries"
-export { syncSnapTradeHoldings } from "./sync"
+export { syncSnapTradeHoldings, syncAllSnapTradeUsers } from "./sync"
 export { getOrRegisterStUser } from "./users"
 export type { ConnectionStatus, SnapTradeConnection, SyncReport } from "./types"

@@ -2,6 +2,10 @@
   "ignoreCommand": "npx turbo-ignore @studio/wealth",
   "crons": [
     {
+      "path": "/api/cron/snaptrade-sync",
+      "schedule": "30 13 * * *"
+    },
+    {
       "path": "/api/cron/snapshot",
       "schedule": "30 21 * * *"
     }
