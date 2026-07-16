@@ -7,9 +7,10 @@ export const dynamic = "force-dynamic"
 export const maxDuration = 300
 
 /**
- * Twice-daily SnapTrade sync, invoked by the Vercel cron (vercel.json) at
- * US market open and again after close — so holdings (including still-open
- * buy orders) are fresh before the 21:30 UTC snapshot cron runs.
+ * Morning SnapTrade sync, invoked by the Vercel cron (vercel.json) at US
+ * market open. The evening sync runs inside the snapshot cron (Hobby plan
+ * crons fire at most once a day each), so holdings — including still-open
+ * buy orders — refresh twice a day.
  *
  * Guarded by CRON_SECRET — Vercel sends it as a Bearer token. Without the
  * secret configured the route refuses to run rather than running open.
