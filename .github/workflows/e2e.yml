@@ -1,32 +1,47 @@
 name: E2E Tests
 
 # The suite tests the kids-stories preview only, and turbo-ignore (PR #76)
-# skips the kids-stories Vercel build on PRs that don't affect it — so only
-# run when something that reaches kids-stories changes, otherwise the
-# wait-for-preview step times out against a deployment that never happens.
-# (The workflow file itself is deliberately not in the filter: a PR that only
-# edits it can't produce a kids-stories preview, so running would always fail.)
+# skips the kids-stories Vercel build on PRs that don't affect it — waiting
+# for that preview on unrelated PRs times out against a deployment that never
+# happens. "E2E Tests" is a REQUIRED check on main, so the workflow must
+# always trigger (a path-filtered workflow never reports and blocks the merge
+# forever); instead a filter job gates the real work, and the skipped jobs
+# report a conclusion GitHub counts as passing.
 on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
-    paths:
-      - "apps/kids-stories/**"
-      - "packages/**"
-      - "e2e/**"
-      - "playwright.config.ts"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "turbo.json"
 
 concurrency:
   group: e2e-${{ github.head_ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect kids-stories changes
+    runs-on: ubuntu-latest
+    outputs:
+      kids: ${{ steps.filter.outputs.kids }}
+    steps:
+      - name: Check paths that reach kids-stories
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            kids:
+              - 'apps/kids-stories/**'
+              - 'packages/**'
+              - 'e2e/**'
+              - 'playwright.config.ts'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+
   wait-for-preview:
     name: Wait for Vercel preview
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.kids == 'true'
     outputs:
       preview_url: ${{ steps.wait.outputs.url }}
     steps:
@@ -42,7 +57,8 @@ jobs:
   playwright:
     name: E2E Tests
     runs-on: ubuntu-latest
-    needs: wait-for-preview
+    needs: [changes, wait-for-preview]
+    if: needs.changes.outputs.kids == 'true'
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
@@ -82,8 +98,8 @@ jobs:
   report:
     name: Post test summary
     runs-on: ubuntu-latest
-    needs: playwright
-    if: always()
+    needs: [changes, playwright]
+    if: always() && needs.changes.outputs.kids == 'true'
     permissions:
       pull-requests: write
     steps:
