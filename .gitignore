@@ -45,3 +45,6 @@ test-results
 
 # local MCP server config
 .mcp.json
+
+# local editor settings
+.vscode/
