@@ -23,6 +23,13 @@ const inputClass =
   "placeholder:text-ink-muted focus:border-brand-purple focus:outline-none " +
   "focus:ring-2 focus:ring-brand-purple/30"
 
+// Shared by the form and the loading state so the card keeps identical
+// dimensions and styling while a story is generating.
+const cardClass =
+  "w-full max-w-xl rounded-card bg-white p-6 sm:p-8 " +
+  "shadow-[0_4px_24px_rgba(127,119,221,0.12),0_1px_4px_rgba(0,0,0,0.05)] " +
+  "border border-brand-purple/10"
+
 export function StoryGenerator() {
   const router = useRouter()
   const { track } = useAnalytics()
@@ -159,22 +166,18 @@ export function StoryGenerator() {
   }
 
   if (loading) {
-    // Full-screen overlay so the loading animation is the only thing visible —
-    // it covers the marketing sections below the form and pins focus on it.
+    // The form card keeps its place in the page and swaps its contents for the
+    // animation — no overlay, so the surrounding page stays put and there is no
+    // layout shift when generation finishes and we navigate away.
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-parchment px-6 py-10">
-        <div className="w-full max-w-xl">
-          <LoadingScreen />
-        </div>
+      <div className={cardClass} role="status" aria-live="polite">
+        <LoadingScreen />
       </div>
     )
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="w-full max-w-xl rounded-card bg-white p-6 sm:p-8 shadow-[0_4px_24px_rgba(127,119,221,0.12),0_1px_4px_rgba(0,0,0,0.05)] border border-brand-purple/10"
-    >
+    <form onSubmit={handleSubmit} className={cardClass}>
       <div className="space-y-5">
         <div className="space-y-1.5">
           <label htmlFor="childName" className="text-sm font-semibold text-ink">
