@@ -7,7 +7,13 @@ import {
   getBudget,
   RATE_LIMIT_PER_HOUR,
 } from "@/modules/ai/budget"
-import { costUsd, estimateCost, MODELS, type ModelTier } from "@/modules/ai/pricing"
+import {
+  costUsd,
+  estimateCost,
+  estimateTokens,
+  MODELS,
+  type ModelTier,
+} from "@/modules/ai/pricing"
 
 /**
  * The single audited path to the Claude API (studio rule: no component, page,
@@ -26,7 +32,40 @@ import { costUsd, estimateCost, MODELS, type ModelTier } from "@/modules/ai/pric
 const DEFAULT_MAX_TOKENS = 1500
 
 /** Cap on any single run, whatever a caller asks for. Bounds one-shot blowups. */
-const HARD_MAX_TOKENS = 4000
+const HARD_MAX_TOKENS = 8000
+
+/**
+ * Thinking is explicitly disabled on every tier.
+ *
+ * This is load-bearing, not a default: with `thinking` omitted, Sonnet 5 runs
+ * ADAPTIVE thinking, and on a real 88-holding portfolio it spent the entire
+ * 2,000-token output budget on reasoning — returning a thinking block, zero
+ * text, and stop_reason "max_tokens". Thinking tokens are billed output, so
+ * leaving it on would also make the quoted cost meaningless.
+ */
+const THINKING = { type: "disabled" } as const
+
+/**
+ * Exact input-token count for a prompt, straight from the token-counting API
+ * (free, and it uses the real tokenizer). Falls back to the char heuristic if
+ * the call fails, so a quote is always available — the heuristic errs high.
+ */
+export async function countPromptTokens(
+  tier: ModelTier,
+  systemPrompt: string,
+  userMessage: string,
+): Promise<number> {
+  try {
+    const counted = await client().messages.countTokens({
+      model: MODELS[tier].id,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }],
+    })
+    return counted.input_tokens
+  } catch {
+    return estimateTokens(`${systemPrompt}\n${userMessage}`)
+  }
+}
 
 export interface RunOptions {
   /** Owner's Supabase user id — the rate-limit subject. */
@@ -43,6 +82,8 @@ export interface RunResult {
   inputTokens: number
   outputTokens: number
   costUsd: number
+  /** True when the model hit max_tokens — the text is real but cut off. */
+  truncated: boolean
 }
 
 function client(): Anthropic {
@@ -88,7 +129,8 @@ export async function runAnalysis(
 
   // 2. Hard monthly cap, checked against the worst case for this run.
   const budget = await getBudget()
-  const estimate = estimateCost(tier, `${systemPrompt}\n${userMessage}`, maxTokens)
+  const inputTokens = await countPromptTokens(tier, systemPrompt, userMessage)
+  const estimate = estimateCost(tier, inputTokens, maxTokens)
   if (budget.spentUsd + estimate.maxCostUsd > budget.limitUsd) {
     return {
       ok: false,
@@ -100,13 +142,13 @@ export async function runAnalysis(
     }
   }
 
-  // 3. Call. Thinking is left off across all tiers: it is billed output, and a
-  // predictable per-run cost is the point of this app.
+  // 3. Call.
   let response: Anthropic.Message
   try {
     response = await client().messages.create({
       model: model.id,
       max_tokens: maxTokens,
+      thinking: THINKING,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     })
@@ -139,11 +181,21 @@ export async function runAnalysis(
     .join("\n")
     .trim()
 
+  const truncated = response.stop_reason === "max_tokens"
+
   if (text.length === 0) {
-    return { ok: false, error: "The model returned an empty response. Try running it again." }
+    // Say which failure this was. "Try again" is useless advice if the run is
+    // deterministically too big for its output budget.
+    const blocks = response.content.map((block) => block.type).join(", ") || "none"
+    return {
+      ok: false,
+      error: truncated
+        ? `The model used its entire ${maxTokens}-token output budget without producing an answer (blocks: ${blocks}). This portfolio may be too large for this analysis — try the Fast model or a single holding.`
+        : `The model returned no text (stop reason: ${response.stop_reason ?? "unknown"}, blocks: ${blocks}).`,
+    }
   }
 
-  const inputTokens = response.usage.input_tokens
+  const usedInputTokens = response.usage.input_tokens
   const outputTokens = response.usage.output_tokens
 
   return {
@@ -151,10 +203,11 @@ export async function runAnalysis(
     data: {
       text,
       modelId: model.id,
-      inputTokens,
+      inputTokens: usedInputTokens,
       outputTokens,
       // Billed from the API's own token counts, never the pre-run estimate.
-      costUsd: costUsd(tier, inputTokens, outputTokens),
+      costUsd: costUsd(tier, usedInputTokens, outputTokens),
+      truncated,
     },
   }
 }
