@@ -15,6 +15,12 @@ export async function SiteHeader() {
           <Link href="/" className="flex min-h-12 items-center text-ink/70 hover:text-ink">
             Dashboard
           </Link>
+          <Link
+            href="/analysis"
+            className="flex min-h-12 items-center text-ink/70 hover:text-ink"
+          >
+            Analysis
+          </Link>
           {viewer.isOwner ? (
             <>
               <Link
@@ -22,6 +28,12 @@ export async function SiteHeader() {
                 className="flex min-h-12 items-center text-ink/70 hover:text-ink"
               >
                 Accounts
+              </Link>
+              <Link
+                href="/admin"
+                className="flex min-h-12 items-center text-ink/70 hover:text-ink"
+              >
+                Admin
               </Link>
               <Link
                 href="/login"

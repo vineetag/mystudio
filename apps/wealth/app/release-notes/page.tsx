@@ -4,6 +4,34 @@ export default function ReleaseNotesPage() {
       <h1 className="text-3xl font-bold">Release Notes</h1>
       <div className="mt-8 space-y-8">
         <section>
+          <h2 className="text-lg font-semibold">v0.3.0 — July 2026</h2>
+          <p className="mt-2 text-muted-foreground">
+            AI analysis, with the cost shown before every run.
+          </p>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground">
+            <li>
+              Analyze a single holding, your whole portfolio, or research a ticker you
+              don&rsquo;t own — each answer is built from your live figures, not guessed.
+            </li>
+            <li>
+              Every run quotes its maximum cost before it starts, and a hard monthly
+              spend cap refuses runs that would breach it. Past runs are listed with
+              what each one cost.
+            </li>
+            <li>
+              Three model tiers, cheapest by default, so a quick read on one position
+              costs a fraction of a cent.
+            </li>
+            <li>
+              Prompt wording is editable in Admin and takes effect on the next run — no
+              deploy needed.
+            </li>
+            <li>
+              Demo mode returns worked example analyses and never calls a paid API.
+            </li>
+          </ul>
+        </section>
+        <section>
           <h2 className="text-lg font-semibold">v0.2.0 — July 2026</h2>
           <p className="mt-2 text-muted-foreground">
             Cryptocurrency support across the whole portfolio.
