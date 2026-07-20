@@ -2,6 +2,7 @@ import "server-only"
 
 import { createServiceClient } from "@/lib/db"
 import { rowToAccount, rowToHolding } from "@/modules/accounts"
+import { assetClassMapFromAccounts } from "@/modules/holdings"
 import { derivePositions, portfolioTotal } from "@/modules/portfolio"
 import { getQuotes } from "@/modules/quotes"
 import type { SnapshotAccountValue } from "./types"
@@ -13,19 +14,30 @@ function todayUtc(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+export interface CaptureSnapshotOptions {
+  /**
+   * Let the snapshot spend Finnhub budget on symbols missing the 15 min TTL.
+   * Only the nightly cron sets this — it runs alone, so a paced batch there
+   * can't collide with anything. Dashboard-load captures value from the
+   * cache the minute-poll keeps warm: an unpaced batch here raced the
+   * lease-held /api/quotes batch and 429'd both.
+   */
+  refreshQuotes?: boolean
+}
+
 /**
  * Value the owner's live portfolio right now and upsert today's pt_snapshots
  * row (date PK — idempotent, later runs the same day win).
  *
  * Runs from two places:
- * - the CRON_SECRET-guarded route (no session)
- * - dashboard load for the signed-in owner
+ * - the CRON_SECRET-guarded route (no session) — passes refreshQuotes
+ * - dashboard load for the signed-in owner — cache-only
  *
  * Reads via the service client because the cron has no user session.
  */
-export async function captureSnapshot(): Promise<
-  { ok: true; totalValue: number } | { ok: false; error: string }
-> {
+export async function captureSnapshot(
+  options: CaptureSnapshotOptions = {},
+): Promise<{ ok: true; totalValue: number } | { ok: false; error: string }> {
   const service = createServiceClient()
 
   // Hidden accounts are excluded so the snapshot matches the dashboard total.
@@ -45,7 +57,13 @@ export async function captureSnapshot(): Promise<
   const symbols = accounts.flatMap((account) =>
     account.holdings.map((holding) => holding.symbol),
   )
-  const quotes = await getQuotes([...symbols, ...BENCHMARKS])
+  const assetClasses = assetClassMapFromAccounts(accounts)
+  const quotes = await getQuotes(
+    [...symbols, ...BENCHMARKS],
+    options.refreshQuotes
+      ? { assetClasses }
+      : { cacheOnly: true, assetClasses },
+  )
 
   const positions = derivePositions(accounts, quotes)
   const total = portfolioTotal(positions)
