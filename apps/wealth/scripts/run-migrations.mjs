@@ -106,7 +106,53 @@ try {
   console.log(`\nDone — ${applied} applied, ${skipped} skipped.`)
 } catch (error) {
   console.error("\nMigration error:", error instanceof Error ? error.message : error)
+  const hint = connectionHint(error)
+  if (hint) console.error(`\n${hint}`)
   process.exitCode = 1
 } finally {
   await client.end()
+}
+
+/**
+ * Turn the two opaque connection failures into the fix.
+ *
+ * Both surface as errors that point away from the real cause: a retired direct
+ * host looks like a network outage, and a pooler username mismatch looks like
+ * bad credentials. Neither mentions the connection string that actually needs
+ * changing.
+ */
+function connectionHint(error) {
+  const message = error instanceof Error ? error.message : String(error)
+
+  // Checked before ENOTFOUND on purpose: the pooler reports an unknown tenant
+  // as "(ENOTFOUND) tenant/user <name> not found", so the generic host branch
+  // would otherwise swallow it and send you hunting a DNS problem that isn't
+  // there. Both wordings appear in the wild.
+  if (/tenant(?:\/| or )user\b.*not found/i.test(message)) {
+    return "The pooler rejected the username. Two usual causes:\n" +
+      "  - it must be `postgres.<project-ref>`, not bare `postgres`\n" +
+      "  - the regional prefix may be wrong (aws-0 vs aws-1) — both resolve in DNS,\n" +
+      "    so the wrong one fails here at auth rather than at lookup"
+  }
+
+  // A bare `postgres` username gives the pooler nothing to route on, and it
+  // says so in terms ("no tenant identifier provided") that never mention the
+  // username.
+  if (/ENOIDENTIFIER|no tenant identifier/i.test(message)) {
+    return "The pooler could not tell which project this is: the username must carry the\n" +
+      "project ref — `postgres.<project-ref>`, not bare `postgres`."
+  }
+
+  if (error?.code === "ENOTFOUND" || message.includes("ENOTFOUND")) {
+    const direct = /db\.[a-z0-9]+\.supabase\.co/.test(message)
+    return direct
+      ? "That is the DIRECT connection host, which no longer resolves over IPv4.\n" +
+          "Switch DATABASE_URL to the session pooler:\n" +
+          "  postgresql://postgres.<project-ref>:<password>@aws-1-<region>.pooler.supabase.com:5432/postgres\n" +
+          "Copy it from Supabase → Project Settings → Database → Connection string → Session pooler."
+      : "The database host did not resolve. Check DATABASE_URL for a typo, and note that\n" +
+          "the pooler's regional prefix (aws-0 / aws-1 / ...) differs per project."
+  }
+
+  return null
 }
