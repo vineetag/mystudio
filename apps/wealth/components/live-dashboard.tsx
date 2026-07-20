@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { ArrowDown, ArrowUp } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import type { AccountType } from "@/modules/accounts/types"
 import {
@@ -23,6 +24,7 @@ import {
   formatMoney,
   formatSignedMoney,
   formatSignedPct,
+  formatWholeMoney,
 } from "@/lib/format"
 
 export type DashboardAccount = DeriveAccountInput & {
@@ -44,45 +46,68 @@ function IndexFigure({
 }) {
   const change = quote?.dayChangePct ?? null
   return (
-    <div className="flex items-baseline justify-between gap-4 sm:justify-end">
+    <div className="flex items-baseline gap-2 whitespace-nowrap tabular-nums">
       <span className="text-sm text-ink/60">{label}</span>
       {!quote || quote.price === null ? (
         <span className="text-sm text-ink/40">unavailable</span>
       ) : (
-        <span className="text-right tabular-nums">
-          <span className="font-medium">{formatIndexPoints(quote.price)}</span>
+        <>
+          <span className="text-sm font-medium">{formatIndexPoints(quote.price)}</span>
           {change !== null && (
             <span
-              className={`ml-2 text-sm ${change === 0 ? "text-ink/60" : change > 0 ? GAIN_TEXT : LOSS_TEXT}`}
+              className={`inline-flex items-center text-sm ${change === 0 ? "text-ink/60" : change > 0 ? GAIN_TEXT : LOSS_TEXT}`}
             >
+              {change !== 0 &&
+                (change > 0 ? (
+                  <ArrowUp className="h-3.5 w-3.5" aria-hidden />
+                ) : (
+                  <ArrowDown className="h-3.5 w-3.5" aria-hidden />
+                ))}
               {formatSignedPct(change)}
             </span>
           )}
-          {quote.isStale && <span className="ml-1.5 text-xs text-amber-700">stale</span>}
-        </span>
+          {quote.isStale && <span className="text-xs text-amber-700">stale</span>}
+        </>
       )}
     </div>
   )
 }
 
-function ChangeChips({ chips }: { chips: ChangeChip[] }) {
-  if (chips.length === 0) return null
+// Card labels for the period-over-period chips computed in modules/snapshots.
+const CHIP_LABELS: Record<string, string> = {
+  "D/D": "Today",
+  "W/W": "1 week",
+  "M/M": "1 month",
+}
+
+function ChangeCard({ chip }: { chip: ChangeChip }) {
+  const tone = chip.abs === 0 ? "text-ink/70" : chip.abs > 0 ? GAIN_TEXT : LOSS_TEXT
   return (
-    <span className="inline-flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      {chips.map((chip) => (
-        <span key={chip.label} className="whitespace-nowrap tabular-nums">
-          <span className="text-ink/50">{chip.label}</span>{" "}
-          <span
-            className={
-              chip.abs === 0 ? "text-ink/70" : chip.abs > 0 ? GAIN_TEXT : LOSS_TEXT
-            }
-          >
-            {formatSignedPct(chip.pct)}
-            <span className="ml-1 text-xs">({formatSignedMoney(chip.abs)})</span>
-          </span>
-        </span>
-      ))}
-    </span>
+    <div className="rounded-lg border border-rule bg-white/70 px-4 py-3">
+      <p className="text-xs font-medium uppercase tracking-wide text-ink/50">
+        {CHIP_LABELS[chip.label] ?? chip.label}
+      </p>
+      <p className={`mt-1 inline-flex items-center gap-1 font-medium tabular-nums ${tone}`}>
+        {chip.abs !== 0 &&
+          (chip.abs > 0 ? (
+            <ArrowUp className="h-4 w-4" aria-hidden />
+          ) : (
+            <ArrowDown className="h-4 w-4" aria-hidden />
+          ))}
+        {formatSignedPct(chip.pct)}
+      </p>
+      <p className={`text-sm tabular-nums ${tone}`}>{formatSignedMoney(chip.abs)}</p>
+    </div>
+  )
+}
+
+function DividendsCard({ amount }: { amount: number }) {
+  return (
+    <div className="rounded-lg border border-rule bg-white/70 px-4 py-3">
+      <p className="text-xs font-medium uppercase tracking-wide text-ink/50">Dividends</p>
+      <p className="mt-1 font-medium tabular-nums text-ink">{formatMoney(amount)}/yr</p>
+      <p className="text-sm text-ink/60">projected</p>
+    </div>
   )
 }
 
@@ -193,7 +218,7 @@ export function LiveDashboard({
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-8">
-      <section className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+      <section className="flex flex-col gap-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">
             One view of {accountCount} {accountCount === 1 ? "account" : "accounts"} ·{" "}
@@ -206,7 +231,7 @@ export function LiveDashboard({
             )}
           </p>
           <p className="ledger-sum mt-2 inline-block pb-1 pr-8 font-display text-5xl font-medium tabular-nums tracking-tight">
-            {formatMoney(total.value)}
+            {formatWholeMoney(total.value)}
           </p>
           <p className="mt-2 text-sm text-ink/60">
             {newestQuote ? formatAsOf(newestQuote) : "no prices yet"}
@@ -218,21 +243,18 @@ export function LiveDashboard({
               </span>
             )}
           </p>
-          {chips.length > 0 && (
-            <p className="mt-1.5 text-sm">
-              <ChangeChips chips={chips} />
-            </p>
-          )}
-          {total.projectedAnnualIncome > 0 && (
-            <p className="mt-1.5 text-sm text-ink/60">
-              Projected dividends{" "}
-              <span className="font-medium text-ink tabular-nums">
-                {formatMoney(total.projectedAnnualIncome)}/yr
-              </span>
-            </p>
-          )}
         </div>
-        <div className="flex flex-col gap-1.5 sm:min-w-64">
+        {(chips.length > 0 || total.projectedAnnualIncome > 0) && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {chips.map((chip) => (
+              <ChangeCard key={chip.label} chip={chip} />
+            ))}
+            {total.projectedAnnualIncome > 0 && (
+              <DividendsCard amount={total.projectedAnnualIncome} />
+            )}
+          </div>
+        )}
+        <div className="flex flex-wrap items-baseline gap-x-8 gap-y-1.5 border-t border-rule pt-3">
           {MARKET_INDICES.map((index) => (
             <IndexFigure
               key={index.symbol}
