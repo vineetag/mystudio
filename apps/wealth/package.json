@@ -15,7 +15,7 @@
     "clean": "rm -rf .next"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.0",
+    "@anthropic-ai/sdk": "^0.112.3",
     "@radix-ui/react-slot": "^1.2.4",
     "@studio/analytics": "workspace:*",
     "@studio/ui": "workspace:*",
