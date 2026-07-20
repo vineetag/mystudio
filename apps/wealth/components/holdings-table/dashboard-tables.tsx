@@ -16,6 +16,7 @@ import {
   SORTABLE_COLUMNS,
   type SortState,
 } from "./columns"
+import { matchesTokens } from "./fuzzy"
 
 export interface AccountSection {
   id: string
@@ -45,7 +46,8 @@ function nextSort(current: SortState, key: string): SortState {
  * Account filter + sort + search over both P0 views: consolidated per-ticker
  * (hero, expandable) and per-account tables. Everything is derived from the raw
  * positions so the account filter recomputes real totals, not just row
- * visibility. Sorting is column-driven; search filters by symbol or account.
+ * visibility. Sorting is column-driven; search filters by symbol, company/fund
+ * name, account, or broker.
  */
 export function DashboardTables({
   positions,
@@ -81,6 +83,7 @@ export function DashboardTables({
   )
 
   const needle = query.trim().toLowerCase()
+  const tokens = useMemo(() => needle.split(/\s+/).filter(Boolean), [needle])
 
   // Checkbox semantics: unchecking one account from "all" keeps the rest
   // selected. Selecting every account (or none) collapses back to "all".
@@ -157,15 +160,18 @@ export function DashboardTables({
   }, [accounts])
 
   const filteredConsolidated = useMemo(() => {
-    if (!needle) return consolidated
-    return consolidated.filter(
-      (row) =>
-        row.symbol.toLowerCase().includes(needle) ||
-        row.positions.some((position) =>
-          position.accountName.toLowerCase().includes(needle),
-        ),
+    if (tokens.length === 0) return consolidated
+    return consolidated.filter((row) =>
+      matchesTokens(tokens, [
+        row.symbol,
+        row.companyName,
+        ...row.positions.flatMap((position) => [
+          position.accountName,
+          accountMeta.get(position.accountId)?.broker ?? null,
+        ]),
+      ]),
     )
-  }, [consolidated, needle])
+  }, [accountMeta, consolidated, tokens])
 
   const accountSections = useMemo(() => {
     return accounts
@@ -175,9 +181,13 @@ export function DashboardTables({
           .filter((position) => position.accountId === account.id)
           .filter(
             (position) =>
-              !needle ||
-              account.name.toLowerCase().includes(needle) ||
-              position.symbol.toLowerCase().includes(needle),
+              tokens.length === 0 ||
+              matchesTokens(tokens, [
+                position.symbol,
+                position.companyName,
+                account.name,
+                account.broker,
+              ]),
           )
         return { account, positions: accountPositions }
       })
@@ -186,7 +196,7 @@ export function DashboardTables({
       .filter(
         (section) => section.positions.length > 0 || (canManage && !needle),
       )
-  }, [accounts, activePositions, canManage, needle, selected])
+  }, [accounts, activePositions, canManage, needle, selected, tokens])
 
   const activeSortColumn = SORTABLE_COLUMNS.find((column) => column.key === sort.key)
 
@@ -229,8 +239,8 @@ export function DashboardTables({
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Filter by symbol or account…"
-            aria-label="Filter holdings"
+            placeholder="Search symbol, name, or account…"
+            aria-label="Search holdings"
             className="min-h-12 w-full rounded-md border border-rule px-4 text-base outline-none focus:border-moss sm:w-72"
           />
         </div>
