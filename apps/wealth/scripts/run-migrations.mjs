@@ -4,8 +4,24 @@
 //   node --env-file=.env.local scripts/run-migrations.mjs
 //   node --env-file=.env.local scripts/run-migrations.mjs 0005
 //
-// Requires DATABASE_URL or SUPABASE_DB_URL in the environment — the Postgres
-// connection URI from Supabase → Project Settings → Database → Connection string.
+// Requires DATABASE_URL or SUPABASE_DB_URL in the environment. Use the
+// SESSION-MODE POOLER URI (port 5432), not the direct connection:
+//
+//   postgresql://postgres.<project-ref>:<password>@aws-1-<region>.pooler.supabase.com:5432/postgres
+//
+// Two things that will otherwise cost you an afternoon:
+//   - The direct host (db.<project-ref>.supabase.co) no longer resolves over
+//     IPv4. A stale URI fails with ENOTFOUND, which reads like a network
+//     problem rather than a connection-string problem.
+//   - Take the SESSION pooler string, not the transaction one (port 6543).
+//     Transaction mode does not hold a session across a multi-statement
+//     script, which is exactly what a migration is.
+//
+// The pooler username is `postgres.<project-ref>`, not bare `postgres`, and
+// the regional prefix (aws-0 / aws-1 / ...) varies per project — both resolve
+// in DNS, so the wrong one fails at auth with "tenant or user not found".
+// Copy the exact string from the dashboard rather than assembling it by hand:
+// Supabase → Project Settings → Database → Connection string → Session pooler.
 
 import { readFileSync, readdirSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -19,7 +35,9 @@ const connectionString = process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL
 if (!connectionString) {
   console.error(
     "Missing DATABASE_URL (or SUPABASE_DB_URL). Add it to apps/wealth/.env.local:\n" +
-      "  Supabase Dashboard → mystudio → Settings → Database → Connection string (URI)",
+      "  Supabase Dashboard → mystudio → Settings → Database → Connection string\n" +
+      "  → Session pooler (port 5432). Not the direct connection, which no longer\n" +
+      "  resolves over IPv4, and not the transaction pooler on 6543.",
   )
   process.exit(1)
 }
