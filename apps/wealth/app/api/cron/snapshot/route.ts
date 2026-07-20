@@ -40,7 +40,9 @@ export async function GET(request: Request) {
     }
   }
 
-  const result = await captureSnapshot()
+  // The cron is the one caller allowed to spend Finnhub budget here: it runs
+  // alone at night, so its paced batch can't collide with a dashboard poll.
+  const result = await captureSnapshot({ refreshQuotes: true })
   if (!result.ok) {
     return NextResponse.json(
       { error: result.error, syncErrors },
