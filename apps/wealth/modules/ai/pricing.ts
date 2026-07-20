@@ -59,14 +59,17 @@ export function isModelTier(value: string): value is ModelTier {
 }
 
 /**
- * Rough token count for pre-run cost estimates. English prose runs ~3.6
- * characters per token; the numeric-heavy context blocks we send are a little
- * denser, so this rounds up rather than down. Never used for billing — the
- * API's reported usage is.
+ * Fallback token count, used only when the token-counting API is unreachable.
+ *
+ * 1.9 chars/token, NOT the ~3.6 that English prose runs at: our context blocks
+ * are dense numerics and tickers ("- NVDA | qty 41 | price 187.22 | ..."),
+ * which tokenize far worse than prose. Measured against the real portfolio,
+ * a 3.6 divisor under-quoted by 88% — unacceptable for something whose job is
+ * to bound spend. Prefer `countPromptTokens` in lib/ai.ts, which is exact.
  */
 export function estimateTokens(text: string): number {
   if (text.length === 0) return 0
-  return Math.ceil(text.length / 3.6)
+  return Math.ceil(text.length / 1.9)
 }
 
 export function costUsd(
@@ -95,13 +98,16 @@ export interface CostEstimate {
 /**
  * Pre-run estimate. Quotes the worst case (full `maxOutputTokens`) because an
  * estimate the owner can exceed is not a spend cap.
+ *
+ * `inputTokens` comes from the token-counting API (exact) — see
+ * `countPromptTokens` in lib/ai.ts. Pass `estimateTokens(text)` only as a
+ * fallback.
  */
 export function estimateCost(
   tier: ModelTier,
-  promptText: string,
+  inputTokens: number,
   maxOutputTokens: number,
 ): CostEstimate {
-  const inputTokens = estimateTokens(promptText)
   return {
     tier,
     modelId: MODELS[tier].id,

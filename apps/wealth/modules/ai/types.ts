@@ -29,6 +29,8 @@ export interface Analysis {
   createdAt: string
   /** True when the text came from the canned demo set, not the API. */
   isDemo?: boolean
+  /** True when the model hit its output budget — the answer is cut off. */
+  truncated?: boolean
 }
 
 export interface Budget {

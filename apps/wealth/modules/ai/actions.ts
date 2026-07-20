@@ -17,7 +17,7 @@ import {
 import { getQuotes } from "@/modules/quotes"
 import { getSymbols } from "@/modules/symbols"
 import type { ActionResult, ActionResultWith } from "@/lib/action-result"
-import { runAnalysis as callModel } from "@/lib/ai"
+import { countPromptTokens, runAnalysis as callModel } from "@/lib/ai"
 import {
   countRecentRuns,
   getBudget,
@@ -36,11 +36,16 @@ import { estimateCost, isModelTier, type ModelTier } from "./pricing"
 import { renderTemplate } from "./template"
 import { isPromptKey, type Analysis, type PromptKey, type RunEstimate } from "./types"
 
-/** Output ceiling per prompt. Portfolio reviews need more room than one holding. */
+/**
+ * Output ceiling per prompt. Portfolio reviews need far more room than one
+ * holding: at 2,000 tokens a real 88-holding review was cut off mid-answer on
+ * both Sonnet and Opus. The owner still sees the worst-case cost of this
+ * budget before committing, so a generous ceiling is honest rather than risky.
+ */
 const MAX_TOKENS: Record<PromptKey, number> = {
-  stock: 1200,
-  portfolio: 2000,
-  research: 1400,
+  stock: 1500,
+  portfolio: 4000,
+  research: 2000,
 }
 
 interface BuiltPrompt {
@@ -189,12 +194,18 @@ export async function estimateRun(
   const prompt = await buildPrompt(promptKey, symbol)
   if (!prompt.ok) return prompt
 
-  const budget = await getBudget()
-  const estimate = estimateCost(
-    tier as ModelTier,
-    `${prompt.data.systemPrompt}\n${prompt.data.userMessage}`,
-    prompt.data.maxTokens,
-  )
+  // Count tokens with the real tokenizer rather than a char heuristic — the
+  // quote is a spend commitment, and dense numeric context tokenizes ~2x worse
+  // than prose.
+  const [budget, inputTokens] = await Promise.all([
+    getBudget(),
+    countPromptTokens(
+      tier as ModelTier,
+      prompt.data.systemPrompt,
+      prompt.data.userMessage,
+    ),
+  ])
+  const estimate = estimateCost(tier as ModelTier, inputTokens, prompt.data.maxTokens)
 
   return {
     ok: true,
@@ -248,7 +259,7 @@ export async function runAnalysisAction(
   })
 
   revalidatePath("/analysis")
-  return { ok: true, data: analysis }
+  return { ok: true, data: { ...analysis, truncated: result.data.truncated } }
 }
 
 /** Remaining runs this hour and the month's spend — drives the header chips. */

@@ -8,8 +8,16 @@ describe("estimateTokens", () => {
 
   it("rounds up so an estimate never under-quotes", () => {
     expect(estimateTokens("a")).toBe(1)
-    expect(estimateTokens("a".repeat(36))).toBe(10)
-    expect(estimateTokens("a".repeat(37))).toBe(11)
+    expect(estimateTokens("a".repeat(19))).toBe(10)
+    expect(estimateTokens("a".repeat(20))).toBe(11)
+  })
+
+  it("assumes dense numeric context, not prose", () => {
+    // Measured against the real portfolio: a prose-calibrated 3.6 chars/token
+    // under-quoted our ticker/number context blocks by 88%. The fallback must
+    // stay pessimistic — it only runs when the exact count is unavailable.
+    const contextLine = "- NVDA (NVIDIA Corporation) | qty 41 | price 187.22 | value 7676.02"
+    expect(estimateTokens(contextLine)).toBeGreaterThan(contextLine.length / 3.6)
   })
 })
 
@@ -34,7 +42,7 @@ describe("costUsd", () => {
 
 describe("estimateCost", () => {
   it("quotes the worst case — every allowed output token", () => {
-    const estimate = estimateCost("fast", "x".repeat(3_600), 1_000)
+    const estimate = estimateCost("fast", 1_000, 1_000)
     expect(estimate.inputTokens).toBe(1_000)
     expect(estimate.maxOutputTokens).toBe(1_000)
     // 1000 in @ $1/MTok + 1000 out @ $5/MTok
@@ -42,7 +50,7 @@ describe("estimateCost", () => {
   })
 
   it("reports the exact model id that would be billed", () => {
-    expect(estimateCost("standard", "hello", 100).modelId).toBe(MODELS.standard.id)
+    expect(estimateCost("standard", 500, 100).modelId).toBe(MODELS.standard.id)
   })
 })
 
