@@ -7,11 +7,16 @@ export async function SiteHeader() {
 
   return (
     <header className="border-b border-rule">
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
+      {/* Stacked on mobile, one row from sm up. The owner's nav is six items —
+          on a 390px screen they cannot share a row with the logo, and forcing
+          them to pushed the whole page wider than the viewport. */}
+      <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-1 px-4 py-3 sm:flex-row sm:justify-between sm:gap-4">
         <Link href="/" aria-label="OneFolio home" className="group inline-flex">
           <OneFolioLogo />
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
+        {/* flex-wrap, not overflow scroll: a nav item the owner has to swipe to
+            reach is one they won't find. */}
+        <nav className="flex flex-wrap items-center justify-center gap-x-3 text-sm sm:gap-x-4">
           <Link href="/" className="flex min-h-12 items-center text-ink/70 hover:text-ink">
             Dashboard
           </Link>
