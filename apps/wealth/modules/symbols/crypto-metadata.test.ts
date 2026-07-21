@@ -7,10 +7,12 @@ describe("cryptoSymbolProfile", () => {
     expect(cryptoSymbolProfile("BTC")).toEqual({
       name: "Bitcoin",
       domain: "bitcoin.org",
+      sector: "Cryptocurrency",
     })
     expect(cryptoSymbolProfile("SOL")).toEqual({
       name: "Solana",
       domain: "solana.com",
+      sector: "Cryptocurrency",
     })
   })
 

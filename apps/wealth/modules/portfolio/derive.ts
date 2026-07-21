@@ -34,6 +34,8 @@ export interface PositionRow {
   companyName: string | null
   /** Resolved company domain — drives the higher-quality logo image; may be null. */
   logoDomain: string | null
+  /** Industry classification; null when the symbol can't be classified. */
+  sector: string | null
   /** Crypto positions display finer quantity precision than equities. */
   isCrypto: boolean
   quantity: number
@@ -60,6 +62,7 @@ export interface ConsolidatedRow {
   symbol: string
   companyName: string | null
   logoDomain: string | null
+  sector: string | null
   isCrypto: boolean
   quantity: number
   /** Weighted average over positions that have a cost basis; null if none do. */
@@ -128,6 +131,7 @@ export function derivePositions(
         symbol: holding.symbol,
         companyName: symbolInfo?.name ?? null,
         logoDomain: symbolInfo?.domain ?? null,
+        sector: symbolInfo?.sector ?? null,
         isCrypto: inferAssetClass(holding.symbol, holding.assetClass ?? "equity") === "crypto",
         quantity: holding.quantity,
         avgCost: holding.avgCost,
@@ -201,6 +205,7 @@ export function consolidate(positions: PositionRow[]): ConsolidatedRow[] {
       symbol,
       companyName: first.companyName,
       logoDomain: first.logoDomain,
+      sector: first.sector,
       isCrypto: first.isCrypto,
       quantity,
       avgCost,

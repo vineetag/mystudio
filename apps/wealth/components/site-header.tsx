@@ -16,6 +16,12 @@ export async function SiteHeader() {
             Dashboard
           </Link>
           <Link
+            href="/analyzer"
+            className="flex min-h-12 items-center text-ink/70 hover:text-ink"
+          >
+            Charts
+          </Link>
+          <Link
             href="/analysis"
             className="flex min-h-12 items-center text-ink/70 hover:text-ink"
           >
