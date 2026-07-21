@@ -21,10 +21,15 @@ function rowToSymbolInfo(row: any): SymbolInfo {
     symbol: row.symbol,
     name: row.name ?? null,
     domain: row.domain ?? null,
+    sector: row.sector ?? null,
     nameSource: (row.name_source as SymbolInfo["nameSource"]) ?? "logodev",
   }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+function unresolved(symbol: string): SymbolInfo {
+  return { symbol, name: null, domain: null, sector: null, nameSource: "logodev" }
+}
 
 export interface GetSymbolsOptions {
   /**
@@ -68,14 +73,12 @@ export async function getSymbols(
   const supabase = createServiceClient()
   const { data: rows, error } = await supabase
     .from("pt_symbols")
-    .select("symbol, name, domain, name_source")
+    .select("symbol, name, domain, sector, name_source, profile_fetched_at")
     .in("symbol", unique)
 
   if (error) {
     console.error(`pt_symbols read failed: ${error.message}`)
-    for (const symbol of unique) {
-      infos.set(symbol, { symbol, name: null, domain: null, nameSource: "logodev" })
-    }
+    for (const symbol of unique) infos.set(symbol, unresolved(symbol))
     return infos
   }
 
@@ -87,18 +90,24 @@ export async function getSymbols(
   const missing = unique.filter((symbol) => !cached.has(symbol))
   // Default every known-missing symbol to "no metadata" so the map is complete
   // even if resolution is skipped or fails.
-  for (const symbol of missing) {
-    infos.set(symbol, { symbol, name: null, domain: null, nameSource: "logodev" })
-  }
+  for (const symbol of missing) infos.set(symbol, unresolved(symbol))
 
-  if (options.fetchMissing === false || missing.length === 0) return infos
+  // Rows written before sectors existed have no profile_fetched_at stamp: each
+  // gets exactly one backfill attempt, then is stamped whether or not Finnhub
+  // could classify it, so an unclassifiable fund is never re-fetched.
+  const needsSector = (rows ?? [])
+    .filter((row) => row.profile_fetched_at === null)
+    .map((row) => row.symbol as string)
+
+  const toResolve = [...missing, ...needsSector]
+  if (options.fetchMissing === false || toResolve.length === 0) return infos
 
   // Resolve serially with pacing to respect the Finnhub rate limit, upserting
   // each row as we go so partial progress persists if the run is interrupted.
   // Crypto symbols come from the static map — no Finnhub call, no pacing.
   const service = createServiceClient()
   let finnhubCalls = 0
-  for (const symbol of missing) {
+  for (const symbol of toResolve) {
     const isCrypto =
       inferAssetClass(symbol, options.assetClasses?.get(symbol) ?? "equity") ===
       "crypto"
@@ -111,13 +120,36 @@ export async function getSymbols(
       finnhubCalls++
       profile = await fetchSymbolProfile(symbol)
     }
+    const existing = cached.get(symbol)
+    const now = new Date().toISOString()
+
     if (profile) {
       infos.set(symbol, {
         symbol,
-        name: profile.name,
-        domain: profile.domain,
-        nameSource: "logodev",
+        // A backfill must not overwrite what the row already has — the owner's
+        // manual name lives there. Only the sector is genuinely new.
+        name: existing?.name ?? profile.name,
+        domain: existing?.domain ?? profile.domain,
+        sector: profile.sector,
+        nameSource: existing?.nameSource ?? "logodev",
       })
+    } else if (existing) {
+      infos.set(symbol, { ...existing, sector: null })
+    }
+
+    if (existing) {
+      // Sector-only backfill on an existing row. Name/domain are left alone;
+      // filling them here would clobber a manual name.
+      const { error: updateError } = await service
+        .from("pt_symbols")
+        .update({ sector: profile?.sector ?? null, profile_fetched_at: now })
+        .eq("symbol", symbol)
+      if (updateError) {
+        console.error(
+          `pt_symbols sector backfill failed for ${symbol}: ${updateError.message}`,
+        )
+      }
+      continue
     }
 
     // ignoreDuplicates: never clobber a row (esp. a manual name) written by a
@@ -127,8 +159,10 @@ export async function getSymbols(
         symbol,
         name: profile?.name ?? null,
         domain: profile?.domain ?? null,
+        sector: profile?.sector ?? null,
         name_source: "logodev",
-        fetched_at: new Date().toISOString(),
+        fetched_at: now,
+        profile_fetched_at: now,
       },
       { onConflict: "symbol", ignoreDuplicates: true },
     )

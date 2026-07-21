@@ -15,6 +15,8 @@ export interface SymbolProfile {
   name: string
   /** Bare domain from the company website (e.g. "apple.com"); may be null. */
   domain: string | null
+  /** Finnhub's industry classification (e.g. "Technology"); null when absent. */
+  sector: string | null
 }
 
 function domainFromUrl(weburl?: string | null): string | null {
@@ -38,10 +40,19 @@ export async function fetchSymbolProfile(symbol: string): Promise<SymbolProfile 
     )
     if (!response.ok) return null
 
-    const body = (await response.json()) as { name?: string; weburl?: string }
+    const body = (await response.json()) as {
+      name?: string
+      weburl?: string
+      finnhubIndustry?: string
+    }
     if (!body?.name) return null
 
-    return { name: body.name.slice(0, 120), domain: domainFromUrl(body.weburl) }
+    const sector = body.finnhubIndustry?.trim()
+    return {
+      name: body.name.slice(0, 120),
+      domain: domainFromUrl(body.weburl),
+      sector: sector ? sector.slice(0, 60) : null,
+    }
   } catch {
     return null
   }

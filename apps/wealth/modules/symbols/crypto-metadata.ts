@@ -7,7 +7,10 @@ import type { SymbolProfile } from "./profile"
 // must never come from there. The domain drives the logo.dev image, which
 // resolves each project's official site to its brand mark.
 
-const CRYPTO_METADATA: Record<string, SymbolProfile> = {
+/** Every coin lands in one bucket — Finnhub has no sector for crypto. */
+export const CRYPTO_SECTOR = "Cryptocurrency"
+
+const CRYPTO_METADATA: Record<string, Omit<SymbolProfile, "sector">> = {
   ADA: { name: "Cardano", domain: "cardano.org" },
   ALGO: { name: "Algorand", domain: "algorand.com" },
   APT: { name: "Aptos", domain: "aptosfoundation.org" },
@@ -40,5 +43,6 @@ const CRYPTO_METADATA: Record<string, SymbolProfile> = {
  * an unresolvable fund.
  */
 export function cryptoSymbolProfile(symbol: string): SymbolProfile | null {
-  return CRYPTO_METADATA[normalizeCryptoSymbol(symbol)] ?? null
+  const profile = CRYPTO_METADATA[normalizeCryptoSymbol(symbol)]
+  return profile ? { ...profile, sector: CRYPTO_SECTOR } : null
 }
