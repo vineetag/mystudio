@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/snapshot",
       "schedule": "30 21 * * *"
+    },
+    {
+      "path": "/api/cron/simplefin-sync",
+      "schedule": "0 12 * * *"
     }
   ]
 }

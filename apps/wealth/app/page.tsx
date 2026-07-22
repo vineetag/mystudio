@@ -5,6 +5,12 @@ import {
 } from "@/modules/accounts"
 import { assetClassMapFromAccounts } from "@/modules/holdings"
 import { getViewer } from "@/modules/auth"
+import {
+  BANK_SYNC_TTL_MS,
+  getBankAccounts,
+  isSimpleFinConfigured,
+  syncBankAccounts,
+} from "@/modules/bank-accounts"
 import { getQuotes, INDEX_SYMBOLS } from "@/modules/quotes"
 import { getSymbols } from "@/modules/symbols"
 import { captureSnapshot, listSnapshots } from "@/modules/snapshots"
@@ -17,9 +23,12 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ account?: string }>
 }) {
-  const [viewer, allAccounts, params] = await Promise.all([
+  const [viewer, allAccounts, allBankAccounts, params] = await Promise.all([
     getViewer(),
     listViewerAccountsWithHoldings(),
+    // RLS only exposes pt_bank_accounts to the authenticated owner — demo
+    // viewers get [] and never see a cash section.
+    getBankAccounts(),
     searchParams,
   ])
 
@@ -27,6 +36,7 @@ export default async function DashboardPage({
   // the tables, and the quote poll. Manage/unhide them on /accounts.
   const accounts = allAccounts.filter((account) => !account.hidden)
   const hiddenCount = allAccounts.length - accounts.length
+  const bankAccounts = allBankAccounts.filter((account) => !account.isHidden)
 
   const holdingSymbols = accounts.flatMap((account) =>
     account.holdings.map((holding) => holding.symbol),
@@ -63,9 +73,31 @@ export default async function DashboardPage({
     })
   }
 
+  // Staleness-gated SimpleFIN top-up: Hobby crons run once a day, so owner
+  // visits refresh balances in the background when the cache is older than
+  // BANK_SYNC_TTL_MS (also bootstraps the very first sync). Runs with the
+  // service client — after() jobs can't use the cookie-bound client.
+  if (isLive && isSimpleFinConfigured()) {
+    const newestSync = allBankAccounts
+      .map((account) => new Date(account.lastSyncedAt).getTime())
+      .reduce((max, time) => Math.max(max, time), 0)
+    if (Date.now() - newestSync >= BANK_SYNC_TTL_MS) {
+      after(async () => {
+        try {
+          await syncBankAccounts()
+        } catch (error) {
+          console.error(
+            `Background SimpleFIN sync failed: ${error instanceof Error ? error.message : String(error)}`,
+          )
+        }
+      })
+    }
+  }
+
   return (
     <LiveDashboard
       accounts={accounts}
+      bankAccounts={bankAccounts}
       initialQuotes={Object.fromEntries(quotes)}
       symbols={Object.fromEntries(symbols)}
       isOwner={isLive}

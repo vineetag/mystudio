@@ -5,6 +5,10 @@ import { ArrowDown, ArrowUp } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import type { AccountType } from "@/modules/accounts/types"
 import {
+  isLiabilityType,
+  type BankAccount,
+} from "@/modules/bank-accounts/types"
+import {
   derivePositions,
   portfolioTotal,
   type DeriveAccountInput,
@@ -15,6 +19,7 @@ import type { QuoteView } from "@/modules/quotes/types"
 import type { SymbolInfo } from "@/modules/symbols/types"
 import { computeChangeChips } from "@/modules/snapshots/changes"
 import type { ChangeChip, Snapshot } from "@/modules/snapshots/types"
+import { CashAccounts } from "@/components/cash-accounts"
 import { DashboardTables, type AccountSection } from "@/components/holdings-table/dashboard-tables"
 import { PortfolioChart } from "@/components/portfolio-chart"
 import { GAIN_TEXT, LOSS_TEXT } from "@/components/holdings-table/columns"
@@ -113,6 +118,7 @@ function DividendsCard({ amount }: { amount: number }) {
 
 export function LiveDashboard({
   accounts,
+  bankAccounts,
   initialQuotes,
   symbols,
   isOwner,
@@ -123,6 +129,8 @@ export function LiveDashboard({
   initialAccountId = null,
 }: {
   accounts: DashboardAccount[]
+  /** Cached SimpleFIN balances (visible only, already filtered server-side). */
+  bankAccounts: BankAccount[]
   initialQuotes: Record<string, QuoteView>
   symbols: Record<string, SymbolInfo>
   isOwner: boolean
@@ -193,6 +201,17 @@ export function LiveDashboard({
   )
   const total = useMemo(() => portfolioTotal(positions), [positions])
 
+  // Net worth = investments + cash − owed. Liability accounts (credit cards,
+  // loans) always subtract their magnitude regardless of SimpleFIN's sign
+  // convention; checking vs savings stays display-only.
+  const cashTotal = bankAccounts
+    .filter((account) => !isLiabilityType(account.accountType))
+    .reduce((sum, account) => sum + account.balance, 0)
+  const owedTotal = bankAccounts
+    .filter((account) => isLiabilityType(account.accountType))
+    .reduce((sum, account) => sum + Math.abs(account.balance), 0)
+  const netWorth = total.value + cashTotal - owedTotal
+
   const chips = useMemo(() => {
     if (!isOwner) return []
     return computeChangeChips(
@@ -223,6 +242,13 @@ export function LiveDashboard({
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">
             One view of {accountCount} {accountCount === 1 ? "account" : "accounts"} ·{" "}
             {positions.length} positions
+            {bankAccounts.length > 0 && (
+              <>
+                {" "}
+                · {bankAccounts.length} linked{" "}
+                {bankAccounts.length === 1 ? "account" : "accounts"}
+              </>
+            )}
             {hiddenAccountCount > 0 && (
               <span className="normal-case tracking-normal text-ink/40">
                 {" "}
@@ -231,8 +257,42 @@ export function LiveDashboard({
             )}
           </p>
           <p className="ledger-sum mt-2 inline-block pb-1 pr-8 font-display text-5xl font-medium tabular-nums tracking-tight">
-            {formatWholeMoney(total.value)}
+            {formatWholeMoney(netWorth)}
           </p>
+          {bankAccounts.length > 0 && (
+            <div className="mt-2 flex flex-col gap-1.5">
+              <p className="text-sm tabular-nums text-ink/70">
+                Investments {formatWholeMoney(total.value)} · Cash{" "}
+                {formatWholeMoney(cashTotal)}
+                {owedTotal > 0 && <> · Owed −{formatWholeMoney(owedTotal)}</>}
+              </p>
+              {total.value + cashTotal > 0 && (
+                // Investments vs cash split across assets (liabilities are a
+                // subtraction, not a slice) — same CVD-safe palette as the
+                // portfolio chart (green portfolio line, blue benchmark).
+                <div
+                  className="flex h-1.5 w-full max-w-md overflow-hidden rounded-full"
+                  role="img"
+                  aria-label={`Asset split: ${Math.round((total.value / (total.value + cashTotal)) * 100)}% investments, ${Math.round((cashTotal / (total.value + cashTotal)) * 100)}% cash`}
+                >
+                  <div
+                    className="h-full"
+                    style={{
+                      width: `${(total.value / (total.value + cashTotal)) * 100}%`,
+                      backgroundColor: "#008300",
+                    }}
+                  />
+                  <div
+                    className="h-full"
+                    style={{
+                      width: `${(cashTotal / (total.value + cashTotal)) * 100}%`,
+                      backgroundColor: "#2a78d6",
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
           <p className="mt-2 text-sm text-ink/60">
             {newestQuote ? formatAsOf(newestQuote) : "no prices yet"}
             <span className="text-ink/40"> · refreshes every minute</span>
@@ -308,6 +368,8 @@ export function LiveDashboard({
           {isOwner && <PortfolioChart snapshots={snapshots} />}
         </>
       )}
+
+      <CashAccounts accounts={bankAccounts} canManage={isOwner} />
     </main>
   )
 }
