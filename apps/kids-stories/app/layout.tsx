@@ -24,7 +24,15 @@ const lora = Lora({
   display: "swap",
 })
 
+// The app is served on more than one host (zippytales.app and the
+// zippytales.appcrafter.studio fallback), so every page emits an absolute
+// canonical URL pointing at NEXT_PUBLIC_SITE_URL. Changing that env var is all
+// it takes to move the canonical host if a domain is ever dropped.
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001",
+  ),
+  alternates: { canonical: "/" },
   title: "ZippyTales",
   description: "AI-powered stories crafted for little readers.",
 }

@@ -19,7 +19,14 @@ const newsreader = Newsreader({
   variable: "--font-newsreader",
 })
 
+// Served on more than one host (getonefolio.app and the
+// onefolio.appcrafter.studio fallback), so canonical URLs are pinned to
+// NEXT_PUBLIC_SITE_URL rather than the request host.
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3003",
+  ),
+  alternates: { canonical: "/" },
   title: "OneFolio",
   description: "Many accounts, one view — a personal stock portfolio ledger.",
 }
