@@ -8,6 +8,7 @@ import { getViewer } from "@/modules/auth"
 import {
   BANK_SYNC_TTL_MS,
   getBankAccounts,
+  getDemoBankAccounts,
   isSimpleFinConfigured,
   syncBankAccounts,
 } from "@/modules/bank-accounts"
@@ -36,7 +37,12 @@ export default async function DashboardPage({
   // the tables, and the quote poll. Manage/unhide them on /accounts.
   const accounts = allAccounts.filter((account) => !account.hidden)
   const hiddenCount = allAccounts.length - accounts.length
-  const bankAccounts = allBankAccounts.filter((account) => !account.isHidden)
+  // Demo viewers get [] from the DB (RLS) — serve the fabricated fixture so
+  // the cash/liability sections and net-worth math are visible in demo mode.
+  const bankAccounts =
+    viewer.mode === "demo"
+      ? getDemoBankAccounts()
+      : allBankAccounts.filter((account) => !account.isHidden)
 
   const holdingSymbols = accounts.flatMap((account) =>
     account.holdings.map((holding) => holding.symbol),
