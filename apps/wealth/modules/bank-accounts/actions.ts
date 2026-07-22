@@ -2,9 +2,18 @@
 
 import { revalidatePath } from "next/cache"
 import { createServiceClient } from "@/lib/db"
-import type { ActionResult } from "@/lib/action-result"
+import type { ActionResult, ActionResultWith } from "@/lib/action-result"
 import { requireOwner } from "@/modules/auth"
-import type { BankAccountType } from "./types"
+import { isSimpleFinConfigured } from "./simplefin"
+import { syncBankAccounts } from "./sync"
+import type { BankAccountType, BankSyncReport } from "./types"
+
+/**
+ * Minimum gap between manual syncs. SimpleFIN's free-tier guidance is ~24
+ * requests/day; the cooldown keeps a stuck or mashed button from burning
+ * through that budget.
+ */
+const MANUAL_SYNC_COOLDOWN_MS = 60 * 1000
 
 const BANK_ACCOUNT_TYPES: BankAccountType[] = [
   "checking",
@@ -50,6 +59,61 @@ export async function setBankAccountType(
 
   revalidatePath("/")
   return { ok: true }
+}
+
+/**
+ * Owner-triggered SimpleFIN sync — the escape hatch from the 6-hour TTL that
+ * gates the background top-up, so a newly linked bank shows up immediately.
+ * Cooldown-guarded (see MANUAL_SYNC_COOLDOWN_MS) via the newest last_synced_at
+ * already in the table.
+ */
+export async function syncBankAccountsNow(): Promise<
+  ActionResultWith<BankSyncReport>
+> {
+  const owner = await requireOwner()
+  if (!owner.ok) return owner
+
+  if (!isSimpleFinConfigured()) {
+    return {
+      ok: false,
+      error: "SimpleFIN isn't configured on this deployment — nothing to sync.",
+    }
+  }
+
+  const service = createServiceClient()
+  const { data: newest, error: newestError } = await service
+    .from("pt_bank_accounts")
+    .select("last_synced_at")
+    .order("last_synced_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (newestError) {
+    return {
+      ok: false,
+      error: `Couldn't check the last sync time: ${newestError.message}`,
+    }
+  }
+  if (newest) {
+    const elapsed = Date.now() - new Date(newest.last_synced_at).getTime()
+    if (elapsed < MANUAL_SYNC_COOLDOWN_MS) {
+      const waitSeconds = Math.ceil((MANUAL_SYNC_COOLDOWN_MS - elapsed) / 1000)
+      return {
+        ok: false,
+        error: `Balances were synced moments ago — try again in ${waitSeconds}s.`,
+      }
+    }
+  }
+
+  try {
+    const report = await syncBankAccounts()
+    revalidatePath("/")
+    return { ok: true, data: report }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
 }
 
 /** Hidden bank accounts drop out of the dashboard and the net worth total. */

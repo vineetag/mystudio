@@ -3,7 +3,10 @@
 import { useState, useTransition } from "react"
 // Server actions and leaf types only — server-only query/sync code stays
 // behind the module index (same convention as modules/accounts).
-import { setBankAccountType } from "@/modules/bank-accounts/actions"
+import {
+  setBankAccountType,
+  syncBankAccountsNow,
+} from "@/modules/bank-accounts/actions"
 import {
   isLiabilityType,
   type BankAccount,
@@ -128,6 +131,61 @@ function TypeBadge({
   )
 }
 
+/**
+ * Owner-only escape hatch from the 6-hour background-sync TTL — newly linked
+ * SimpleFIN connections show up on click instead of hours later. The server
+ * action enforces a cooldown; its refusal message surfaces here verbatim.
+ */
+function SyncNowButton() {
+  const [status, setStatus] = useState<
+    { kind: "idle" } | { kind: "done"; message: string } | { kind: "error"; message: string }
+  >({ kind: "idle" })
+  const [isPending, startTransition] = useTransition()
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        disabled={isPending}
+        className="inline-flex min-h-12 cursor-pointer items-center gap-1.5 rounded-full border border-rule bg-white/70 px-4 text-xs font-medium text-ink/70 transition-opacity hover:text-ink disabled:cursor-default disabled:opacity-50"
+        onClick={() => {
+          setStatus({ kind: "idle" })
+          startTransition(async () => {
+            const result = await syncBankAccountsNow()
+            if (!result.ok) {
+              setStatus({ kind: "error", message: result.error })
+              return
+            }
+            const { inserted, updated } = result.data
+            setStatus({
+              kind: "done",
+              message:
+                inserted > 0
+                  ? `Added ${inserted} new account${inserted === 1 ? "" : "s"}, refreshed ${updated}.`
+                  : `Balances refreshed (${updated} account${updated === 1 ? "" : "s"}).`,
+            })
+          })
+        }}
+      >
+        <svg
+          aria-hidden
+          viewBox="0 0 16 16"
+          className={`size-3.5 fill-none stroke-current stroke-[1.5] ${isPending ? "animate-spin" : ""}`}
+        >
+          <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v2.6h-2.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        {isPending ? "Syncing…" : "Sync now"}
+      </button>
+      {status.kind === "done" && (
+        <span className="text-xs text-emerald-700">{status.message}</span>
+      )}
+      {status.kind === "error" && (
+        <span className="text-xs text-red-700">{status.message}</span>
+      )}
+    </span>
+  )
+}
+
 function AccountGroups({
   accounts,
   canManage,
@@ -204,13 +262,23 @@ export function CashAccounts({
     <>
       {cash.length > 0 && (
         <section className="flex flex-col gap-4">
-          <h2 className="font-display text-xl font-medium text-ink">Cash accounts</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-display text-xl font-medium text-ink">
+              Cash accounts
+            </h2>
+            {canManage && <SyncNowButton />}
+          </div>
           <AccountGroups accounts={cash} canManage={canManage} isLiability={false} />
         </section>
       )}
       {liabilities.length > 0 && (
         <section className="flex flex-col gap-4">
-          <h2 className="font-display text-xl font-medium text-ink">Liabilities</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-display text-xl font-medium text-ink">Liabilities</h2>
+            {/* If every account is a liability, this is the only header —
+                the sync button still needs a home. */}
+            {canManage && cash.length === 0 && <SyncNowButton />}
+          </div>
           <AccountGroups
             accounts={liabilities}
             canManage={canManage}
