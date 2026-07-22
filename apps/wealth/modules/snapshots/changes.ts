@@ -60,3 +60,59 @@ export function indexTo100(values: (number | null)[]): (number | null)[] {
   if (base === undefined || base === null) return values.map(() => null)
   return values.map((value) => (value === null ? null : (value / base) * 100))
 }
+
+/**
+ * An account whose value moves more than this between two snapshots is
+ * treated as a cash flow (deposit, transfer-in, first full holdings sync),
+ * not a market return, and sits out that day-pair. Real single-day account
+ * moves stay well under ±50% — even a concentrated crypto account — while
+ * onboarding artifacts (value 0 → $375k when a 401(k) finally prices) are
+ * orders of magnitude past it.
+ */
+const MAX_DAILY_ACCOUNT_RETURN = 0.5
+
+/**
+ * Flow-adjusted performance index (base 100) for the portfolio series.
+ *
+ * Indexing raw totals charts deposits as returns: connecting a new brokerage
+ * mid-range shows up as a +38% "day". Instead, chain day-over-day returns
+ * computed only from the accounts that are present and priced (> 0) in BOTH
+ * consecutive snapshots — the same-store comparison used for time-weighted
+ * returns when flow amounts aren't recorded. Accounts that appear, vanish,
+ * price from 0, or move past MAX_DAILY_ACCOUNT_RETURN sit out that day-pair
+ * and rejoin the chain the next day. A pair with no usable overlap carries
+ * the index flat rather than fabricating a move.
+ */
+export function flowAdjustedIndex(
+  snapshots: Pick<Snapshot, "totalValue" | "perAccount">[],
+): (number | null)[] {
+  const index: (number | null)[] = []
+  let level: number | null = null
+
+  for (let i = 0; i < snapshots.length; i++) {
+    if (level === null) {
+      // Chain starts at the first snapshot with any positive value.
+      level = snapshots[i].totalValue > 0 ? 100 : null
+      index.push(level)
+      continue
+    }
+
+    const prev = new Map(
+      snapshots[i - 1].perAccount.map((account) => [account.accountId, account.value]),
+    )
+    let prevSum = 0
+    let currSum = 0
+    for (const account of snapshots[i].perAccount) {
+      const prevValue = prev.get(account.accountId)
+      if (prevValue === undefined || prevValue <= 0 || account.value <= 0) continue
+      const dayReturn = account.value / prevValue - 1
+      if (Math.abs(dayReturn) > MAX_DAILY_ACCOUNT_RETURN) continue
+      prevSum += prevValue
+      currSum += account.value
+    }
+
+    if (prevSum > 0) level = level * (currSum / prevSum)
+    index.push(level)
+  }
+  return index
+}

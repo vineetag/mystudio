@@ -10,6 +10,7 @@ import {
   type BankAccountType,
 } from "@/modules/bank-accounts/types"
 import { formatAsOf, formatMoney } from "@/lib/format"
+import { BrokerLogo } from "@/components/broker-logo"
 
 const TYPE_LABELS: Record<BankAccountType, string> = {
   checking: "Checking",
@@ -17,6 +18,24 @@ const TYPE_LABELS: Record<BankAccountType, string> = {
   credit_card: "Credit card",
   loan: "Loan",
   unknown: "Unknown",
+}
+
+// Tinted pill per account type — cash types read calm (blue/green), liability
+// types read warm (amber/rose) so the distinction registers at a glance.
+const TYPE_PILL_STYLES: Record<BankAccountType, string> = {
+  checking: "border-sky-200 bg-sky-50 text-sky-900",
+  savings: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  credit_card: "border-amber-200 bg-amber-50 text-amber-900",
+  loan: "border-rose-200 bg-rose-50 text-rose-900",
+  unknown: "border-rule bg-ink/5 text-ink/60",
+}
+
+const TYPE_DOT_STYLES: Record<BankAccountType, string> = {
+  checking: "bg-sky-500",
+  savings: "bg-emerald-500",
+  credit_card: "bg-amber-500",
+  loan: "bg-rose-500",
+  unknown: "bg-ink/30",
 }
 
 function groupByInstitution(accounts: BankAccount[]): [string, BankAccount[]][] {
@@ -47,7 +66,13 @@ function TypeBadge({
 
   if (!canManage) {
     return (
-      <span className="rounded-full border border-rule px-2.5 py-0.5 text-xs text-ink/60">
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${TYPE_PILL_STYLES[type]}`}
+      >
+        <span
+          aria-hidden
+          className={`size-1.5 rounded-full ${TYPE_DOT_STYLES[type]}`}
+        />
         {TYPE_LABELS[type]}
       </span>
     )
@@ -55,32 +80,49 @@ function TypeBadge({
 
   return (
     <span className="inline-flex flex-col">
-      <select
-        value={type}
-        disabled={isPending}
-        aria-label={`Account type for ${account.accountName}`}
-        // Visually a badge, but with a 48px-tall touch target via padding.
-        className="min-h-12 cursor-pointer appearance-none rounded-full border border-rule bg-transparent px-3 text-xs text-ink/70 disabled:opacity-50"
-        onChange={(event) => {
-          const next = event.target.value as BankAccountType
-          const previous = type
-          setType(next)
-          setError(null)
-          startTransition(async () => {
-            const result = await setBankAccountType(account.id, next)
-            if (!result.ok) {
-              setType(previous)
-              setError(result.error)
-            }
-          })
-        }}
+      <span
+        className={`relative inline-flex items-center rounded-full border ${TYPE_PILL_STYLES[type]} ${isPending ? "opacity-50" : ""}`}
       >
-        {(Object.keys(TYPE_LABELS) as BankAccountType[]).map((value) => (
-          <option key={value} value={value}>
-            {TYPE_LABELS[value]}
-          </option>
-        ))}
-      </select>
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute left-2.5 size-1.5 rounded-full ${TYPE_DOT_STYLES[type]}`}
+        />
+        <select
+          value={type}
+          disabled={isPending}
+          aria-label={`Account type for ${account.accountName}`}
+          // Visually a badge, but with a 48px-tall touch target via padding.
+          // Left padding clears the dot; right padding clears the chevron.
+          className="min-h-12 cursor-pointer appearance-none bg-transparent pl-6 pr-6 text-xs font-medium text-inherit"
+          onChange={(event) => {
+            const next = event.target.value as BankAccountType
+            const previous = type
+            setType(next)
+            setError(null)
+            startTransition(async () => {
+              const result = await setBankAccountType(account.id, next)
+              if (!result.ok) {
+                setType(previous)
+                setError(result.error)
+              }
+            })
+          }}
+        >
+          {(Object.keys(TYPE_LABELS) as BankAccountType[]).map((value) => (
+            <option key={value} value={value}>
+              {TYPE_LABELS[value]}
+            </option>
+          ))}
+        </select>
+        {/* appearance-none removes the native arrow — restore an affordance. */}
+        <svg
+          aria-hidden
+          viewBox="0 0 8 5"
+          className="pointer-events-none absolute right-2.5 h-[5px] w-2 fill-current opacity-60"
+        >
+          <path d="M0 0h8L4 5z" />
+        </svg>
+      </span>
       {error && <span className="mt-1 text-xs text-red-700">{error}</span>}
     </span>
   )
@@ -99,9 +141,14 @@ function AccountGroups({
     <div className="flex flex-col gap-5">
       {groupByInstitution(accounts).map(([institution, group]) => (
         <div key={institution} className="flex flex-col gap-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">
-            {institution}
-          </p>
+          <div className="flex items-center gap-2">
+            {/* Same official-only logo pipeline as brokerages; unknown banks
+                fall through to a clean initials tile. */}
+            <BrokerLogo broker={institution} size={22} />
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">
+              {institution}
+            </p>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {group.map((account) => (
               <div
