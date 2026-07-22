@@ -7,7 +7,7 @@
 import { useMemo, useRef, useState } from "react"
 // Pure helpers/types only — server-only snapshot code stays behind the module
 // index (same convention as modules/accounts: client files import leaf modules).
-import { indexTo100 } from "@/modules/snapshots/changes"
+import { flowAdjustedIndex, indexTo100 } from "@/modules/snapshots/changes"
 import type { Snapshot } from "@/modules/snapshots/types"
 import { formatMoney } from "@/lib/format"
 
@@ -58,7 +58,9 @@ function buildChartData(snapshots: Snapshot[], rangeDays: number): ChartData {
   return {
     dates: visible.map((snapshot) => snapshot.snapshotDate),
     series: {
-      portfolio: indexTo100(raw.portfolio),
+      // Flow-adjusted: chained from per-account overlap so connecting a new
+      // brokerage (or a 401(k) pricing from $0) doesn't chart as a return.
+      portfolio: flowAdjustedIndex(visible),
       spy: indexTo100(raw.spy),
       qqq: indexTo100(raw.qqq),
     },
@@ -122,9 +124,11 @@ export function PortfolioChart({ snapshots }: { snapshots: Snapshot[] }) {
     PAD.left + (data.dates.length === 1 ? innerW / 2 : (index / (data.dates.length - 1)) * innerW)
   const y = (value: number) => PAD.top + ((yMax - value) / (yMax - yMin)) * innerH
 
-  const yTicks = [yMin + span * 0.08, 100, yMax - span * 0.08].map(
-    (value) => Math.round(value * 10) / 10,
-  )
+  // Drop edge ticks whose label would collide with the 100 baseline's —
+  // with a tight range they can land within a text-height of each other.
+  const yTicks = [yMin + span * 0.08, 100, yMax - span * 0.08]
+    .map((value) => Math.round(value * 10) / 10)
+    .filter((value) => value === 100 || Math.abs(y(value) - y(100)) > 14)
   const xTickIndexes = [...new Set([0, Math.floor((data.dates.length - 1) / 2), data.dates.length - 1])]
 
   function onPointerMove(event: React.PointerEvent<SVGSVGElement>) {
@@ -142,7 +146,10 @@ export function PortfolioChart({ snapshots }: { snapshots: Snapshot[] }) {
     <section aria-label="Portfolio performance vs benchmarks">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-xl font-medium text-ink">
-          Performance <span className="text-sm font-normal text-ink/50">indexed to 100</span>
+          Performance{" "}
+          <span className="text-sm font-normal text-ink/50">
+            indexed to 100 · deposits excluded
+          </span>
         </h2>
         <div className="flex gap-1" role="group" aria-label="Chart range">
           {RANGES.map((range) => (
