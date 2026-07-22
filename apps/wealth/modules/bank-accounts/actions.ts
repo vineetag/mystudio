@@ -6,7 +6,13 @@ import type { ActionResult } from "@/lib/action-result"
 import { requireOwner } from "@/modules/auth"
 import type { BankAccountType } from "./types"
 
-const BANK_ACCOUNT_TYPES: BankAccountType[] = ["checking", "savings", "unknown"]
+const BANK_ACCOUNT_TYPES: BankAccountType[] = [
+  "checking",
+  "savings",
+  "credit_card",
+  "loan",
+  "unknown",
+]
 
 /**
  * Owner override for the checking/savings guess made at first sync. Writes

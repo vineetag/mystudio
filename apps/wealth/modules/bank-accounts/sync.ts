@@ -8,13 +8,22 @@ import type { BankAccountType, BankSyncReport } from "./types"
 export const BANK_SYNC_TTL_MS = 6 * 60 * 60 * 1000
 
 /**
- * Best-effort checking/savings guess from the account name. SimpleFIN has no
- * native type field. Applied only when a row is first inserted — the owner's
- * manual correction in the UI is never overwritten by a re-sync, and nothing
- * but display ever branches on the type.
+ * Best-effort type guess — SimpleFIN has no native type field, and returns
+ * every linked account (credit cards and loans included, not just deposit
+ * accounts). Name signals first; a negative balance is how SimpleFIN reports
+ * money owed, so it falls back to credit_card. Applied only when a row is
+ * first inserted — the owner's manual correction in the UI is never
+ * overwritten by a re-sync.
  */
-export function guessAccountType(accountName: string): BankAccountType {
-  return /sav/i.test(accountName) ? "savings" : "checking"
+export function guessAccountType(
+  accountName: string,
+  balance: number,
+): BankAccountType {
+  if (/mortgage|loan/i.test(accountName)) return "loan"
+  if (/card|credit/i.test(accountName)) return "credit_card"
+  if (/sav/i.test(accountName)) return "savings"
+  if (balance < 0) return "credit_card"
+  return "checking"
 }
 
 export interface BankAccountRow {
@@ -117,7 +126,10 @@ export async function syncBankAccounts(): Promise<BankSyncReport> {
 
   const toInsert = rows
     .filter((row) => !existingIds.has(row.simplefin_account_id))
-    .map((row) => ({ ...row, account_type: guessAccountType(row.account_name) }))
+    .map((row) => ({
+      ...row,
+      account_type: guessAccountType(row.account_name, row.balance),
+    }))
   const toUpdate = rows.filter((row) => existingIds.has(row.simplefin_account_id))
 
   if (toInsert.length > 0) {

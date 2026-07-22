@@ -4,7 +4,10 @@ import Link from "next/link"
 import { ArrowDown, ArrowUp } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import type { AccountType } from "@/modules/accounts/types"
-import type { BankAccount } from "@/modules/bank-accounts/types"
+import {
+  isLiabilityType,
+  type BankAccount,
+} from "@/modules/bank-accounts/types"
 import {
   derivePositions,
   portfolioTotal,
@@ -198,10 +201,16 @@ export function LiveDashboard({
   )
   const total = useMemo(() => portfolioTotal(positions), [positions])
 
-  // Net worth = investment market value + visible cash balances. Aggregation
-  // never looks at account_type — that's a display-only badge.
-  const cashTotal = bankAccounts.reduce((sum, account) => sum + account.balance, 0)
-  const netWorth = total.value + cashTotal
+  // Net worth = investments + cash − owed. Liability accounts (credit cards,
+  // loans) always subtract their magnitude regardless of SimpleFIN's sign
+  // convention; checking vs savings stays display-only.
+  const cashTotal = bankAccounts
+    .filter((account) => !isLiabilityType(account.accountType))
+    .reduce((sum, account) => sum + account.balance, 0)
+  const owedTotal = bankAccounts
+    .filter((account) => isLiabilityType(account.accountType))
+    .reduce((sum, account) => sum + Math.abs(account.balance), 0)
+  const netWorth = total.value + cashTotal - owedTotal
 
   const chips = useMemo(() => {
     if (!isOwner) return []
@@ -236,7 +245,7 @@ export function LiveDashboard({
             {bankAccounts.length > 0 && (
               <>
                 {" "}
-                · {bankAccounts.length} cash{" "}
+                · {bankAccounts.length} linked{" "}
                 {bankAccounts.length === 1 ? "account" : "accounts"}
               </>
             )}
@@ -255,26 +264,28 @@ export function LiveDashboard({
               <p className="text-sm tabular-nums text-ink/70">
                 Investments {formatWholeMoney(total.value)} · Cash{" "}
                 {formatWholeMoney(cashTotal)}
+                {owedTotal > 0 && <> · Owed −{formatWholeMoney(owedTotal)}</>}
               </p>
-              {netWorth > 0 && (
-                // Investments vs cash split — same CVD-safe palette as the
+              {total.value + cashTotal > 0 && (
+                // Investments vs cash split across assets (liabilities are a
+                // subtraction, not a slice) — same CVD-safe palette as the
                 // portfolio chart (green portfolio line, blue benchmark).
                 <div
                   className="flex h-1.5 w-full max-w-md overflow-hidden rounded-full"
                   role="img"
-                  aria-label={`Split: ${Math.round((total.value / netWorth) * 100)}% investments, ${Math.round((cashTotal / netWorth) * 100)}% cash`}
+                  aria-label={`Asset split: ${Math.round((total.value / (total.value + cashTotal)) * 100)}% investments, ${Math.round((cashTotal / (total.value + cashTotal)) * 100)}% cash`}
                 >
                   <div
                     className="h-full"
                     style={{
-                      width: `${(total.value / netWorth) * 100}%`,
+                      width: `${(total.value / (total.value + cashTotal)) * 100}%`,
                       backgroundColor: "#008300",
                     }}
                   />
                   <div
                     className="h-full"
                     style={{
-                      width: `${(cashTotal / netWorth) * 100}%`,
+                      width: `${(cashTotal / (total.value + cashTotal)) * 100}%`,
                       backgroundColor: "#2a78d6",
                     }}
                   />

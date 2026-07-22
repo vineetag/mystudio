@@ -5,4 +5,5 @@
 export { isSimpleFinConfigured } from "./simplefin"
 export { getBankAccounts } from "./queries"
 export { syncBankAccounts, BANK_SYNC_TTL_MS } from "./sync"
+export { isLiabilityType } from "./types"
 export type { BankAccount, BankAccountType, BankSyncReport } from "./types"

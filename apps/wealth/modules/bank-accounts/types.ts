@@ -1,4 +1,18 @@
-export type BankAccountType = "checking" | "savings" | "unknown"
+export type BankAccountType =
+  | "checking"
+  | "savings"
+  | "credit_card"
+  | "loan"
+  | "unknown"
+
+/**
+ * Liability accounts (credit cards, mortgages) subtract their owed balance
+ * from net worth instead of adding it. This is the one place aggregation
+ * consults account_type — checking vs savings remains display-only.
+ */
+export function isLiabilityType(type: BankAccountType): boolean {
+  return type === "credit_card" || type === "loan"
+}
 
 export interface BankAccount {
   id: string

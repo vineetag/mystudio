@@ -4,12 +4,18 @@ import { useState, useTransition } from "react"
 // Server actions and leaf types only — server-only query/sync code stays
 // behind the module index (same convention as modules/accounts).
 import { setBankAccountType } from "@/modules/bank-accounts/actions"
-import type { BankAccount, BankAccountType } from "@/modules/bank-accounts/types"
+import {
+  isLiabilityType,
+  type BankAccount,
+  type BankAccountType,
+} from "@/modules/bank-accounts/types"
 import { formatAsOf, formatMoney } from "@/lib/format"
 
 const TYPE_LABELS: Record<BankAccountType, string> = {
   checking: "Checking",
   savings: "Savings",
+  credit_card: "Credit card",
+  loan: "Loan",
   unknown: "Unknown",
 }
 
@@ -80,6 +86,60 @@ function TypeBadge({
   )
 }
 
+function AccountGroups({
+  accounts,
+  canManage,
+  isLiability,
+}: {
+  accounts: BankAccount[]
+  canManage: boolean
+  isLiability: boolean
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      {groupByInstitution(accounts).map(([institution, group]) => (
+        <div key={institution} className="flex flex-col gap-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">
+            {institution}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {group.map((account) => (
+              <div
+                key={account.id}
+                className="flex flex-col gap-2 rounded-lg border border-rule bg-white/70 px-4 py-3"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium text-ink">{account.accountName}</p>
+                  <TypeBadge account={account} canManage={canManage} />
+                </div>
+                <p className="font-display text-2xl font-medium tabular-nums text-ink">
+                  {/* Liabilities show what's owed as a plain positive number —
+                      SimpleFIN's sign convention (negative = owed) is an
+                      implementation detail the ledger shouldn't surface. */}
+                  {isLiability
+                    ? formatMoney(Math.abs(account.balance))
+                    : formatMoney(account.balance)}
+                  {account.currency !== "USD" && (
+                    <span className="ml-1 text-sm text-ink/50">{account.currency}</span>
+                  )}
+                  {isLiability && (
+                    <span className="ml-1.5 text-sm font-normal text-ink/50">owed</span>
+                  )}
+                </p>
+                <p className="text-sm text-ink/60">
+                  {account.balanceDate
+                    ? formatAsOf(account.balanceDate)
+                    : `synced ${formatAsOf(account.lastSyncedAt).replace("as of ", "")}`}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function CashAccounts({
   accounts,
   canManage,
@@ -87,44 +147,30 @@ export function CashAccounts({
   accounts: BankAccount[]
   canManage: boolean
 }) {
+  const cash = accounts.filter((account) => !isLiabilityType(account.accountType))
+  const liabilities = accounts.filter((account) =>
+    isLiabilityType(account.accountType),
+  )
   if (accounts.length === 0) return null
 
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="font-display text-xl font-medium text-ink">Cash accounts</h2>
-      <div className="flex flex-col gap-5">
-        {groupByInstitution(accounts).map(([institution, group]) => (
-          <div key={institution} className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">
-              {institution}
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {group.map((account) => (
-                <div
-                  key={account.id}
-                  className="flex flex-col gap-2 rounded-lg border border-rule bg-white/70 px-4 py-3"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium text-ink">{account.accountName}</p>
-                    <TypeBadge account={account} canManage={canManage} />
-                  </div>
-                  <p className="font-display text-2xl font-medium tabular-nums text-ink">
-                    {formatMoney(account.balance)}
-                    {account.currency !== "USD" && (
-                      <span className="ml-1 text-sm text-ink/50">{account.currency}</span>
-                    )}
-                  </p>
-                  <p className="text-sm text-ink/60">
-                    {account.balanceDate
-                      ? formatAsOf(account.balanceDate)
-                      : `synced ${formatAsOf(account.lastSyncedAt).replace("as of ", "")}`}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
+    <>
+      {cash.length > 0 && (
+        <section className="flex flex-col gap-4">
+          <h2 className="font-display text-xl font-medium text-ink">Cash accounts</h2>
+          <AccountGroups accounts={cash} canManage={canManage} isLiability={false} />
+        </section>
+      )}
+      {liabilities.length > 0 && (
+        <section className="flex flex-col gap-4">
+          <h2 className="font-display text-xl font-medium text-ink">Liabilities</h2>
+          <AccountGroups
+            accounts={liabilities}
+            canManage={canManage}
+            isLiability={true}
+          />
+        </section>
+      )}
+    </>
   )
 }

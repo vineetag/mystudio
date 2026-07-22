@@ -20,13 +20,24 @@ function sfAccount(overrides: Partial<SimpleFinAccount> = {}): SimpleFinAccount 
 
 describe("guessAccountType", () => {
   it("guesses savings when the name mentions saving(s)", () => {
-    expect(guessAccountType("High-Yield Savings")).toBe("savings")
-    expect(guessAccountType("emergency saving fund")).toBe("savings")
+    expect(guessAccountType("High-Yield Savings", 100)).toBe("savings")
+    expect(guessAccountType("emergency saving fund", 100)).toBe("savings")
+  })
+
+  it("guesses loan for mortgage/loan names, before any balance signal", () => {
+    expect(guessAccountType("Mortgage - 4480 (4480)", -400000)).toBe("loan")
+    expect(guessAccountType("Auto Loan", 12000)).toBe("loan")
+  })
+
+  it("guesses credit_card from the name or a negative balance", () => {
+    expect(guessAccountType("Freedom Credit Card", 0)).toBe("credit_card")
+    // SimpleFIN reports owed balances as negative.
+    expect(guessAccountType("Venture X (1478)", -1204.36)).toBe("credit_card")
   })
 
   it("defaults everything else to checking", () => {
-    expect(guessAccountType("Everyday Checking")).toBe("checking")
-    expect(guessAccountType("Premier Account")).toBe("checking")
+    expect(guessAccountType("Everyday Checking", 100)).toBe("checking")
+    expect(guessAccountType("Premier Account", 100)).toBe("checking")
   })
 })
 
