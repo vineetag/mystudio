@@ -1,14 +1,17 @@
 "use client"
 
 import { formatAsOf, formatWholeMoney } from "@/lib/format"
+import type { DashboardTab } from "./dashboard-tabs"
 
 /**
- * The always-visible headline inside the sticky region: net worth, the
- * investments/cash/owed breakdown, the asset-split bar, and the as-of line
- * qualifying the number. The eyebrow (account counts) lives outside the
- * sticky region in LiveDashboard so it scrolls away.
+ * The always-visible headline inside the sticky region. The number is
+ * contextual: net worth on Overview, the active tab's own total elsewhere.
+ * The breakdown line and split bar only accompany the Overview number —
+ * they'd repeat the headline on the other tabs. The eyebrow (account counts)
+ * lives outside the sticky region in LiveDashboard so it scrolls away.
  */
 export function NetWorthHero({
+  tab,
   netWorth,
   investmentsTotal,
   cashTotal,
@@ -17,6 +20,7 @@ export function NetWorthHero({
   newestQuote,
   unpricedSymbols,
 }: {
+  tab: DashboardTab
   netWorth: number
   investmentsTotal: number
   cashTotal: number
@@ -26,12 +30,26 @@ export function NetWorthHero({
   unpricedSymbols: string[]
 }) {
   const assetTotal = investmentsTotal + cashTotal
+  const headline = {
+    overview: { label: "Net worth", value: netWorth },
+    investments: { label: "Investments", value: investmentsTotal },
+    cash: { label: "Cash", value: cashTotal },
+    liabilities: { label: "Owed", value: owedTotal },
+  }[tab]
+  // The as-of line qualifies quote-priced figures; bank balances carry their
+  // own per-account sync times inside the panels.
+  const showQuoteAsOf = tab === "overview" || tab === "investments"
+
   return (
     <div>
-      <p className="ledger-sum inline-block pb-1 pr-8 font-display text-4xl font-medium tabular-nums tracking-tight sm:text-5xl">
-        {formatWholeMoney(netWorth)}
+      <p className="text-xs font-medium uppercase tracking-wide text-ink/50">
+        {headline.label}
       </p>
-      {hasBankAccounts && (
+      <p className="ledger-sum inline-block pb-1 pr-8 font-display text-4xl font-medium tabular-nums tracking-tight sm:text-5xl">
+        {tab === "liabilities" && headline.value > 0 && "−"}
+        {formatWholeMoney(headline.value)}
+      </p>
+      {tab === "overview" && hasBankAccounts && (
         <div className="mt-2 flex flex-col gap-1.5">
           <p className="text-sm tabular-nums text-ink/70">
             Investments {formatWholeMoney(investmentsTotal)} · Cash{" "}
@@ -65,16 +83,18 @@ export function NetWorthHero({
           )}
         </div>
       )}
-      <p className="mt-2 truncate text-xs text-ink/60 sm:text-sm">
-        {newestQuote ? formatAsOf(newestQuote) : "no prices yet"}
-        <span className="text-ink/40"> · refreshes every minute</span>
-        {unpricedSymbols.length > 0 && (
-          <span className="text-amber-700">
-            {" "}
-            · excludes {unpricedSymbols.join(", ")} — price unavailable
-          </span>
-        )}
-      </p>
+      {showQuoteAsOf && (
+        <p className="mt-2 truncate text-xs text-ink/60 sm:text-sm">
+          {newestQuote ? formatAsOf(newestQuote) : "no prices yet"}
+          <span className="text-ink/40"> · refreshes every minute</span>
+          {unpricedSymbols.length > 0 && (
+            <span className="text-amber-700">
+              {" "}
+              · excludes {unpricedSymbols.join(", ")} — price unavailable
+            </span>
+          )}
+        </p>
+      )}
     </div>
   )
 }

@@ -236,6 +236,7 @@ export function LiveDashboard({
         className="sticky z-30 -mx-4 flex flex-col gap-3 bg-paper px-4 pt-1"
       >
         <NetWorthHero
+          tab={tab}
           netWorth={netWorth}
           investmentsTotal={total.value}
           cashTotal={cashTotal}
