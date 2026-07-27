@@ -10,9 +10,9 @@ const OWNER_ONLY_PREFIXES = ["/admin", "/accounts"]
  * routes. Must run in middleware so the session cookie stays fresh for Server
  * Components and the RLS-bound client (lib/db.ts).
  *
- * Note: a valid session is not enough for LIVE mode — the email must match
- * OWNER_EMAIL. The same Supabase project serves other studio apps, so on
- * localhost a session from another app can share the cookie. Non-owner
+ * Note: a valid session is not enough for LIVE mode — the email must be on the
+ * OWNER_EMAILS allowlist. The same Supabase project serves other studio apps,
+ * so on localhost a session from another app can share the cookie. Non-owner
  * sessions are treated exactly like anonymous visitors (demo mode).
  */
 export async function updateSession(request: NextRequest) {
@@ -51,9 +51,14 @@ export async function updateSession(request: NextRequest) {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   )
 
-  const ownerEmail = process.env.OWNER_EMAIL?.toLowerCase()
+  // Comma-separated allowlist (shared household), with OWNER_EMAIL as a
+  // single-value fallback. Kept in sync with pt_owner_emails (RLS layer).
+  const ownerEmails = (process.env.OWNER_EMAILS ?? process.env.OWNER_EMAIL ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
   const isOwner =
-    !!user?.email && !!ownerEmail && user.email.toLowerCase() === ownerEmail
+    !!user?.email && ownerEmails.includes(user.email.toLowerCase())
 
   if (isOwnerOnly && !isOwner) {
     const url = request.nextUrl.clone()
