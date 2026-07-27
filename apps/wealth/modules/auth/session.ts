@@ -25,14 +25,28 @@ export interface Viewer {
 }
 
 /**
- * True only when the email matches the OWNER_EMAIL allowlist. A valid session
- * alone never grants LIVE mode — this Supabase project is shared with other
- * studio apps, so foreign sessions can exist (especially on localhost, where
- * apps on different ports share cookies).
+ * The allowlisted owner emails, lowercased. Supports a shared household:
+ * OWNER_EMAILS is a comma-separated list; OWNER_EMAIL (singular) is still
+ * honored as a fallback for older configs. Keep this list in sync with the
+ * pt_owner_emails table, which enforces the same allowlist at the RLS layer.
+ */
+function ownerEmails(): string[] {
+  const raw = process.env.OWNER_EMAILS ?? process.env.OWNER_EMAIL ?? ""
+  return raw
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+}
+
+/**
+ * True only when the email is on the owner allowlist. A valid session alone
+ * never grants LIVE mode — this Supabase project is shared with other studio
+ * apps, so foreign sessions can exist (especially on localhost, where apps on
+ * different ports share cookies).
  */
 export function isOwnerEmail(email: string | null | undefined): boolean {
-  const owner = process.env.OWNER_EMAIL
-  return !!owner && !!email && email.toLowerCase() === owner.toLowerCase()
+  if (!email) return false
+  return ownerEmails().includes(email.toLowerCase())
 }
 
 /**
