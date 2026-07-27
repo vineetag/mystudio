@@ -14,7 +14,10 @@ export async function ModeBanner() {
 
   if (viewer.mode === "demo") {
     return (
-      <div className="demo-stripes sticky top-0 z-50 px-4 py-2 text-center text-sm font-semibold text-amber-950">
+      <div
+        data-mode-banner
+        className="demo-stripes sticky top-0 z-50 px-4 py-2 text-center text-sm font-semibold text-amber-950"
+      >
         <span className="rounded-sm bg-amber-950 px-1.5 py-0.5 text-xs font-bold tracking-widest text-amber-300">
           DEMO
         </span>{" "}
@@ -44,7 +47,10 @@ export async function ModeBanner() {
     // flex-wrap + a breakable email: a long address can't shrink, and without
     // these it pushed the banner — and so the page — past the viewport on
     // mobile.
-    <div className="sticky top-0 z-50 flex flex-wrap items-center justify-center gap-x-2.5 bg-ink px-4 py-2 text-center text-sm font-semibold text-paper">
+    <div
+      data-mode-banner
+      className="sticky top-0 z-50 flex flex-wrap items-center justify-center gap-x-2.5 bg-ink px-4 py-2 text-center text-sm font-semibold text-paper"
+    >
       <span className="relative flex h-2.5 w-2.5" aria-hidden>
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60 motion-reduce:hidden" />
         <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />

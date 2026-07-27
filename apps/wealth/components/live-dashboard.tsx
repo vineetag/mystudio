@@ -1,8 +1,7 @@
 "use client"
 
-import Link from "next/link"
-import { ArrowDown, ArrowUp } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { AccountType } from "@/modules/accounts/types"
 import {
   isLiabilityType,
@@ -18,19 +17,19 @@ import { MARKET_INDICES } from "@/modules/quotes/indices"
 import type { QuoteView } from "@/modules/quotes/types"
 import type { SymbolInfo } from "@/modules/symbols/types"
 import { computeChangeChips } from "@/modules/snapshots/changes"
-import type { ChangeChip, Snapshot } from "@/modules/snapshots/types"
-import { CashAccounts } from "@/components/cash-accounts"
+import type { Snapshot } from "@/modules/snapshots/types"
+import { BankSection } from "@/components/cash-accounts"
+import {
+  DashboardTabBar,
+  TabPanel,
+  parseTab,
+  type DashboardTab,
+} from "@/components/dashboard/dashboard-tabs"
+import { EmptyPortfolio } from "@/components/dashboard/empty-portfolio"
+import { NetWorthHero } from "@/components/dashboard/net-worth-hero"
+import { OverviewTab } from "@/components/dashboard/overview-tab"
 import { DashboardTables, type AccountSection } from "@/components/holdings-table/dashboard-tables"
 import { PortfolioChart } from "@/components/portfolio-chart"
-import { GAIN_TEXT, LOSS_TEXT } from "@/components/holdings-table/columns"
-import {
-  formatAsOf,
-  formatIndexPoints,
-  formatMoney,
-  formatSignedMoney,
-  formatSignedPct,
-  formatWholeMoney,
-} from "@/lib/format"
 
 export type DashboardAccount = DeriveAccountInput & {
   broker: string
@@ -40,80 +39,6 @@ export type DashboardAccount = DeriveAccountInput & {
 
 function quotesFromRecord(record: Record<string, QuoteView>): Map<string, QuoteView> {
   return new Map(Object.entries(record))
-}
-
-function IndexFigure({
-  label,
-  quote,
-}: {
-  label: string
-  quote: QuoteView | undefined
-}) {
-  const change = quote?.dayChangePct ?? null
-  return (
-    <div className="flex items-baseline gap-2 whitespace-nowrap tabular-nums">
-      <span className="text-sm text-ink/60">{label}</span>
-      {!quote || quote.price === null ? (
-        <span className="text-sm text-ink/40">unavailable</span>
-      ) : (
-        <>
-          <span className="text-sm font-medium">{formatIndexPoints(quote.price)}</span>
-          {change !== null && (
-            <span
-              className={`inline-flex items-center text-sm ${change === 0 ? "text-ink/60" : change > 0 ? GAIN_TEXT : LOSS_TEXT}`}
-            >
-              {change !== 0 &&
-                (change > 0 ? (
-                  <ArrowUp className="h-3.5 w-3.5" aria-hidden />
-                ) : (
-                  <ArrowDown className="h-3.5 w-3.5" aria-hidden />
-                ))}
-              {formatSignedPct(change)}
-            </span>
-          )}
-          {quote.isStale && <span className="text-xs text-amber-700">stale</span>}
-        </>
-      )}
-    </div>
-  )
-}
-
-// Card labels for the period-over-period chips computed in modules/snapshots.
-const CHIP_LABELS: Record<string, string> = {
-  "D/D": "Today",
-  "W/W": "1 week",
-  "M/M": "1 month",
-}
-
-function ChangeCard({ chip }: { chip: ChangeChip }) {
-  const tone = chip.abs === 0 ? "text-ink/70" : chip.abs > 0 ? GAIN_TEXT : LOSS_TEXT
-  return (
-    <div className="rounded-lg border border-rule bg-white/70 px-4 py-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-ink/50">
-        {CHIP_LABELS[chip.label] ?? chip.label}
-      </p>
-      <p className={`mt-1 inline-flex items-center gap-1 font-medium tabular-nums ${tone}`}>
-        {chip.abs !== 0 &&
-          (chip.abs > 0 ? (
-            <ArrowUp className="h-4 w-4" aria-hidden />
-          ) : (
-            <ArrowDown className="h-4 w-4" aria-hidden />
-          ))}
-        {formatSignedPct(chip.pct)}
-      </p>
-      <p className={`text-sm tabular-nums ${tone}`}>{formatSignedMoney(chip.abs)}</p>
-    </div>
-  )
-}
-
-function DividendsCard({ amount }: { amount: number }) {
-  return (
-    <div className="rounded-lg border border-rule bg-white/70 px-4 py-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-ink/50">Dividends</p>
-      <p className="mt-1 font-medium tabular-nums text-ink">{formatMoney(amount)}/yr</p>
-      <p className="text-sm text-ink/60">projected</p>
-    </div>
-  )
 }
 
 export function LiveDashboard({
@@ -127,6 +52,7 @@ export function LiveDashboard({
   accountTypeLabels,
   snapshots,
   initialAccountId = null,
+  simpleFinConfigured = false,
 }: {
   accounts: DashboardAccount[]
   /** Cached SimpleFIN balances (visible only, already filtered server-side). */
@@ -141,10 +67,50 @@ export function LiveDashboard({
   snapshots: Snapshot[]
   /** Deep link from /accounts — opens "By account" with this section expanded. */
   initialAccountId?: string | null
+  /** Lets the Cash tab's empty state distinguish "not set up" from "no data". */
+  simpleFinConfigured?: boolean
 }) {
   const [quotes, setQuotes] = useState(() => quotesFromRecord(initialQuotes))
+
+  // The mode banner is also sticky (top-0, z-50) and its height varies with
+  // viewport wrapping — the hero must pin just below it or the net-worth
+  // number slides underneath. Track its real height instead of hardcoding.
+  const [stickyTop, setStickyTop] = useState(0)
+  useEffect(() => {
+    const banner = document.querySelector<HTMLElement>("[data-mode-banner]")
+    if (!banner) return
+    const update = () => setStickyTop(banner.offsetHeight)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(banner)
+    return () => observer.disconnect()
+  }, [])
   // Names + logo domains are static across the quote poll — build the map once.
   const symbolMap = useMemo(() => new Map(Object.entries(symbols)), [symbols])
+
+  // Tab state lives in the URL. Reads go through useSearchParams (populated
+  // during dynamic SSR, so /?tab=cash renders the right panel on first paint);
+  // writes use the native History API because router navigation would refetch
+  // the whole force-dynamic page from the server.
+  const searchParams = useSearchParams()
+  // ?account= deep links (no tab param) land on Investments, where the
+  // expanded account section lives.
+  const tab = parseTab(
+    searchParams.get("tab"),
+    initialAccountId ? "investments" : "overview",
+  )
+  const selectTab = useCallback((next: DashboardTab) => {
+    const url = new URL(window.location.href)
+    if (next === "overview") {
+      url.searchParams.delete("tab")
+    } else {
+      url.searchParams.set("tab", next)
+    }
+    window.history.pushState(null, "", url)
+    // Panels share one page scroll — land each switch at the top so a short
+    // panel never opens mid-void after a deep scroll. Instant, not smooth.
+    if (window.scrollY > 0) window.scrollTo({ top: 0 })
+  }, [])
 
   const holdingSymbols = useMemo(() => {
     const unique = new Set<string>()
@@ -204,12 +170,19 @@ export function LiveDashboard({
   // Net worth = investments + cash − owed. Liability accounts (credit cards,
   // loans) always subtract their magnitude regardless of SimpleFIN's sign
   // convention; checking vs savings stays display-only.
-  const cashTotal = bankAccounts
-    .filter((account) => !isLiabilityType(account.accountType))
-    .reduce((sum, account) => sum + account.balance, 0)
-  const owedTotal = bankAccounts
-    .filter((account) => isLiabilityType(account.accountType))
-    .reduce((sum, account) => sum + Math.abs(account.balance), 0)
+  const cashAccounts = useMemo(
+    () => bankAccounts.filter((account) => !isLiabilityType(account.accountType)),
+    [bankAccounts],
+  )
+  const liabilityAccounts = useMemo(
+    () => bankAccounts.filter((account) => isLiabilityType(account.accountType)),
+    [bankAccounts],
+  )
+  const cashTotal = cashAccounts.reduce((sum, account) => sum + account.balance, 0)
+  const owedTotal = liabilityAccounts.reduce(
+    (sum, account) => sum + Math.abs(account.balance),
+    0,
+  )
   const netWorth = total.value + cashTotal - owedTotal
 
   const chips = useMemo(() => {
@@ -236,140 +209,98 @@ export function LiveDashboard({
   }))
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-8">
-      <section className="flex flex-col gap-5">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">
-            One view of {accountCount} {accountCount === 1 ? "account" : "accounts"} ·{" "}
-            {positions.length} positions
-            {bankAccounts.length > 0 && (
-              <>
-                {" "}
-                · {bankAccounts.length} linked{" "}
-                {bankAccounts.length === 1 ? "account" : "accounts"}
-              </>
-            )}
-            {hiddenAccountCount > 0 && (
-              <span className="normal-case tracking-normal text-ink/40">
-                {" "}
-                · {hiddenAccountCount} hidden
-              </span>
-            )}
-          </p>
-          <p className="ledger-sum mt-2 inline-block pb-1 pr-8 font-display text-5xl font-medium tabular-nums tracking-tight">
-            {formatWholeMoney(netWorth)}
-          </p>
-          {bankAccounts.length > 0 && (
-            <div className="mt-2 flex flex-col gap-1.5">
-              <p className="text-sm tabular-nums text-ink/70">
-                Investments {formatWholeMoney(total.value)} · Cash{" "}
-                {formatWholeMoney(cashTotal)}
-                {owedTotal > 0 && <> · Owed −{formatWholeMoney(owedTotal)}</>}
-              </p>
-              {total.value + cashTotal > 0 && (
-                // Investments vs cash split across assets (liabilities are a
-                // subtraction, not a slice) — same CVD-safe palette as the
-                // portfolio chart (green portfolio line, blue benchmark).
-                <div
-                  className="flex h-1.5 w-full max-w-md overflow-hidden rounded-full"
-                  role="img"
-                  aria-label={`Asset split: ${Math.round((total.value / (total.value + cashTotal)) * 100)}% investments, ${Math.round((cashTotal / (total.value + cashTotal)) * 100)}% cash`}
-                >
-                  <div
-                    className="h-full"
-                    style={{
-                      width: `${(total.value / (total.value + cashTotal)) * 100}%`,
-                      backgroundColor: "#008300",
-                    }}
-                  />
-                  <div
-                    className="h-full"
-                    style={{
-                      width: `${(cashTotal / (total.value + cashTotal)) * 100}%`,
-                      backgroundColor: "#2a78d6",
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-          <p className="mt-2 text-sm text-ink/60">
-            {newestQuote ? formatAsOf(newestQuote) : "no prices yet"}
-            <span className="text-ink/40"> · refreshes every minute</span>
-            {total.unpricedSymbols.length > 0 && (
-              <span className="text-amber-700">
-                {" "}
-                · excludes {total.unpricedSymbols.join(", ")} — price unavailable
-              </span>
-            )}
-          </p>
-        </div>
-        {(chips.length > 0 || total.projectedAnnualIncome > 0) && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {chips.map((chip) => (
-              <ChangeCard key={chip.label} chip={chip} />
-            ))}
-            {total.projectedAnnualIncome > 0 && (
-              <DividendsCard amount={total.projectedAnnualIncome} />
-            )}
-          </div>
+    <main className="mx-auto flex w-full max-w-5xl flex-col px-4 py-8">
+      <p className="pb-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">
+        One view of {accountCount} {accountCount === 1 ? "account" : "accounts"} ·{" "}
+        {positions.length} positions
+        {bankAccounts.length > 0 && (
+          <>
+            {" "}
+            · {bankAccounts.length} linked{" "}
+            {bankAccounts.length === 1 ? "account" : "accounts"}
+          </>
         )}
-        <div className="flex flex-wrap items-baseline gap-x-8 gap-y-1.5 border-t border-rule pt-3">
-          {MARKET_INDICES.map((index) => (
-            <IndexFigure
-              key={index.symbol}
-              label={index.label}
-              quote={quotes.get(index.symbol)}
+        {hiddenAccountCount > 0 && (
+          <span className="normal-case tracking-normal text-ink/40">
+            {" "}
+            · {hiddenAccountCount} hidden
+          </span>
+        )}
+      </p>
+
+      {/* Sticky region: the number the whole app exists to show, plus the
+          tabs. z-30 clears the account filter's z-20 dropdown; -mx-4 bleeds
+          the paper background to the viewport edge while scrolling. */}
+      <div
+        style={{ top: stickyTop }}
+        className="sticky z-30 -mx-4 flex flex-col gap-3 bg-paper px-4 pt-1"
+      >
+        <NetWorthHero
+          tab={tab}
+          netWorth={netWorth}
+          investmentsTotal={total.value}
+          cashTotal={cashTotal}
+          owedTotal={owedTotal}
+          hasBankAccounts={bankAccounts.length > 0}
+          newestQuote={newestQuote}
+          unpricedSymbols={total.unpricedSymbols}
+        />
+        <DashboardTabBar active={tab} onSelect={selectTab} />
+      </div>
+
+      <TabPanel id="overview" active={tab === "overview"}>
+        <OverviewTab
+          hasAccounts={accounts.length > 0}
+          isOwner={isOwner}
+          hiddenAccountCount={hiddenAccountCount}
+          chips={chips}
+          projectedAnnualIncome={total.projectedAnnualIncome}
+          quotes={quotes}
+          snapshots={snapshots}
+          positions={positions}
+          cashTotal={cashTotal}
+          cashCount={cashAccounts.length}
+          owedTotal={owedTotal}
+          owedCount={liabilityAccounts.length}
+          onSelectTab={selectTab}
+        />
+      </TabPanel>
+
+      <TabPanel id="investments" active={tab === "investments"}>
+        {accounts.length === 0 ? (
+          <EmptyPortfolio isOwner={isOwner} hiddenAccountCount={hiddenAccountCount} />
+        ) : (
+          <>
+            <DashboardTables
+              positions={positions}
+              accounts={accountSections}
+              canManage={isOwner}
+              initialAccountId={initialAccountId}
             />
-          ))}
-        </div>
-      </section>
+            {isOwner && <PortfolioChart snapshots={snapshots} />}
+          </>
+        )}
+      </TabPanel>
 
-      {accounts.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-rule p-10 text-center">
-          <h2 className="font-display text-xl font-medium text-ink">
-            {!isOwner
-              ? "Demo portfolio is empty"
-              : hiddenAccountCount > 0
-                ? "All accounts are hidden"
-                : "Open the ledger"}
-          </h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-ink/70">
-            {!isOwner ? (
-              "The demo data hasn't been seeded yet — check back soon."
-            ) : hiddenAccountCount > 0 ? (
-              <>
-                Every account is currently hidden, so nothing counts toward the
-                total. Unhide accounts to bring them back.
-              </>
-            ) : (
-              <>
-                Add your first brokerage account, then enter holdings by hand or import a CSV.
-              </>
-            )}
-          </p>
-          {isOwner && (
-            <Link
-              href="/accounts"
-              className="mt-4 inline-flex min-h-12 items-center rounded-md bg-ink px-5 text-sm font-medium text-paper"
-            >
-              {hiddenAccountCount > 0 ? "Manage accounts" : "Add first account"}
-            </Link>
-          )}
-        </div>
-      ) : (
-        <>
-          <DashboardTables
-            positions={positions}
-            accounts={accountSections}
-            canManage={isOwner}
-            initialAccountId={initialAccountId}
-          />
-          {isOwner && <PortfolioChart snapshots={snapshots} />}
-        </>
-      )}
+      <TabPanel id="cash" active={tab === "cash"}>
+        <BankSection
+          title="Cash accounts"
+          accounts={cashAccounts}
+          canManage={isOwner}
+          isLiability={false}
+          simpleFinConfigured={simpleFinConfigured}
+        />
+      </TabPanel>
 
-      <CashAccounts accounts={bankAccounts} canManage={isOwner} />
+      <TabPanel id="liabilities" active={tab === "liabilities"}>
+        <BankSection
+          title="Liabilities"
+          accounts={liabilityAccounts}
+          canManage={isOwner}
+          isLiability={true}
+          simpleFinConfigured={simpleFinConfigured}
+        />
+      </TabPanel>
     </main>
   )
 }

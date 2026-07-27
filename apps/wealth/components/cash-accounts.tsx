@@ -7,10 +7,9 @@ import {
   setBankAccountType,
   syncBankAccountsNow,
 } from "@/modules/bank-accounts/actions"
-import {
-  isLiabilityType,
-  type BankAccount,
-  type BankAccountType,
+import type {
+  BankAccount,
+  BankAccountType,
 } from "@/modules/bank-accounts/types"
 import { formatAsOf, formatMoney } from "@/lib/format"
 import { BrokerLogo } from "@/components/broker-logo"
@@ -136,7 +135,7 @@ function TypeBadge({
  * SimpleFIN connections show up on click instead of hours later. The server
  * action enforces a cooldown; its refusal message surfaces here verbatim.
  */
-function SyncNowButton() {
+export function SyncNowButton() {
   const [status, setStatus] = useState<
     { kind: "idle" } | { kind: "done"; message: string } | { kind: "error"; message: string }
   >({ kind: "idle" })
@@ -245,47 +244,71 @@ function AccountGroups({
   )
 }
 
-export function CashAccounts({
+/**
+ * One bank section (cash or liabilities), now a full dashboard tab panel.
+ * Each tab carries its own SyncNowButton — the two are never on screen at
+ * the same time, so independent status messages are fine.
+ */
+export function BankSection({
+  title,
   accounts,
   canManage,
+  isLiability,
+  simpleFinConfigured,
 }: {
+  title: string
   accounts: BankAccount[]
   canManage: boolean
+  isLiability: boolean
+  simpleFinConfigured: boolean
 }) {
-  const cash = accounts.filter((account) => !isLiabilityType(account.accountType))
-  const liabilities = accounts.filter((account) =>
-    isLiabilityType(account.accountType),
-  )
-  if (accounts.length === 0) return null
-
+  const showSync = canManage && simpleFinConfigured
   return (
-    <>
-      {cash.length > 0 && (
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-display text-xl font-medium text-ink">
-              Cash accounts
-            </h2>
-            {canManage && <SyncNowButton />}
-          </div>
-          <AccountGroups accounts={cash} canManage={canManage} isLiability={false} />
-        </section>
+    <section className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-display text-xl font-medium text-ink">{title}</h2>
+        {showSync && <SyncNowButton />}
+      </div>
+      {accounts.length === 0 ? (
+        <BankEmptyState
+          isLiability={isLiability}
+          canManage={canManage}
+          simpleFinConfigured={simpleFinConfigured}
+        />
+      ) : (
+        <AccountGroups
+          accounts={accounts}
+          canManage={canManage}
+          isLiability={isLiability}
+        />
       )}
-      {liabilities.length > 0 && (
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-display text-xl font-medium text-ink">Liabilities</h2>
-            {/* If every account is a liability, this is the only header —
-                the sync button still needs a home. */}
-            {canManage && cash.length === 0 && <SyncNowButton />}
-          </div>
-          <AccountGroups
-            accounts={liabilities}
-            canManage={canManage}
-            isLiability={true}
-          />
-        </section>
-      )}
-    </>
+    </section>
+  )
+}
+
+function BankEmptyState({
+  isLiability,
+  canManage,
+  simpleFinConfigured,
+}: {
+  isLiability: boolean
+  canManage: boolean
+  simpleFinConfigured: boolean
+}) {
+  let message: string
+  if (isLiability) {
+    message = "No liabilities — nothing owed."
+  } else if (!canManage) {
+    message = "No linked bank accounts."
+  } else if (!simpleFinConfigured) {
+    message =
+      "Connect SimpleFIN to see cash balances here — set SIMPLEFIN_ACCESS_URL in the environment to enable syncing."
+  } else {
+    message = "No cash accounts synced yet — use Sync now to pull balances."
+  }
+  return (
+    <div className="rounded-lg border border-dashed border-rule p-8 text-center text-sm text-ink/70">
+      {message}
+    </div>
   )
 }

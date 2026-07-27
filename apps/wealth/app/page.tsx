@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic"
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ account?: string }>
+  searchParams: Promise<{ account?: string; tab?: string }>
 }) {
   const [viewer, allAccounts, allBankAccounts, params] = await Promise.all([
     getViewer(),
@@ -112,6 +112,7 @@ export default async function DashboardPage({
       accountTypeLabels={ACCOUNT_TYPE_LABELS}
       snapshots={snapshots}
       initialAccountId={params.account ?? null}
+      simpleFinConfigured={isSimpleFinConfigured()}
     />
   )
 }
