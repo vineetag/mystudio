@@ -93,8 +93,16 @@ function linePath(
   return path
 }
 
-export function PortfolioChart({ snapshots }: { snapshots: Snapshot[] }) {
+export function PortfolioChart({
+  snapshots,
+  compact = false,
+}: {
+  snapshots: Snapshot[]
+  /** Overview-tab variant: fixed 3M range, no toggles, shorter plot. */
+  compact?: boolean
+}) {
   const [rangeDays, setRangeDays] = useState<number>(RANGES[1].days)
+  const height = compact ? 190 : HEIGHT
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
 
@@ -119,7 +127,7 @@ export function PortfolioChart({ snapshots }: { snapshots: Snapshot[] }) {
   const yMax = max + span * 0.08
 
   const innerW = WIDTH - PAD.left - PAD.right
-  const innerH = HEIGHT - PAD.top - PAD.bottom
+  const innerH = height - PAD.top - PAD.bottom
   const x = (index: number) =>
     PAD.left + (data.dates.length === 1 ? innerW / 2 : (index / (data.dates.length - 1)) * innerW)
   const y = (value: number) => PAD.top + ((yMax - value) / (yMax - yMin)) * innerH
@@ -151,6 +159,7 @@ export function PortfolioChart({ snapshots }: { snapshots: Snapshot[] }) {
             indexed to 100 · deposits excluded
           </span>
         </h2>
+        {!compact && (
         <div className="flex gap-1" role="group" aria-label="Chart range">
           {RANGES.map((range) => (
             <button
@@ -167,6 +176,7 @@ export function PortfolioChart({ snapshots }: { snapshots: Snapshot[] }) {
             </button>
           ))}
         </div>
+        )}
       </div>
 
       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
@@ -185,7 +195,7 @@ export function PortfolioChart({ snapshots }: { snapshots: Snapshot[] }) {
       <div className="mt-2 overflow-x-auto">
         <svg
           ref={svgRef}
-          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          viewBox={`0 0 ${WIDTH} ${height}`}
           className="h-auto w-full min-w-[28rem]"
           role="img"
           aria-label="Line chart comparing portfolio, SPY, and QQQ, indexed to 100 at the start of the selected range"
@@ -220,7 +230,7 @@ export function PortfolioChart({ snapshots }: { snapshots: Snapshot[] }) {
             <text
               key={index}
               x={x(index)}
-              y={HEIGHT - 8}
+              y={height - 8}
               textAnchor={index === 0 ? "start" : index === data.dates.length - 1 ? "end" : "middle"}
               className="fill-ink/50 text-[11px]"
             >
@@ -264,7 +274,7 @@ export function PortfolioChart({ snapshots }: { snapshots: Snapshot[] }) {
                 x1={x(hover)}
                 x2={x(hover)}
                 y1={PAD.top}
-                y2={HEIGHT - PAD.bottom}
+                y2={height - PAD.bottom}
                 stroke="#20281F"
                 strokeOpacity={0.25}
               />
@@ -314,6 +324,7 @@ export function PortfolioChart({ snapshots }: { snapshots: Snapshot[] }) {
         )}
       </div>
 
+      {!compact && (
       <details className="mt-1 text-sm">
         <summary className="min-h-12 cursor-pointer py-3 text-ink/60">
           View as table
@@ -345,6 +356,7 @@ export function PortfolioChart({ snapshots }: { snapshots: Snapshot[] }) {
           </table>
         </div>
       </details>
+      )}
     </section>
   )
 }
