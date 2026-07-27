@@ -17,6 +17,7 @@ import { MARKET_INDICES } from "@/modules/quotes/indices"
 import type { QuoteView } from "@/modules/quotes/types"
 import type { SymbolInfo } from "@/modules/symbols/types"
 import { computeChangeChips } from "@/modules/snapshots/changes"
+import { buildDemoSnapshots } from "@/modules/snapshots/demo-data"
 import type { Snapshot } from "@/modules/snapshots/types"
 import { BankSection } from "@/components/cash-accounts"
 import {
@@ -25,9 +26,12 @@ import {
   parseTab,
   type DashboardTab,
 } from "@/components/dashboard/dashboard-tabs"
+import { CashStatsRow, LiabilityStatsRow } from "@/components/dashboard/bank-stats"
 import { EmptyPortfolio } from "@/components/dashboard/empty-portfolio"
 import { NetWorthHero } from "@/components/dashboard/net-worth-hero"
 import { OverviewTab } from "@/components/dashboard/overview-tab"
+import { PortfolioStatRow } from "@/components/dashboard/portfolio-stat-row"
+import { TopMoverCards } from "@/components/dashboard/top-movers"
 import { DashboardTables, type AccountSection } from "@/components/holdings-table/dashboard-tables"
 import { PortfolioChart } from "@/components/portfolio-chart"
 
@@ -185,14 +189,23 @@ export function LiveDashboard({
   )
   const netWorth = total.value + cashTotal - owedTotal
 
-  const chips = useMemo(() => {
-    if (!isOwner) return []
-    return computeChangeChips(
-      total.value,
-      snapshots,
-      new Date().toISOString().slice(0, 10),
-    )
-  }, [isOwner, total.value, snapshots])
+  // Demo viewers have no real history (snapshots are owner-only), so the
+  // chart and change chips run off a deterministic fabricated series anchored
+  // to the live-derived demo total — hero, chips, and chart stay consistent.
+  const effectiveSnapshots = useMemo(() => {
+    if (isOwner || snapshots.length > 0) return snapshots
+    return buildDemoSnapshots(total.value)
+  }, [isOwner, snapshots, total.value])
+
+  const chips = useMemo(
+    () =>
+      computeChangeChips(
+        total.value,
+        effectiveSnapshots,
+        new Date().toISOString().slice(0, 10),
+      ),
+    [total.value, effectiveSnapshots],
+  )
 
   const newestQuote = positions
     .map((position) => position.fetchedAt)
@@ -256,7 +269,7 @@ export function LiveDashboard({
           chips={chips}
           projectedAnnualIncome={total.projectedAnnualIncome}
           quotes={quotes}
-          snapshots={snapshots}
+          snapshots={effectiveSnapshots}
           positions={positions}
           cashTotal={cashTotal}
           cashCount={cashAccounts.length}
@@ -271,18 +284,27 @@ export function LiveDashboard({
           <EmptyPortfolio isOwner={isOwner} hiddenAccountCount={hiddenAccountCount} />
         ) : (
           <>
+            <PortfolioStatRow
+              chips={chips}
+              projectedAnnualIncome={total.projectedAnnualIncome}
+            >
+              <TopMoverCards positions={positions} />
+            </PortfolioStatRow>
             <DashboardTables
               positions={positions}
               accounts={accountSections}
               canManage={isOwner}
               initialAccountId={initialAccountId}
             />
-            {isOwner && <PortfolioChart snapshots={snapshots} />}
+            {(isOwner || effectiveSnapshots.length > 0) && (
+              <PortfolioChart snapshots={effectiveSnapshots} />
+            )}
           </>
         )}
       </TabPanel>
 
       <TabPanel id="cash" active={tab === "cash"}>
+        <CashStatsRow accounts={cashAccounts} />
         <BankSection
           title="Cash accounts"
           accounts={cashAccounts}
@@ -293,6 +315,7 @@ export function LiveDashboard({
       </TabPanel>
 
       <TabPanel id="liabilities" active={tab === "liabilities"}>
+        <LiabilityStatsRow accounts={liabilityAccounts} />
         <BankSection
           title="Liabilities"
           accounts={liabilityAccounts}
