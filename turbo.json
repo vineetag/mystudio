@@ -32,6 +32,8 @@
         "POSTGRES_DATABASE",
         "FINNHUB_API_KEY",
         "OWNER_EMAIL",
+        "OWNER_EMAILS",
+        "SIMPLEFIN_ACCESS_URL",
         "CRON_SECRET",
         "SNAPTRADE_CLIENT_ID",
         "SNAPTRADE_CONSUMER_KEY",
