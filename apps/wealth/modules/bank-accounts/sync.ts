@@ -87,10 +87,29 @@ export function mapSimpleFinAccounts(
 }
 
 /**
+ * Persist the warnings from a sync so the dashboard can show them on page
+ * load, not just in the response to a manual sync. A failure to write health
+ * must never fail the sync itself — the balances are the point.
+ */
+async function recordSyncHealth(
+  service: ReturnType<typeof createServiceClient>,
+  errors: string[],
+): Promise<void> {
+  const { error } = await service
+    .from("pt_bank_sync_health")
+    .upsert({ id: true, errors, synced_at: new Date().toISOString() })
+  if (error) {
+    console.error(`Couldn't record bank sync health: ${error.message}`)
+  }
+}
+
+/**
  * Pull balances from SimpleFIN and upsert into pt_bank_accounts, keyed on
  * simplefin_account_id. New accounts get a type guess; existing rows keep
  * their (possibly owner-corrected) account_type and is_hidden untouched.
- * SimpleFIN's errors array is returned and logged — never swallowed.
+ * SimpleFIN's errors array is returned, logged, and persisted — never
+ * swallowed. It is the only signal that a connection has gone stale: bad
+ * connections keep serving cached balances, so nothing else throws.
  */
 export async function syncBankAccounts(): Promise<BankSyncReport> {
   const service = createServiceClient()
@@ -112,6 +131,10 @@ export async function syncBankAccounts(): Promise<BankSyncReport> {
     updated: 0,
     simplefinErrors: [...accountSet.errors, ...skipped],
   }
+  // Written before the upserts so a warning survives even if a write below
+  // throws — a failing sync is exactly when the owner needs to see why.
+  await recordSyncHealth(service, report.simplefinErrors)
+
   if (rows.length === 0) return report
 
   const { data: existing, error: existingError } = await service

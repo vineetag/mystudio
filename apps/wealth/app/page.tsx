@@ -8,6 +8,7 @@ import { getViewer } from "@/modules/auth"
 import {
   BANK_SYNC_TTL_MS,
   getBankAccounts,
+  getBankSyncHealth,
   getDemoBankAccounts,
   isSimpleFinConfigured,
   syncBankAccounts,
@@ -24,14 +25,17 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ account?: string; tab?: string }>
 }) {
-  const [viewer, allAccounts, allBankAccounts, params] = await Promise.all([
-    getViewer(),
-    listViewerAccountsWithHoldings(),
-    // RLS only exposes pt_bank_accounts to the authenticated owner — demo
-    // viewers get [] and never see a cash section.
-    getBankAccounts(),
-    searchParams,
-  ])
+  const [viewer, allAccounts, allBankAccounts, bankSyncHealth, params] =
+    await Promise.all([
+      getViewer(),
+      listViewerAccountsWithHoldings(),
+      // RLS only exposes pt_bank_accounts to the authenticated owner — demo
+      // viewers get [] and never see a cash section.
+      getBankAccounts(),
+      // Same RLS story; null for demo viewers, so the banner stays owner-only.
+      getBankSyncHealth(),
+      searchParams,
+    ])
 
   // Hidden accounts never reach the dashboard: they're out of the total,
   // the tables, and the quote poll. Manage/unhide them on /accounts.
@@ -113,6 +117,7 @@ export default async function DashboardPage({
       snapshots={snapshots}
       initialAccountId={params.account ?? null}
       simpleFinConfigured={isSimpleFinConfigured()}
+      bankSyncHealth={bankSyncHealth}
     />
   )
 }

@@ -10,8 +10,9 @@ import {
 import type {
   BankAccount,
   BankAccountType,
+  BankSyncHealth,
 } from "@/modules/bank-accounts/types"
-import { formatAsOf, formatMoney } from "@/lib/format"
+import { describeBalanceAge, formatMoney, formatSyncedAt } from "@/lib/format"
 import { BrokerLogo } from "@/components/broker-logo"
 
 const TYPE_LABELS: Record<BankAccountType, string> = {
@@ -137,7 +138,10 @@ function TypeBadge({
  */
 export function SyncNowButton() {
   const [status, setStatus] = useState<
-    { kind: "idle" } | { kind: "done"; message: string } | { kind: "error"; message: string }
+    | { kind: "idle" }
+    | { kind: "done"; message: string }
+    | { kind: "warning"; message: string }
+    | { kind: "error"; message: string }
   >({ kind: "idle" })
   const [isPending, startTransition] = useTransition()
 
@@ -155,14 +159,23 @@ export function SyncNowButton() {
               setStatus({ kind: "error", message: result.error })
               return
             }
-            const { inserted, updated } = result.data
-            setStatus({
-              kind: "done",
-              message:
-                inserted > 0
-                  ? `Added ${inserted} new account${inserted === 1 ? "" : "s"}, refreshed ${updated}.`
-                  : `Balances refreshed (${updated} account${updated === 1 ? "" : "s"}).`,
-            })
+            const { inserted, updated, simplefinErrors } = result.data
+            const summary =
+              inserted > 0
+                ? `Added ${inserted} new account${inserted === 1 ? "" : "s"}, refreshed ${updated}.`
+                : `Balances refreshed (${updated} account${updated === 1 ? "" : "s"}).`
+            // A sync can succeed while SimpleFIN still warns that a
+            // connection is stale — say so instead of a bare success.
+            if (simplefinErrors.length > 0) {
+              setStatus({
+                kind: "warning",
+                message: `${summary} ${simplefinErrors.length} connection${
+                  simplefinErrors.length === 1 ? "" : "s"
+                } need attention — reload to see details.`,
+              })
+              return
+            }
+            setStatus({ kind: "done", message: summary })
           })
         }}
       >
@@ -178,10 +191,77 @@ export function SyncNowButton() {
       {status.kind === "done" && (
         <span className="text-xs text-emerald-700">{status.message}</span>
       )}
+      {status.kind === "warning" && (
+        <span className="text-xs text-amber-700">{status.message}</span>
+      )}
       {status.kind === "error" && (
         <span className="text-xs text-red-700">{status.message}</span>
       )}
     </span>
+  )
+}
+
+/** Where a broken SimpleFIN connection is actually re-authorized. */
+const SIMPLEFIN_BRIDGE_URL = "https://beta-bridge.simplefin.org/"
+
+/**
+ * Warnings from the last sync, shown on page load rather than only in the
+ * response to a manual sync. A connection that needs re-auth keeps serving
+ * cached balances — nothing throws and the sync reports success — so without
+ * this the account just quietly stops moving. SimpleFIN's strings already
+ * name the institution and read plainly, so they're passed through verbatim.
+ */
+function SyncHealthBanner({ health }: { health: BankSyncHealth }) {
+  return (
+    <div
+      role="status"
+      className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50/70 px-4 py-3"
+    >
+      <p className="text-sm font-medium text-amber-900">
+        {health.errors.length === 1
+          ? "One bank connection needs attention"
+          : `${health.errors.length} bank connections need attention`}
+      </p>
+      <ul className="flex flex-col gap-1">
+        {health.errors.map((message) => (
+          <li key={message} className="text-sm text-amber-900/80">
+            {message}
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-amber-900/70">
+        Balances for these accounts are still shown, but they stopped updating
+        at the date on the card.{" "}
+        <a
+          href={SIMPLEFIN_BRIDGE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium underline underline-offset-2"
+        >
+          Reconnect in SimpleFIN Bridge
+        </a>
+        , then use Sync now.
+      </p>
+    </div>
+  )
+}
+
+function BalanceTimestamp({ account }: { account: BankAccount }) {
+  const { label, isStale } = describeBalanceAge(
+    account.balanceDate,
+    account.lastSyncedAt,
+  )
+
+  return (
+    <p className="text-sm text-ink/60">
+      {formatSyncedAt(account.lastSyncedAt)}
+      {label && (
+        <>
+          {" · "}
+          <span className={isStale ? "text-amber-700" : undefined}>{label}</span>
+        </>
+      )}
+    </p>
   )
 }
 
@@ -230,11 +310,11 @@ function AccountGroups({
                     <span className="ml-1.5 text-sm font-normal text-ink/50">owed</span>
                   )}
                 </p>
-                <p className="text-sm text-ink/60">
-                  {account.balanceDate
-                    ? formatAsOf(account.balanceDate)
-                    : `synced ${formatAsOf(account.lastSyncedAt).replace("as of ", "")}`}
-                </p>
+                {/* Our sync time leads because it is the same across every
+                    account and is what "Sync now" actually moves. The bank's
+                    own balance-date only appears when it lags a full day
+                    behind, so a stale balance is never passed off as current. */}
+                <BalanceTimestamp account={account} />
               </div>
             ))}
           </div>
@@ -255,12 +335,14 @@ export function BankSection({
   canManage,
   isLiability,
   simpleFinConfigured,
+  syncHealth,
 }: {
   title: string
   accounts: BankAccount[]
   canManage: boolean
   isLiability: boolean
   simpleFinConfigured: boolean
+  syncHealth?: BankSyncHealth | null
 }) {
   const showSync = canManage && simpleFinConfigured
   return (
@@ -269,6 +351,11 @@ export function BankSection({
         <h2 className="font-display text-xl font-medium text-ink">{title}</h2>
         {showSync && <SyncNowButton />}
       </div>
+      {/* Owner-only: the fix (re-auth on the Bridge) is only theirs to make,
+          and the warnings name institutions a shared viewer needn't see.
+          Shown on both tabs — a bad connection can hold either a deposit
+          account or a card. */}
+      {canManage && syncHealth && <SyncHealthBanner health={syncHealth} />}
       {accounts.length === 0 ? (
         <BankEmptyState
           isLiability={isLiability}

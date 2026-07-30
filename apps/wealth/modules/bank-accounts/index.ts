@@ -3,8 +3,13 @@
 // index pulls in server-only sync code. Same convention as modules/accounts.)
 
 export { isSimpleFinConfigured } from "./simplefin"
-export { getBankAccounts } from "./queries"
+export { getBankAccounts, getBankSyncHealth } from "./queries"
 export { getDemoBankAccounts } from "./demo-data"
 export { syncBankAccounts, BANK_SYNC_TTL_MS } from "./sync"
 export { isLiabilityType } from "./types"
-export type { BankAccount, BankAccountType, BankSyncReport } from "./types"
+export type {
+  BankAccount,
+  BankAccountType,
+  BankSyncHealth,
+  BankSyncReport,
+} from "./types"

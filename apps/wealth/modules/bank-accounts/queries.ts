@@ -1,7 +1,7 @@
 import "server-only"
 
 import { createClient } from "@/lib/db"
-import type { BankAccount, BankAccountType } from "./types"
+import type { BankAccount, BankAccountType, BankSyncHealth } from "./types"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function rowToBankAccount(row: any): BankAccount {
@@ -43,4 +43,32 @@ export async function getBankAccounts(): Promise<BankAccount[]> {
     return []
   }
   return (data ?? []).map(rowToBankAccount)
+}
+
+/**
+ * Warnings from the most recent sync — SimpleFIN's own errors array plus any
+ * accounts we skipped. Drives the reconnect banner. Returns null when there's
+ * nothing to report, so the banner is opt-in rather than a permanent empty
+ * shell. Read failures degrade to null for the same reason as above.
+ */
+export async function getBankSyncHealth(): Promise<BankSyncHealth | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("pt_bank_sync_health")
+    .select("errors, synced_at")
+    .maybeSingle()
+
+  if (error) {
+    console.error(`pt_bank_sync_health read failed: ${error.message}`)
+    return null
+  }
+  if (!data) return null
+
+  // jsonb column — guard the shape rather than trusting the cast.
+  const errors = Array.isArray(data.errors)
+    ? data.errors.filter((entry): entry is string => typeof entry === "string")
+    : []
+  if (errors.length === 0) return null
+
+  return { errors, syncedAt: data.synced_at }
 }

@@ -6,6 +6,7 @@ import type { AccountType } from "@/modules/accounts/types"
 import {
   isLiabilityType,
   type BankAccount,
+  type BankSyncHealth,
 } from "@/modules/bank-accounts/types"
 import {
   derivePositions,
@@ -57,6 +58,7 @@ export function LiveDashboard({
   snapshots,
   initialAccountId = null,
   simpleFinConfigured = false,
+  bankSyncHealth = null,
 }: {
   accounts: DashboardAccount[]
   /** Cached SimpleFIN balances (visible only, already filtered server-side). */
@@ -73,6 +75,8 @@ export function LiveDashboard({
   initialAccountId?: string | null
   /** Lets the Cash tab's empty state distinguish "not set up" from "no data". */
   simpleFinConfigured?: boolean
+  /** Last sync's warnings — drives the owner-only reconnect banner. */
+  bankSyncHealth?: BankSyncHealth | null
 }) {
   const [quotes, setQuotes] = useState(() => quotesFromRecord(initialQuotes))
 
@@ -311,6 +315,7 @@ export function LiveDashboard({
           canManage={isOwner}
           isLiability={false}
           simpleFinConfigured={simpleFinConfigured}
+          syncHealth={bankSyncHealth}
         />
       </TabPanel>
 
@@ -322,6 +327,7 @@ export function LiveDashboard({
           canManage={isOwner}
           isLiability={true}
           simpleFinConfigured={simpleFinConfigured}
+          syncHealth={bankSyncHealth}
         />
       </TabPanel>
     </main>
