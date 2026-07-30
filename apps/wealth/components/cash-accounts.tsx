@@ -159,11 +159,35 @@ export function SyncNowButton() {
               setStatus({ kind: "error", message: result.error })
               return
             }
-            const { inserted, updated, simplefinErrors } = result.data
-            const summary =
-              inserted > 0
-                ? `Added ${inserted} new account${inserted === 1 ? "" : "s"}, refreshed ${updated}.`
-                : `Balances refreshed (${updated} account${updated === 1 ? "" : "s"}).`
+            const { inserted, updated, relinked, merged, disconnected, simplefinErrors } =
+              result.data
+            // Name every outcome the sync can have — a reconnected bank being
+            // matched back to its existing card, or an account dropping off,
+            // is exactly the kind of change that looks like a bug unsaid.
+            const parts = [
+              `Balances refreshed (${updated + relinked} account${
+                updated + relinked === 1 ? "" : "s"
+              }).`,
+            ]
+            if (inserted > 0) {
+              parts.push(`Added ${inserted} new account${inserted === 1 ? "" : "s"}.`)
+            }
+            if (relinked + merged > 0) {
+              const reconnected = relinked + merged
+              parts.push(
+                `Matched ${reconnected} reconnected account${
+                  reconnected === 1 ? "" : "s"
+                } to its existing card.`,
+              )
+            }
+            if (disconnected > 0) {
+              parts.push(
+                `${disconnected} account${
+                  disconnected === 1 ? " is" : "s are"
+                } no longer in your connection — reload for details.`,
+              )
+            }
+            const summary = parts.join(" ")
             // A sync can succeed while SimpleFIN still warns that a
             // connection is stale — say so instead of a bare success.
             if (simplefinErrors.length > 0) {

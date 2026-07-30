@@ -34,6 +34,9 @@ export async function getBankAccounts(): Promise<BankAccount[]> {
   const { data, error } = await supabase
     .from("pt_bank_accounts")
     .select("*")
+    // Accounts the SimpleFIN feed stopped returning are kept as rows but drop
+    // out of the dashboard and its totals; the sync-health banner says why.
+    .is("disconnected_at", null)
     .order("institution_name", { ascending: true })
     .order("account_name", { ascending: true })
 
