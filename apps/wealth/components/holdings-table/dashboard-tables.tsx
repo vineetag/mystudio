@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight } from "lucide-react"
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight, X } from "lucide-react"
 import { consolidate, type PositionRow } from "@/modules/portfolio"
 import { BrokerLogo } from "@/components/broker-logo"
 import { AddHoldingForm } from "@/components/manage-holdings/add-holding-form"
@@ -68,6 +68,9 @@ export function DashboardTables({
       ? initialAccountId
       : null
   const [query, setQuery] = useState("")
+  // Clearing the search returns focus to the field: on a phone the keyboard
+  // stays up and the next search starts without a second tap.
+  const searchRef = useRef<HTMLInputElement>(null)
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT)
   // Empty = all accounts (the default). A non-empty set is an explicit filter.
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -235,14 +238,35 @@ export function DashboardTables({
               onSelectAll={() => setSelected(new Set())}
             />
           )}
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search symbol, name, or account…"
-            aria-label="Search holdings"
-            className="min-h-12 w-full rounded-md border border-rule px-4 text-base outline-none focus:border-moss sm:w-72"
-          />
+          {/* The clear button is ours rather than the native type="search"
+              affordance: WebKit hides that one on touch devices, so on a
+              phone there was no way to empty the field short of holding down
+              backspace. Rendering it ourselves also keeps the control
+              identical across browsers, hence the suppressed WebKit one. */}
+          <div className="relative w-full sm:w-72">
+            <input
+              ref={searchRef}
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search symbol, name, or account…"
+              aria-label="Search holdings"
+              className="min-h-12 w-full rounded-md border border-rule pl-4 pr-12 text-base outline-none focus:border-moss [&::-webkit-search-cancel-button]:hidden"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("")
+                  searchRef.current?.focus()
+                }}
+                aria-label="Clear search"
+                className="absolute right-0 top-0 flex h-full min-h-12 w-12 cursor-pointer items-center justify-center text-ink/50 transition-colors hover:text-ink"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Mobile sort control — the desktop tables sort via their headers. */}

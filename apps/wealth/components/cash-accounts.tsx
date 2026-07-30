@@ -1,6 +1,14 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import {
+  CircleHelp,
+  CreditCard,
+  Landmark,
+  PiggyBank,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react"
 // Server actions and leaf types only — server-only query/sync code stays
 // behind the module index (same convention as modules/accounts).
 import {
@@ -33,12 +41,15 @@ const TYPE_PILL_STYLES: Record<BankAccountType, string> = {
   unknown: "border-rule bg-ink/5 text-ink/60",
 }
 
-const TYPE_DOT_STYLES: Record<BankAccountType, string> = {
-  checking: "bg-sky-500",
-  savings: "bg-emerald-500",
-  credit_card: "bg-amber-500",
-  loan: "bg-rose-500",
-  unknown: "bg-ink/30",
+// The icon replaces the plain colour dot: it carries the same tint (it
+// inherits the pill's text colour) while also being legible on its own, which
+// the dot never was. One glyph per type, no two alike at a glance.
+const TYPE_ICONS: Record<BankAccountType, LucideIcon> = {
+  checking: Wallet,
+  savings: PiggyBank,
+  credit_card: CreditCard,
+  loan: Landmark,
+  unknown: CircleHelp,
 }
 
 function groupByInstitution(accounts: BankAccount[]): [string, BankAccount[]][] {
@@ -66,37 +77,36 @@ function TypeBadge({
   const [type, setType] = useState(account.accountType)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const Icon = TYPE_ICONS[type]
 
   if (!canManage) {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${TYPE_PILL_STYLES[type]}`}
+        className={`inline-flex self-start items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${TYPE_PILL_STYLES[type]}`}
       >
-        <span
-          aria-hidden
-          className={`size-1.5 rounded-full ${TYPE_DOT_STYLES[type]}`}
-        />
+        <Icon aria-hidden className="size-3.5 opacity-80" strokeWidth={2} />
         {TYPE_LABELS[type]}
       </span>
     )
   }
 
   return (
-    <span className="inline-flex flex-col">
+    <span className="inline-flex flex-col self-start">
       <span
         className={`relative inline-flex items-center rounded-full border ${TYPE_PILL_STYLES[type]} ${isPending ? "opacity-50" : ""}`}
       >
-        <span
+        <Icon
           aria-hidden
-          className={`pointer-events-none absolute left-2.5 size-1.5 rounded-full ${TYPE_DOT_STYLES[type]}`}
+          strokeWidth={2}
+          className="pointer-events-none absolute left-2.5 size-3.5 opacity-80"
         />
         <select
           value={type}
           disabled={isPending}
           aria-label={`Account type for ${account.accountName}`}
           // Visually a badge, but with a 48px-tall touch target via padding.
-          // Left padding clears the dot; right padding clears the chevron.
-          className="min-h-12 cursor-pointer appearance-none bg-transparent pl-6 pr-6 text-xs font-medium text-inherit"
+          // Left padding clears the icon; right padding clears the chevron.
+          className="min-h-12 cursor-pointer appearance-none bg-transparent pl-8 pr-6 text-xs font-medium text-inherit"
           onChange={(event) => {
             const next = event.target.value as BankAccountType
             const previous = type
@@ -316,10 +326,15 @@ function AccountGroups({
                 key={account.id}
                 className="flex flex-col gap-2 rounded-lg border border-rule bg-white/70 px-4 py-3"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium text-ink">{account.accountName}</p>
-                  <TypeBadge account={account} canManage={canManage} />
-                </div>
+                {/* The type leads as a category eyebrow rather than sitting
+                    beside the name. Sharing a justify-between row with the
+                    name made its position depend on name length — right-
+                    aligned for "360 Checking", wrapped below for "Costco
+                    Anywhere Visa® Card by Citi-2610" — which read as a
+                    layout bug on narrow screens. Its own line is identical
+                    at every breakpoint and leaves the name full width. */}
+                <TypeBadge account={account} canManage={canManage} />
+                <p className="font-medium text-ink">{account.accountName}</p>
                 <p className="font-display text-2xl font-medium tabular-nums text-ink">
                   {/* Liabilities show what's owed as a plain positive number —
                       SimpleFIN's sign convention (negative = owed) is an
