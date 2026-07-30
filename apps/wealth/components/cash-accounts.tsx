@@ -70,7 +70,7 @@ function TypeBadge({
   if (!canManage) {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${TYPE_PILL_STYLES[type]}`}
+        className={`inline-flex self-start items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${TYPE_PILL_STYLES[type]}`}
       >
         <span
           aria-hidden
@@ -82,7 +82,7 @@ function TypeBadge({
   }
 
   return (
-    <span className="inline-flex flex-col">
+    <span className="inline-flex flex-col self-start">
       <span
         className={`relative inline-flex items-center rounded-full border ${TYPE_PILL_STYLES[type]} ${isPending ? "opacity-50" : ""}`}
       >
@@ -316,10 +316,15 @@ function AccountGroups({
                 key={account.id}
                 className="flex flex-col gap-2 rounded-lg border border-rule bg-white/70 px-4 py-3"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium text-ink">{account.accountName}</p>
-                  <TypeBadge account={account} canManage={canManage} />
-                </div>
+                {/* The type leads as a category eyebrow rather than sitting
+                    beside the name. Sharing a justify-between row with the
+                    name made its position depend on name length — right-
+                    aligned for "360 Checking", wrapped below for "Costco
+                    Anywhere Visa® Card by Citi-2610" — which read as a
+                    layout bug on narrow screens. Its own line is identical
+                    at every breakpoint and leaves the name full width. */}
+                <TypeBadge account={account} canManage={canManage} />
+                <p className="font-medium text-ink">{account.accountName}</p>
                 <p className="font-display text-2xl font-medium tabular-nums text-ink">
                   {/* Liabilities show what's owed as a plain positive number —
                       SimpleFIN's sign convention (negative = owed) is an
