@@ -38,3 +38,9 @@ export interface BankSyncReport {
   /** Messages from SimpleFIN's errors array — stale connections, rate limits. */
   simplefinErrors: string[]
 }
+
+/** Warnings persisted by the last sync, for the dashboard reconnect banner. */
+export interface BankSyncHealth {
+  errors: string[]
+  syncedAt: string
+}
