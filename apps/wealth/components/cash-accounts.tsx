@@ -1,6 +1,14 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import {
+  CircleHelp,
+  CreditCard,
+  Landmark,
+  PiggyBank,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react"
 // Server actions and leaf types only — server-only query/sync code stays
 // behind the module index (same convention as modules/accounts).
 import {
@@ -33,12 +41,15 @@ const TYPE_PILL_STYLES: Record<BankAccountType, string> = {
   unknown: "border-rule bg-ink/5 text-ink/60",
 }
 
-const TYPE_DOT_STYLES: Record<BankAccountType, string> = {
-  checking: "bg-sky-500",
-  savings: "bg-emerald-500",
-  credit_card: "bg-amber-500",
-  loan: "bg-rose-500",
-  unknown: "bg-ink/30",
+// The icon replaces the plain colour dot: it carries the same tint (it
+// inherits the pill's text colour) while also being legible on its own, which
+// the dot never was. One glyph per type, no two alike at a glance.
+const TYPE_ICONS: Record<BankAccountType, LucideIcon> = {
+  checking: Wallet,
+  savings: PiggyBank,
+  credit_card: CreditCard,
+  loan: Landmark,
+  unknown: CircleHelp,
 }
 
 function groupByInstitution(accounts: BankAccount[]): [string, BankAccount[]][] {
@@ -66,16 +77,14 @@ function TypeBadge({
   const [type, setType] = useState(account.accountType)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const Icon = TYPE_ICONS[type]
 
   if (!canManage) {
     return (
       <span
         className={`inline-flex self-start items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${TYPE_PILL_STYLES[type]}`}
       >
-        <span
-          aria-hidden
-          className={`size-1.5 rounded-full ${TYPE_DOT_STYLES[type]}`}
-        />
+        <Icon aria-hidden className="size-3.5 opacity-80" strokeWidth={2} />
         {TYPE_LABELS[type]}
       </span>
     )
@@ -86,17 +95,18 @@ function TypeBadge({
       <span
         className={`relative inline-flex items-center rounded-full border ${TYPE_PILL_STYLES[type]} ${isPending ? "opacity-50" : ""}`}
       >
-        <span
+        <Icon
           aria-hidden
-          className={`pointer-events-none absolute left-2.5 size-1.5 rounded-full ${TYPE_DOT_STYLES[type]}`}
+          strokeWidth={2}
+          className="pointer-events-none absolute left-2.5 size-3.5 opacity-80"
         />
         <select
           value={type}
           disabled={isPending}
           aria-label={`Account type for ${account.accountName}`}
           // Visually a badge, but with a 48px-tall touch target via padding.
-          // Left padding clears the dot; right padding clears the chevron.
-          className="min-h-12 cursor-pointer appearance-none bg-transparent pl-6 pr-6 text-xs font-medium text-inherit"
+          // Left padding clears the icon; right padding clears the chevron.
+          className="min-h-12 cursor-pointer appearance-none bg-transparent pl-8 pr-6 text-xs font-medium text-inherit"
           onChange={(event) => {
             const next = event.target.value as BankAccountType
             const previous = type
