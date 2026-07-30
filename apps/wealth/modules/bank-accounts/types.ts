@@ -35,6 +35,12 @@ export interface BankSyncReport {
   accounts: number
   inserted: number
   updated: number
+  /** Existing rows re-keyed to a new SimpleFIN id after a reconnect. */
+  relinked: number
+  /** Duplicate rows a pre-fix reconnect left behind, folded into the live row. */
+  merged: number
+  /** Rows a clean feed stopped returning — flagged, hidden, not deleted. */
+  disconnected: number
   /** Messages from SimpleFIN's errors array — stale connections, rate limits. */
   simplefinErrors: string[]
 }
