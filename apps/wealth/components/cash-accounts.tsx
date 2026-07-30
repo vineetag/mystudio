@@ -11,7 +11,7 @@ import type {
   BankAccount,
   BankAccountType,
 } from "@/modules/bank-accounts/types"
-import { formatAsOf, formatMoney } from "@/lib/format"
+import { describeBalanceAge, formatMoney, formatSyncedAt } from "@/lib/format"
 import { BrokerLogo } from "@/components/broker-logo"
 
 const TYPE_LABELS: Record<BankAccountType, string> = {
@@ -185,6 +185,25 @@ export function SyncNowButton() {
   )
 }
 
+function BalanceTimestamp({ account }: { account: BankAccount }) {
+  const { label, isStale } = describeBalanceAge(
+    account.balanceDate,
+    account.lastSyncedAt,
+  )
+
+  return (
+    <p className="text-sm text-ink/60">
+      {formatSyncedAt(account.lastSyncedAt)}
+      {label && (
+        <>
+          {" · "}
+          <span className={isStale ? "text-amber-700" : undefined}>{label}</span>
+        </>
+      )}
+    </p>
+  )
+}
+
 function AccountGroups({
   accounts,
   canManage,
@@ -230,11 +249,11 @@ function AccountGroups({
                     <span className="ml-1.5 text-sm font-normal text-ink/50">owed</span>
                   )}
                 </p>
-                <p className="text-sm text-ink/60">
-                  {account.balanceDate
-                    ? formatAsOf(account.balanceDate)
-                    : `synced ${formatAsOf(account.lastSyncedAt).replace("as of ", "")}`}
-                </p>
+                {/* Our sync time leads because it is the same across every
+                    account and is what "Sync now" actually moves. The bank's
+                    own balance-date only appears when it lags a full day
+                    behind, so a stale balance is never passed off as current. */}
+                <BalanceTimestamp account={account} />
               </div>
             ))}
           </div>
